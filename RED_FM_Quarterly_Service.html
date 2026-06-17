@@ -166,7 +166,8 @@ $('finish').addEventListener('click',async()=>{
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
       const chambers=[...new Set(out.map(e=>e.chamber))].join(', ');
-      const visitFields={Title:r.ref,ServiceType:"Quarterly",
+      const qType=c=>c==='C'?'Quarterly C':c==='D'?'Quarterly D&E':c==='E'?'Quarterly E':'Quarterly A&B';
+      const visitFields={Title:r.ref,ServiceType:qType(out[0].chamber),
         PlantSection:chambers,Engineer:r.engineer,VisitDate:r.visitDate,
         Status:"Partially completed",FaultFound:issues>0?"Yes":"No",Notes:r.comments};
       const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),

@@ -66,6 +66,10 @@
 <div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=4"></script>
 <script>
 const TESTS=[
  {key:"direct",label:"Electronic leak-detector test",sub:"entire plant",opts:["No leak found","Leak found"]},
@@ -110,8 +114,14 @@ function draw(){
 draw();
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+
+// Connect to SharePoint if the shared data layer is present + configured
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
 let submitted=false;
-$('finish').addEventListener('click',()=>{
+$('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
   const out=[];
@@ -123,12 +133,51 @@ $('finish').addEventListener('click',()=>{
   const r={sheet:"F-Gas leak testing",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
     visitDate:$('hDate').value,engineer:$('hEng').value.trim(),detector:$('hDet').value.trim(),
     comments:$('hComm').value.trim(),tests:out,submittedAt:new Date().toISOString(),ref:'FG-'+Date.now().toString(36).toUpperCase()};
+
+  // Save to SharePoint (ServiceVisit header + one Readings row per test), then file a branded PDF
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const sys=[...new Set(out.map(e=>e.code))].join(', ');
+      const visitFields={Title:r.ref,ServiceType:"F-Gas",
+        PlantSection:sys,Engineer:r.engineer,VisitDate:r.visitDate,
+        Status:"Partially completed",FaultFound:leaks>0?"Yes":"No",
+        Notes:(r.detector?('Detector: '+r.detector+'. '):'')+r.comments};
+      const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),
+        ReadingKey:slug(e.test+' '+e.code),Asset:e.code,
+        Value:e.result+' — '+e.date+(e.comment?(' ('+e.comment+')'):''),Unit:'',
+        OutOfRange:(e.result.startsWith('Leak')||e.result.startsWith('Loss'))?'Yes':'No'}));
+      await REDFM.saveVisit(visitFields,readingRows);
+      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' test(s)';
+      // generate + file a branded PDF copy in the Reports library (one grid table per system)
+      try{
+        const grid=[];
+        SYSTEMS.forEach((s,si)=>{
+          const gr=[];
+          TESTS.forEach((t,ti)=>{const st=state[rid(si,ti)];
+            if(st&&st.result)gr.push([t.label, st.result, st.date||today, st.comment||'']);});
+          if(gr.length)grid.push({name:s[0]+' — '+s[1]+' ('+s[2]+')',cols:['Result','Date','Comments'],rows:gr});
+        });
+        const blob=REDFM.buildReportPdf({title:'F-Gas leak testing',
+          subtitle:'Border Holdings, Avonmouth',
+          ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:sys,
+          extra:[['Detector',r.detector||''],['Leak/loss flagged',String(leaks)]]},grid);
+        const fname='FGas_'+r.visitDate+'_'+sys.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
+        await REDFM.uploadReportPdf(fname,blob);
+        saveMsg+=' · PDF filed';
+      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
   submitted=true;
   document.querySelectorAll('input,select,textarea,.secbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
   $('finish').style.display='none';$('summary').style.display='block';
   $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
   $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${out.length} test(s) · ${leaks} leak/loss flagged</div>
-    <div class="muted" style="margin-top:4px">Submitted ${new Date(r.submittedAt).toLocaleString()}. Remaining systems stay open for later visits.</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div class="muted" style="margin-top:4px">Remaining systems stay open for later visits.</div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-red" id="pr">Print / Save PDF</button>
       <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;

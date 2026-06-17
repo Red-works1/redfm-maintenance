@@ -68,6 +68,10 @@
 <div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit today's tests</button></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=4"></script>
 <script>
 const SHEET={
  title:"Yearly safety cut-outs",
@@ -141,8 +145,14 @@ const state={};
 draw();
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+
+// Connect to SharePoint if the shared data layer is present + configured
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
 let submitted=false;
-$('finish').addEventListener('click',()=>{
+$('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
   const rows=[];
@@ -155,17 +165,57 @@ $('finish').addEventListener('click',()=>{
   const r={sheet:SHEET.title,site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
     visitDate:$('hDate').value,engineer:$('hEng').value.trim(),comments:$('hComm').value.trim(),
     tests:rows,submittedAt:new Date().toISOString(),ref:'YR-'+Date.now().toString(36).toUpperCase()};
+
+  // Save to SharePoint (ServiceVisit header + one Readings row per cut-out test), then file a branded PDF
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const sections=[...new Set(rows.map(e=>e.section))].join(', ');
+      const visitFields={Title:r.ref,ServiceType:"Annual cut-outs",
+        PlantSection:sections,Engineer:r.engineer,VisitDate:r.visitDate,
+        Status:"Partially completed",FaultFound:"No",Notes:r.comments};
+      const readingRows=rows.map((e,i)=>({Title:r.ref+'-'+(i+1),
+        ReadingKey:slug(e.section+' '+e.group+' '+e.test),
+        Asset:e.section+' '+e.group,
+        Value:(e.setting||'Tested')+' — '+e.date+(e.comment?(' ('+e.comment+')'):''),
+        Unit:'',OutOfRange:'No'}));
+      await REDFM.saveVisit(visitFields,readingRows);
+      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' cut-out test(s)';
+      // generate + file a branded PDF copy in the Reports library (one grid table per section)
+      try{
+        const grid=[];
+        SECS.forEach(s=>{
+          const gr=[];
+          SHEET.sections[s].forEach((grp,gi)=>grp.tests.forEach((t,ti)=>{
+            const st=state[uid(s,gi,ti)];
+            if(st&&st.done)gr.push([grp.group+' · Test the '+t.toLowerCase(), st.setting||'', st.date||r.visitDate, st.comment||'']);
+          }));
+          if(gr.length)grid.push({name:'Section '+s+' — safety cut-outs',cols:['Setting','Date','Comments'],rows:gr});
+        });
+        const blob=REDFM.buildReportPdf({title:'Yearly safety cut-outs',
+          subtitle:'Border Holdings, Avonmouth',
+          ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:sections,
+          extra:[['Tests this visit',String(rows.length)]]},grid);
+        const fname='Yearly_Cutouts_'+r.visitDate+'_'+sections.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
+        await REDFM.uploadReportPdf(fname,blob);
+        saveMsg+=' · PDF filed';
+      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
   submitted=true;
   document.querySelectorAll('input,textarea,.chk,.secbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
   $('finish').style.display='none';
   $('summary').style.display='block';
   $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
   $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${rows.length} cut-out test(s) logged this visit</div>
-    <div class="muted" style="margin-top:4px">Submitted ${new Date(r.submittedAt).toLocaleString()}. The remaining tests stay open for later visits.</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div class="muted" style="margin-top:4px">The remaining tests stay open for later visits.</div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-red" id="pr">Print / Save PDF</button>
-      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>
-    <div class="muted" style="margin-top:8px">In production each test posts to the SharePoint <b>Readings</b> list with its own date — the annual sheet accumulates automatically. Print only appears after submit.</div>`;
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;
   $('summary').scrollIntoView({behavior:'smooth'});
   $('pr').onclick=()=>window.print();
   $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
