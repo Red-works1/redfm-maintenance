@@ -136,6 +136,8 @@ window.REDFM = (function () {
   // Read everything the dashboard needs
   async function getServiceVisits() { return listItems("ServiceVisits"); }
   async function getFaults() { return listItems("FaultRegister"); }
+  async function getReadings() { return listItems("Readings"); }
+  async function getCatalogueAll() { return listItems("ReadingCatalogue"); }
 
   // ---- Document library uploads (client-side) ----
   const driveIds = {};
@@ -317,7 +319,7 @@ window.REDFM = (function () {
   return {
     init, signIn, signOut, getAccount,
     getCatalogue, saveVisit, addItem, addItemsBatch,
-    getServiceVisits, getFaults,
+    getServiceVisits, getFaults, getReadings, getCatalogueAll,
     buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
   };
 })();
