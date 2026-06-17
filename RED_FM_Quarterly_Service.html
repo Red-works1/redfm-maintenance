@@ -69,6 +69,10 @@
 <div class="bar"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=4"></script>
 <script>
 const COOL_AB=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff","Expansion valve superheat & % open"];
 const COOL_STD=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff"];
@@ -133,8 +137,14 @@ function draw(){
 draw();
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+
+// Connect to SharePoint if the shared data layer is present + configured
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
 let submitted=false;
-$('finish').addEventListener('click',()=>{
+$('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
   const out=[];let issues=0;
@@ -148,12 +158,55 @@ $('finish').addEventListener('click',()=>{
   const r={sheet:"Quarterly service checks",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
     visitDate:$('hDate').value,engineer:$('hEng').value.trim(),comments:$('hComm').value.trim(),
     entries:out,issues,submittedAt:new Date().toISOString(),ref:'QS-'+Date.now().toString(36).toUpperCase()};
+
+  // Save to SharePoint (ServiceVisit header + one Readings row per value), then file a branded PDF
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const chambers=[...new Set(out.map(e=>e.chamber))].join(', ');
+      const visitFields={Title:r.ref,ServiceType:"Quarterly",
+        PlantSection:chambers,Engineer:r.engineer,VisitDate:r.visitDate,
+        Status:"Partially completed",FaultFound:issues>0?"Yes":"No",Notes:r.comments};
+      const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),
+        ReadingKey:slug(e.mode+' '+e.section+' '+e.row),
+        Asset:(e.chamber+' '+e.col).trim(),Value:String(e.value),Unit:'',
+        OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
+      await REDFM.saveVisit(visitFields,readingRows);
+      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
+      // generate + file a branded PDF copy in the Reports library (one grid table per filled section)
+      try{
+        const grid=[];
+        Object.keys(CHAMBERS).forEach(ch=>['readings','checks'].forEach(md=>{
+          CHAMBERS[ch][md].forEach((sec,si)=>{
+            const rows=[];
+            sec.rows.forEach((row,ri)=>{
+              const vals=sec.cols.map((c,ci)=>{const v=state[`${ch}|${md}|${si}|${ri}|${ci}`];
+                return v==='ok'?'OK':v==='no'?'FAULT':(v==null?'':v);});
+              if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
+            });
+            if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
+          });
+        }));
+        const blob=REDFM.buildReportPdf({title:'Quarterly service checks',
+          subtitle:'Border Holdings, Avonmouth',
+          ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:chambers,
+          extra:[['Issues flagged',String(issues)]]},grid);
+        const fname='Quarterly_'+r.visitDate+'_'+chambers.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
+        await REDFM.uploadReportPdf(fname,blob);
+        saveMsg+=' · PDF filed';
+      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
   submitted=true;
   document.querySelectorAll('input,textarea,.chk,.cbtn,.mbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
   $('finish').style.display='none';$('summary').style.display='block';
   $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
   $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${out.length} values · ${issues} issue(s) flagged</div>
-    <div class="muted" style="margin-top:4px">Submitted ${new Date(r.submittedAt).toLocaleString()}. Remaining compressors/units carry to the next visit.</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div class="muted" style="margin-top:4px">Remaining compressors/units carry to the next visit.</div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-red" id="pr">Print / Save PDF</button>
       <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;
