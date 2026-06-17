@@ -178,10 +178,14 @@ window.REDFM = (function () {
   }
 
   // Stamp the footer (tagline + Coolstream credit + page number) on every page.
-  function stampFooter(doc) {
+  // fgasNo (optional): Coolstream's F-Gas company certification number — shown on F-Gas certificates.
+  function stampFooter(doc, fgasNo) {
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
     const n = doc.internal.getNumberOfPages();
+    const credit = "Maintenance works carried out by Coolstream (UK) Ltd"
+      + (fgasNo ? " · F-Gas (Refcom) No. " + fgasNo : "")
+      + " on behalf of RED FM (Red Electrical Bristol Ltd).";
     for (let p = 1; p <= n; p++) {
       doc.setPage(p);
       doc.setDrawColor(225, 225, 228); doc.setLineWidth(0.5); doc.line(40, H - 40, W - 40, H - 40);
@@ -190,9 +194,9 @@ window.REDFM = (function () {
       doc.setTextColor(20, 20, 26); doc.text("The work that ", 40, H - 26);
       const tw = doc.getTextWidth("The work that ");
       doc.setTextColor.apply(doc, RED); doc.text("keeps you working.", 40 + tw, H - 26);
-      // Coolstream credit
+      // Coolstream credit (+ F-Gas cert number on certificates)
       doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(120, 120, 126);
-      doc.text("Maintenance works carried out by Coolstream on behalf of RED FM (Red Electrical Bristol Ltd).", 40, H - 15);
+      doc.text(credit, 40, H - 15);
       doc.text("Page " + p + " of " + n, W - 40, H - 15, { align: "right" });
     }
   }
@@ -242,7 +246,7 @@ window.REDFM = (function () {
       y = doc.lastAutoTable.finalY + 16;
     });
 
-    stampFooter(doc);
+    stampFooter(doc, meta.fgasNo);
     return doc.output("blob");
   }
 
