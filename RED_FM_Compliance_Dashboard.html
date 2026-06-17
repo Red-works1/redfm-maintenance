@@ -152,9 +152,10 @@ function computeRegime(reg,visits,readings,catCount){
   const {s,e,label}=periodRange(reg.period);
   let done,expected,detail;
   if(reg.mode==="visits"){
-    expected=wednesdays(s);
-    done=visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).length;
-    detail=done+" of "+expected+" weekly visit(s) · "+label;
+    expected=wednesdays(s);                      // weeks elapsed this month
+    const monday=v=>{const d=new Date(v.VisitDate);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toISOString().slice(0,10);};
+    done=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(monday)).size; // distinct weeks covered
+    detail=done+" of "+expected+" weeks covered · "+label;
   }else{
     expected=catCount[reg.key]||0;
     const refs=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(v=>v.Title));
