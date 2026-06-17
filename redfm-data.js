@@ -137,31 +137,34 @@ window.REDFM = (function () {
   async function getServiceVisits() { return listItems("ServiceVisits"); }
   async function getFaults() { return listItems("FaultRegister"); }
 
-  // ---- PDF report (client-side) ----
-  let reportsDriveId = null;
-  async function getReportsDriveId() {
-    if (reportsDriveId) return reportsDriveId;
+  // ---- Document library uploads (client-side) ----
+  const driveIds = {};
+  async function getDriveId(name) {
+    if (driveIds[name]) return driveIds[name];
     const sid = await getSiteId();
-    const d = await graph("/sites/" + sid + "/drives?$select=id,name");
-    const drive = d.value.find(x => x.name === "Reports") || d.value[0];
-    return (reportsDriveId = drive.id);
+    const d = await graph("/sites/" + sid + "/drives?$select=id,name&$top=50");
+    d.value.forEach(x => (driveIds[x.name] = x.id));
+    return driveIds[name];
   }
 
-  // Upload a Blob to the Reports document library. Returns the created file (incl. webUrl).
-  async function uploadReportPdf(filename, blob) {
+  // Upload a Blob to a named document library (e.g. "Reports", "Faults"). Returns the created file (incl. webUrl).
+  async function uploadFile(libraryName, filename, blob, contentType) {
     const token = await getToken();
     const sid = await getSiteId();
-    const did = await getReportsDriveId();
+    const did = await getDriveId(libraryName);
+    if (!did) throw new Error("Library not found: " + libraryName);
     const safe = filename.replace(/[\\/:*?"<>|#%]+/g, "-");
     const res = await fetch("https://graph.microsoft.com/v1.0/sites/" + sid + "/drives/" + did +
       "/root:/" + encodeURIComponent(safe) + ":/content", {
       method: "PUT",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/pdf" },
+      headers: { Authorization: "Bearer " + token, "Content-Type": contentType || "application/octet-stream" },
       body: blob
     });
-    if (!res.ok) throw new Error("PDF upload " + res.status + ": " + (await res.text()));
+    if (!res.ok) throw new Error("Upload " + res.status + ": " + (await res.text()));
     return res.json();
   }
+  // Back-compat: file a PDF into the Reports library.
+  function uploadReportPdf(filename, blob) { return uploadFile("Reports", filename, blob, "application/pdf"); }
 
   const RED = [0xE0, 0x13, 0x22];
   // F-Gas Certification scheme mark (from Coolstream's Refcom cert) — shown on F-Gas certificates only.
@@ -263,10 +266,58 @@ window.REDFM = (function () {
     return doc.output("blob");
   }
 
+  // Build a branded RED FM fault report (Blob) with the photo(s) embedded.
+  // meta: {ref, date, plant, severity, raisedBy, stage, description, action, subtitle}
+  // photos: array of image data-URLs (jpeg/png)
+  function buildFaultPdf(meta, photos) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    drawLogo(doc, 40, 28, 150);
+    doc.setTextColor(20, 20, 26); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+    doc.text("Fault report", W - 40, 46, { align: "right" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(95, 95, 102);
+    doc.text(meta.subtitle || "Border Holdings, Avonmouth", W - 40, 62, { align: "right" });
+    if (meta.date) doc.text("Date: " + meta.date, W - 40, 76, { align: "right" });
+    doc.setDrawColor.apply(doc, RED); doc.setLineWidth(1.5); doc.line(40, 100, W - 40, 100);
+    const rows = [["Ref", meta.ref], ["Date", meta.date], ["Plant", meta.plant],
+      ["Severity", meta.severity], ["Raised by", meta.raisedBy], ["Stage", meta.stage || "Reported"]];
+    doc.autoTable({
+      startY: 110, theme: "plain", styles: { fontSize: 9, cellPadding: 1.5 }, margin: { left: 40, right: 40 },
+      body: rows.filter(([, v]) => v != null && v !== "")
+        .map(([k, v]) => [{ content: k + ":", styles: { fontStyle: "bold", cellWidth: 80, textColor: [80, 80, 86] } }, String(v)])
+    });
+    let y = doc.lastAutoTable.finalY + 16;
+    function block(title, text) {
+      if (!text) return;
+      if (y > H - 110) { doc.addPage(); y = 56; }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10.5); doc.setTextColor.apply(doc, RED); doc.text(title, 40, y); y += 15;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(40, 40, 46);
+      doc.splitTextToSize(text, W - 80).forEach(ln => { if (y > H - 60) { doc.addPage(); y = 56; } doc.text(ln, 40, y); y += 13; });
+      y += 10;
+    }
+    block("Description", meta.description);
+    block("Action taken / recommendation", meta.action);
+    (photos || []).forEach((p, i) => {
+      let props; try { props = doc.getImageProperties(p); } catch (e) { return; }
+      const maxW = W - 80, maxH = 300;
+      let w = maxW, h = w * props.height / props.width;
+      if (h > maxH) { h = maxH; w = h * props.width / props.height; }
+      if (y + 18 + h > H - 56) { doc.addPage(); y = 56; }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor.apply(doc, RED);
+      doc.text("Photo " + (i + 1), 40, y + 10); y += 16;
+      try { doc.addImage(p, props.fileType || "JPEG", 40, y, w, h); } catch (e) {}
+      y += h + 14;
+    });
+    stampFooter(doc);
+    return doc.output("blob");
+  }
+
   return {
     init, signIn, signOut, getAccount,
     getCatalogue, saveVisit, addItem, addItemsBatch,
     getServiceVisits, getFaults,
-    buildReportPdf, uploadReportPdf
+    buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
   };
 })();

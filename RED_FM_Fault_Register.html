@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Fault register</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amber:#b9770b;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:680px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;}label:first-child{margin-top:0;}
+  label .req{color:var(--red);}
+  input,select,textarea{width:100%;font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+  textarea{min-height:90px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .sev{display:flex;gap:8px;}
+  .sevbtn{flex:1;font-size:15px;font-weight:700;padding:13px 0;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .sevbtn.on[data-v="Low"]{background:#eef7f0;color:var(--ok);border-color:var(--ok);}
+  .sevbtn.on[data-v="Medium"]{background:#fdf3e3;color:var(--amber);border-color:var(--amber);}
+  .sevbtn.on[data-v="High"]{background:#fdecee;color:var(--red);border-color:var(--red);}
+  .photos{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;}
+  .thumb{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1px solid var(--line);}
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .thumb .rm{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:0;width:22px;height:22px;border-radius:50%;font-size:14px;cursor:pointer;}
+  .addph{width:84px;height:84px;border:1.5px dashed var(--line);border-radius:10px;background:#fafafa;color:var(--grey);font-size:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;}
+  .addph span{font-size:24px;line-height:1;color:var(--red);}
+  .btn{font-size:16px;font-weight:700;padding:15px 18px;border-radius:12px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:680px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
+  @media print{.bar,.toast,.addph{display:none!important}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Fault register</strong>Border Holdings — Avonmouth · raise a fault, add photos</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <div><label>Date</label><input id="fDate" type="date"></div>
+      <div><label>Raised by <span class="req">*</span></label><input id="fEng" placeholder="Your name"></div>
+    </div>
+
+    <label>Plant / system <span class="req">*</span></label>
+    <select id="fPlant"><option value="">Select…</option>
+      <option>A</option><option>B</option><option>C1</option><option>C2</option><option>C3</option><option>C4</option>
+      <option>D1</option><option>D2</option><option>D3</option><option>D4</option><option>E1</option><option>E2</option>
+      <option value="A&amp;B Plant Room">A&amp;B Plant Room</option>
+      <option value="General">General / not plant-specific</option></select>
+
+    <label>Severity <span class="req">*</span></label>
+    <div class="sev" id="sev">
+      <button class="sevbtn" data-v="Low">Low</button>
+      <button class="sevbtn" data-v="Medium">Medium</button>
+      <button class="sevbtn" data-v="High">High</button>
+    </div>
+
+    <label>Description — what's wrong, and where <span class="req">*</span></label>
+    <textarea id="fDesc" placeholder="Describe the fault"></textarea>
+
+    <label>Action taken / recommendation</label>
+    <textarea id="fAction" placeholder="What you did, or what's needed"></textarea>
+
+    <label>Photo(s) of the fault</label>
+    <div class="photos" id="photos">
+      <label class="addph" for="fFile"><span>＋</span>Add photo</label>
+      <input id="fFile" type="file" accept="image/*" capture="environment" multiple hidden>
+    </div>
+    <div class="muted" style="margin-top:6px">Up to 5 · tap to use the camera or pick from the gallery. Each photo is saved on its own and shown on the report.</div>
+  </div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Submit fault</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=8"></script>
+<script>
+const $=id=>document.getElementById(id);
+$('fDate').value=new Date().toISOString().slice(0,10);
+let severity='';const photos=[];
+
+$('sev').querySelectorAll('.sevbtn').forEach(b=>b.onclick=()=>{severity=b.dataset.v;
+  $('sev').querySelectorAll('.sevbtn').forEach(x=>x.className='sevbtn'+(x.dataset.v===severity?' on':''));});
+
+$('fFile').addEventListener('change',e=>{
+  [...e.target.files].forEach(file=>{
+    if(photos.length>=5){toast('Max 5 photos');return;}
+    const r=new FileReader();r.onload=ev=>{photos.push({name:file.name,file:file,data:ev.target.result});renderPhotos();};r.readAsDataURL(file);
+  });
+  e.target.value='';
+});
+function renderPhotos(){
+  const box=$('photos');box.querySelectorAll('.thumb').forEach(t=>t.remove());
+  const add=box.querySelector('.addph');
+  photos.forEach((p,i)=>{const d=document.createElement('div');d.className='thumb';
+    d.innerHTML=`<img src="${p.data}"><button class="rm" data-i="${i}">×</button>`;box.insertBefore(d,add);});
+  box.querySelectorAll('.rm').forEach(b=>b.onclick=()=>{photos.splice(+b.dataset.i,1);renderPhotos();});
+  add.style.display=photos.length>=5?'none':'flex';
+}
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+// downscale a data-URL for embedding in the PDF (keeps the PDF small; the raw photo is uploaded separately at full size)
+function downscale(dataURL,maxDim){return new Promise(res=>{const img=new Image();img.onload=()=>{
+  let w=img.width,h=img.height;const s=Math.min(1,maxDim/Math.max(w,h));
+  const c=document.createElement('canvas');c.width=Math.round(w*s);c.height=Math.round(h*s);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.85));};
+  img.onerror=()=>res(dataURL);img.src=dataURL;});}
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+
+// Connect to SharePoint if the shared data layer is present + configured
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  if(!$('fEng').value.trim()){toast('Enter your name');return;}
+  if(!$('fPlant').value){toast('Pick a plant');return;}
+  if(!severity){toast('Pick a severity');return;}
+  if(!$('fDesc').value.trim()){toast('Add a description');return;}
+  const r={sheet:"Fault register",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    date:$('fDate').value,raisedBy:$('fEng').value.trim(),plant:$('fPlant').value,severity:severity,
+    description:$('fDesc').value.trim(),action:$('fAction').value.trim(),photoCount:photos.length,
+    photoNames:photos.map(p=>p.name),submittedAt:new Date().toISOString(),ref:'FLT-'+Date.now().toString(36).toUpperCase()};
+
+  // Save to SharePoint (FaultRegister item) + file a branded PDF AND the original photo(s) into the Faults library
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      await REDFM.addItem("FaultRegister",{Title:r.ref,FaultDate:r.date,Plant:r.plant,Severity:r.severity,
+        Description:r.description,ActionTaken:r.action,Stage:"Reported",RaisedBy:r.raisedBy});
+      saveMsg='Logged to the Fault Register ✓';
+      // PDF (with photos embedded, downscaled) → Faults library
+      try{
+        const pdfPhotos=await Promise.all(photos.map(p=>downscale(p.data,1400)));
+        const blob=REDFM.buildFaultPdf({ref:r.ref,date:r.date,plant:r.plant,severity:r.severity,
+          raisedBy:r.raisedBy,stage:"Reported",description:r.description,action:r.action,
+          subtitle:"Border Holdings, Avonmouth"},pdfPhotos);
+        const base='Fault_'+r.date+'_'+slug(r.plant)+'_'+r.ref;
+        await REDFM.uploadFile("Faults",base+'.pdf',blob,'application/pdf');
+        // original photo(s) saved on their own
+        let n=0;
+        for(const p of photos){n++;const ext=(p.name.split('.').pop()||'jpg').toLowerCase();
+          await REDFM.uploadFile("Faults",base+'_photo'+n+'.'+ext,p.file,p.file.type||'image/jpeg');}
+        saveMsg+=' · PDF + '+photos.length+' photo(s) filed to Faults';
+      }catch(pe){saveMsg+=' (PDF/photos skipped: '+(pe.message||pe)+')';}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,select,textarea,.sevbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent=`✓ Fault submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.plant} · ${r.severity} · ${r.photoCount} photo(s) · ${r.raisedBy}</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const out={...r,photos:photos.map(p=>({name:p.name,data:p.data}))};const b=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Fault_${r.date}_${r.ref}.json`;a.click();};
+  toast('Fault submitted ✓');
+});
+</script>
+</body>
+</html>
