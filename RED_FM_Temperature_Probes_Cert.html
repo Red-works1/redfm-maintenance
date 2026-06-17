@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Temperature probe validation</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:90px;font-size:14px;font-weight:700;padding:11px 6px;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  .probe{border:1px solid var(--line);border-radius:11px;margin-top:10px;overflow:hidden;}
+  .probe.done{border-color:var(--ok);}
+  .phead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 12px;cursor:pointer;}
+  .probe.done .phead{background:#f4faf5;}
+  .ptop{font-size:15px;font-weight:700;}.ptop span{color:var(--grey);font-weight:500;}
+  .pright{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .chev{color:var(--grey);font-size:12px;}
+  .badge{font-size:14px;font-weight:800;padding:3px 11px;border-radius:20px;}
+  .badge.good{color:var(--ok);background:#eef7f0;}.badge.bad{color:var(--red);background:#fdecee;}
+  .fields{padding:0 12px 12px;}
+  .frow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .frow .lab{font-size:11px;color:var(--grey);font-weight:600;margin-bottom:3px;}
+  .errbox{font-size:16px;font-weight:800;padding:11px;border:1.5px dashed var(--line);border-radius:9px;background:#fafafa;text-align:center;}
+  .errbox.bad{color:var(--red);border-color:var(--red);background:#fdecee;}.errbox.good{color:var(--ok);}
+  .cmt{margin-top:8px;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}h3{font-size:14px;margin:16px 4px 0;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Validation of temperature probes</strong>Border Holdings — Avonmouth · F-Gas certificate of test</div></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="hgrid">
+      <div><label>Test date</label><input id="hDate" type="date"></div>
+      <div><label>Engineer <span style="color:var(--red)">*</span></label><input id="hEng" placeholder="Name"></div>
+      <div><label>Job No.</label><input id="hJob" placeholder="e.g. JD61787/8"></div>
+      <div><label>Out-of-tolerance flag (±°C)</label><input id="hTol" type="number" inputmode="decimal" step="0.1" value="1.0"></div>
+      <div><label>Equipment</label><input id="hEquip" value="RDM Data Manager"></div>
+      <div><label>Probe type</label><input id="hPtype" value="PT1000"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>Error = Displayed − Measured (auto).</b> Fill the probes you validated — leave the rest for a later visit if you're doing them bit by bit. Anything beyond ± the tolerance is flagged.</div>
+
+  <div class="secbar" id="secbar"></div>
+  <div id="body"></div>
+
+  <h3>Test instrument</h3>
+  <div class="card">
+    <label>Reference thermometer</label><input id="iName" value="ETI reference thermometer, fixed 130mm PT100 probe">
+    <div class="hgrid" style="margin-top:10px">
+      <div><label>Serial No.</label><input id="iSerial" placeholder="e.g. D19485187"></div>
+      <div><label>Calibration cert No.</label><input id="iCert" placeholder="e.g. 178557 (S.M. Gauge Ltd)"></div>
+    </div>
+  </div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const GROUPS={
+ "Monitoring":[
+  ["Probe 1","Outside ambient temperature"],["Probe 2","A Chamber far left"],["Probe 3","A Chamber far right"],
+  ["Probe 4","A Chamber near left"],["Probe 5","A Chamber near right"],["Probe 6","B Chamber far"],
+  ["Probe 7","B Chamber near"],["Probe 8","A & B loading bay area"],["Probe 9","C & D loading bay area"]],
+ "Cooler air-on":[
+  ["OO1","A1 cooler air on probe"],["OO2","A2 cooler air on probe"],["OO3","A3 cooler air on probe"],["OO4","A4 cooler air on probe"],
+  ["OO5","B1 cooler air on probe"],["OO6","B2 cooler air on probe"],["OO7","B3 cooler air on probe"],["OO8","B4 cooler air on probe"],
+  ["ChmC01","C Chamber front near"],["ChmC02","C Chamber front far"],["ChmC03","C Chamber back near"],["ChmC04","C Chamber back far"],
+  ["ChmD01","D Chamber near"],["ChmD02","D Chamber far"],["ChmE01","E Chamber near"],["ChmE02","E Chamber far"],["ChmE03","E Chamber front centre"]],
+ "Cooler air-off":[
+  ["A1","A1 cooler air off probe"],["A2","A2 cooler air off probe"],["A3","A3 cooler air off probe"],["A4","A4 cooler air off probe"],
+  ["B1","B1 cooler air off probe"],["B2","B2 cooler air off probe"],["B3","B3 cooler air off probe"],["B4","B4 cooler air off probe"],
+  ["C1","C1 cooler air off probe"],["C2","C2 cooler air off probe"],["C3","C3 cooler air off probe"],["C4","C4 cooler air off probe"],
+  ["D1","D1 cooler air off probe"],["D2","D2 cooler air off probe"],["E1","E1 cooler air off probe"],["E2","E2 cooler air off probe"]]
+};
+const $=id=>document.getElementById(id);
+$('hDate').value=new Date().toISOString().slice(0,10);
+const NAMES=Object.keys(GROUPS);let cur=NAMES[0];const state={};
+const secbar=$('secbar');
+NAMES.forEach(n=>{const b=document.createElement('button');b.className='secbtn'+(n===cur?' on':'');
+  b.innerHTML=`${n}<span class="n">${GROUPS[n].length} probes</span>`;b.onclick=()=>{cur=n;draw();};secbar.appendChild(b);});
+
+function tol(){return parseFloat($('hTol').value)||1.0;}
+function draw(){
+  [...secbar.children].forEach((b,i)=>b.className='secbtn'+(NAMES[i]===cur?' on':''));
+  const root=$('body');root.innerHTML='';
+  GROUPS[cur].forEach(([id,loc])=>{
+    const st=state[id]||{};
+    const filled=st.m!==undefined&&st.m!==''&&st.d!==undefined&&st.d!=='';
+    const open=!!st.open;
+    let badge='';
+    if(filled){const e=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
+      badge=`<span class="badge ${Math.abs(e)>tol()?'bad':'good'}">${e>0?'+':''}${e}</span>`;}
+    const d=document.createElement('div');d.className='probe'+(filled?' done':'');
+    d.innerHTML=`<div class="phead" data-id="${id}">
+        <div class="ptop">${id} <span>· ${loc}</span></div>
+        <div class="pright">${badge}<span class="chev">${open?'▲':'▼'}</span></div></div>
+      <div class="fields" ${open?'':'hidden'}>
+        <div class="frow">
+          <div><div class="lab">Measured °C</div><input data-f="m" data-id="${id}" type="number" inputmode="decimal" step="0.1" value="${st.m??''}"></div>
+          <div><div class="lab">Displayed °C</div><input data-f="d" data-id="${id}" type="number" inputmode="decimal" step="0.1" value="${st.d??''}"></div>
+          <div><div class="lab">Error</div><div class="errbox" id="e_${id}">—</div></div>
+        </div>
+        <div class="cmt"><div class="lab">Comments</div><input data-f="c" data-id="${id}" placeholder="e.g. Calibrated by +0.5" value="${st.c??''}"></div>
+      </div>`;
+    root.appendChild(d);
+    if(open)updErr(id);
+  });
+  root.querySelectorAll('.phead').forEach(h=>h.onclick=()=>{
+    const id=h.dataset.id;state[id]=state[id]||{};state[id].open=!state[id].open;draw();
+  });
+  root.querySelectorAll('input[data-f]').forEach(inp=>inp.oninput=()=>{
+    const id=inp.dataset.id;state[id]=state[id]||{};state[id][inp.dataset.f]=inp.value;
+    if(inp.dataset.f!=='c')updErr(id);
+  });
+}
+function updErr(id){
+  const st=state[id]||{};const box=$('e_'+id);if(!box)return;
+  const m=parseFloat(st.m),d=parseFloat(st.d);
+  if(isNaN(m)||isNaN(d)){box.textContent='—';box.className='errbox';return;}
+  const e=+(d-m).toFixed(1);box.textContent=(e>0?'+':'')+e;box.className='errbox '+(Math.abs(e)>tol()?'bad':'good');
+}
+draw();
+$('hTol').oninput=()=>{Object.keys(state).forEach(updErr);};
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+let submitted=false;
+$('finish').addEventListener('click',()=>{
+  if(submitted)return;
+  if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  const probes=[];
+  NAMES.forEach(n=>GROUPS[n].forEach(([id,loc])=>{
+    const st=state[id];if(st&&st.m!==''&&st.m!=null&&st.d!==''&&st.d!=null){
+      const err=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
+      probes.push({group:n,probeId:id,location:loc,measured:+st.m,displayed:+st.d,error:err,
+        outOfTol:Math.abs(err)>tol(),comments:st.c||''});}
+  }));
+  if(probes.length===0){toast('Record at least one probe');return;}
+  const fails=probes.filter(p=>p.outOfTol).length;
+  const r={sheet:"Validation of temperature probes",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    date:$('hDate').value,engineer:$('hEng').value.trim(),jobNo:$('hJob').value.trim(),
+    equipment:$('hEquip').value.trim(),probeType:$('hPtype').value.trim(),tolerance:tol(),
+    instrument:{name:$('iName').value.trim(),serial:$('iSerial').value.trim(),calCert:$('iCert').value.trim()},
+    probes,submittedAt:new Date().toISOString(),ref:'TPC-'+Date.now().toString(36).toUpperCase()};
+  submitted=true;
+  document.querySelectorAll('input,.secbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';
+  $('summary').style.display='block';
+  $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.date} · ${r.engineer} · ${probes.length} probe(s) · ${fails} out of tolerance</div>
+    <div class="muted" style="margin-top:4px">Submitted ${new Date(r.submittedAt).toLocaleString()}</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>
+    <div class="muted" style="margin-top:8px">In production each probe posts to the SharePoint <b>Readings</b> list. Print only appears after submit.</div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`ProbeCert_${r.date}_${r.ref}.json`;a.click();};
+  toast('Submitted ✓');
+});
+</script>
+</body>
+</html>

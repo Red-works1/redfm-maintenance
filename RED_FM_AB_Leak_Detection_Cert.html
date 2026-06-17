@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — A&B leak detection validation</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,select{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;}
+  input:focus,select:focus{outline:none;border-color:var(--red);}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:90px;font-size:13px;font-weight:700;padding:11px 6px;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}.secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  h3{font-size:14px;margin:16px 4px 0;}
+  .row{border:1px solid var(--line);border-radius:11px;margin-top:10px;overflow:hidden;}
+  .row.done{border-color:var(--ok);}
+  .rhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 12px;cursor:pointer;}
+  .row.done .rhead{background:#f4faf5;}
+  .rtop{font-size:15px;font-weight:700;}.rtop span{color:var(--grey);font-weight:500;}
+  .rright{display:flex;align-items:center;gap:10px;flex:0 0 auto;}.chev{color:var(--grey);font-size:12px;}
+  .badge{font-size:13px;font-weight:800;padding:3px 11px;border-radius:20px;background:#eef0f2;color:var(--grey);}
+  .badge.good{color:var(--ok);background:#eef7f0;}.badge.bad{color:var(--red);background:#fdecee;}
+  .fields{padding:0 12px 12px;}.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .fgrid .full{grid-column:1/3;}.lab{font-size:11px;color:var(--grey);font-weight:600;margin-bottom:3px;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>A&amp;B leak-detection validation</strong>Border Holdings — Avonmouth · R407F plant-room · F-Gas cert</div></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="hgrid">
+      <div><label>Test date</label><input id="hDate" type="date"></div>
+      <div><label>Engineer <span style="color:var(--red)">*</span></label><input id="hEng" placeholder="Name"></div>
+      <div><label>Job No.</label><input id="hJob" placeholder="e.g. JD6172/9"></div>
+      <div><label>Refrigerant</label><input id="hRef" value="R407F"></div>
+      <div class="full" style="grid-column:1/3"><label>Equipment</label><input id="hEquip" value="Bacharach MGD-100 controller"></div>
+      <div><label>Controller serial No.</label><input id="hSerial" value="K03587"></div>
+    </div>
+  </div>
+
+  <div class="secbar" id="secbar"></div>
+  <div id="body"></div>
+
+  <h3>Test gas certificates</h3>
+  <div class="card"><div class="hgrid">
+    <div><label>100ppm balance gas cert</label><input id="gas100" placeholder="e.g. 20630A/MJS"></div>
+    <div><label>1000ppm balance gas cert</label><input id="gas1000" placeholder="e.g. 20630B/MJS"></div>
+  </div></div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SENSORS=[
+  ["Sensor No1","Pack A — discharge & oil separator"],
+  ["Sensor No2","Pack A — econ & compressors"],
+  ["Sensor No3","Pack B — discharge & oil separator"],
+  ["Sensor No4","Pack B — econ & compressors"]];
+const SENSOR_FIELDS=[
+  {key:"result",label:"Test result",type:"select",opts:["Working","Not working"]},
+  {key:"adjustment",label:"Adjustment",type:"select",opts:["No","Yes"]},
+  {key:"retest",label:"Re-test",type:"select",opts:["N/A","Working","Not working"]},
+  {key:"comments",label:"Comments",type:"text"}];
+const sRows=SENSORS.map(([l,s])=>({label:l,sub:s,fields:SENSOR_FIELDS,badge:"result"}));
+
+const SECTIONS=[
+ {name:"1st stage · 100ppm",rows:sRows},
+ {name:"2nd stage · 1000ppm",rows:sRows},
+ {name:"System checks",rows:[
+   {label:"Audible alarms",sub:"all three",fields:[{key:"result",label:"Status",type:"select",opts:["Working","Not working"]},{key:"comments",label:"Comments",type:"text"}],badge:"result"},
+   {label:"Mute timer",sub:"setting",fields:[{key:"mins",label:"Set to (minutes)",type:"number"},{key:"comments",label:"Comments",type:"text"}],badge:"mins"},
+   {label:"Flashing beacon",sub:"during 2nd-stage alarm",fields:[{key:"result",label:"Status",type:"select",opts:["Working","Not working"]},{key:"comments",label:"Comments",type:"text"}],badge:"result"},
+   {label:"Plant-room extract fan",sub:"started by 2nd-stage leak",fields:[{key:"result",label:"Status",type:"select",opts:["Working","Not working"]},{key:"comments",label:"Comments",type:"text"}],badge:"result"},
+   {label:"Front-door audible alarm",sub:"plant room",fields:[{key:"result",label:"Status",type:"select",opts:["Working","Not working"]},{key:"comments",label:"Comments",type:"text"}],badge:"result"}]}
+];
+
+const $=id=>document.getElementById(id);
+$('hDate').value=new Date().toISOString().slice(0,10);
+let cur=0;const state={};
+const secbar=$('secbar');
+SECTIONS.forEach((s,i)=>{const b=document.createElement('button');b.className='secbtn'+(i===cur?' on':'');
+  b.innerHTML=`${s.name}<span class="n">${s.rows.length} rows</span>`;b.onclick=()=>{cur=i;draw();};secbar.appendChild(b);});
+
+function rid(si,ri){return `s${si}_r${ri}`;}
+function badgeHTML(row,st){
+  const v=st&&st[row.badge];if(v===undefined||v==='')return '';
+  let cls='';if(v==='Working')cls='good';else if(v==='Not working')cls='bad';
+  return `<span class="badge ${cls}">${v}</span>`;
+}
+function fieldHTML(id,f,st){
+  const v=(st&&st[f.key])!=null?st[f.key]:'';
+  if(f.type==='select'){const o='<option value="">—</option>'+f.opts.map(x=>`<option ${v===x?'selected':''}>${x}</option>`).join('');
+    return `<div><div class="lab">${f.label}</div><select data-id="${id}" data-f="${f.key}">${o}</select></div>`;}
+  if(f.type==='number') return `<div><div class="lab">${f.label}</div><input data-id="${id}" data-f="${f.key}" type="number" inputmode="decimal" value="${v}"></div>`;
+  return `<div class="full"><div class="lab">${f.label}</div><input data-id="${id}" data-f="${f.key}" value="${v}"></div>`;
+}
+function draw(){
+  [...secbar.children].forEach((b,i)=>b.className='secbtn'+(i===cur?' on':''));
+  const root=$('body');root.innerHTML='';
+  SECTIONS[cur].rows.forEach((row,ri)=>{
+    const id=rid(cur,ri);const st=state[id]||{};
+    const done=st[row.fields[0].key]!=null&&st[row.fields[0].key]!=='';
+    const open=!!st._open;
+    const d=document.createElement('div');d.className='row'+(done?' done':'');
+    d.innerHTML=`<div class="rhead" data-id="${id}">
+        <div class="rtop">${row.label} <span>· ${row.sub}</span></div>
+        <div class="rright">${badgeHTML(row,st)}<span class="chev">${open?'▲':'▼'}</span></div></div>
+      <div class="fields" ${open?'':'hidden'}><div class="fgrid">${row.fields.map(f=>fieldHTML(id,f,st)).join('')}</div></div>`;
+    root.appendChild(d);
+  });
+  root.querySelectorAll('.rhead').forEach(h=>h.onclick=()=>{const id=h.dataset.id;state[id]=state[id]||{};state[id]._open=!state[id]._open;draw();});
+  root.querySelectorAll('[data-f]').forEach(el=>{
+    const ev=el.tagName==='SELECT'?'onchange':'oninput';
+    el[ev]=()=>{const id=el.dataset.id;state[id]=state[id]||{};state[id][el.dataset.f]=el.value;
+      const card=el.closest('.row');const r=SECTIONS[cur].rows[+id.split('_r')[1]];
+      card.classList.toggle('done', state[id][r.fields[0].key]!=null&&state[id][r.fields[0].key]!=='');};
+  });
+}
+draw();
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+let submitted=false;
+$('finish').addEventListener('click',()=>{
+  if(submitted)return;
+  if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  const out=[];
+  SECTIONS.forEach((sec,si)=>sec.rows.forEach((row,ri)=>{
+    const st=state[rid(si,ri)];if(!st)return;
+    const prim=st[row.fields[0].key];if(prim==null||prim==='')return;
+    const rec={stage:sec.name,item:row.label,location:row.sub};
+    row.fields.forEach(f=>rec[f.key]=st[f.key]||'');out.push(rec);
+  }));
+  if(out.length===0){toast('Record at least one row');return;}
+  const issues=out.filter(r=>r.result==='Not working').length;
+  const r={sheet:"A&B plant-room R407F leak-detection validation",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    date:$('hDate').value,engineer:$('hEng').value.trim(),jobNo:$('hJob').value.trim(),
+    equipment:$('hEquip').value.trim(),serial:$('hSerial').value.trim(),refrigerant:$('hRef').value.trim(),
+    testGas:{ppm100:$('gas100').value.trim(),ppm1000:$('gas1000').value.trim()},
+    records:out,submittedAt:new Date().toISOString(),ref:'LD-'+Date.now().toString(36).toUpperCase()};
+  submitted=true;
+  document.querySelectorAll('input,select,.secbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';
+  $('summary').style.display='block';
+  $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.date} · ${r.engineer} · ${out.length} item(s) · ${issues} not working</div>
+    <div class="muted" style="margin-top:4px">Submitted ${new Date(r.submittedAt).toLocaleString()}</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>
+    <div class="muted" style="margin-top:8px">In production this posts to the SharePoint <b>Readings</b> list. Print only appears after submit.</div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`LeakDetection_${r.date}_${r.ref}.json`;a.click();};
+  toast('Submitted ✓');
+});
+</script>
+</body>
+</html>

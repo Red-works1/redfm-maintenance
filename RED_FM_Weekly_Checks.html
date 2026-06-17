@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Weekly checks</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:12px 14px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:24px;}.logo b{color:var(--red);}
+  .htitle{font-size:12px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:15px;}
+  .wrap{padding:0 12px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}@media(max-width:620px){.hgrid{grid-template-columns:1fr 1fr;}}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea{width:100%;font-size:16px;padding:10px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .vbtn{flex:1;min-width:80px;font-size:15px;font-weight:800;padding:11px 0;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .vbtn.on{background:var(--red);color:#fff;border-color:var(--red);}.vbtn .n{display:block;font-size:10px;font-weight:600;opacity:.85;}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--red);margin:18px 4px 4px;}
+  .scroller{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:8px;}
+  table{border-collapse:collapse;}th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;white-space:nowrap;}
+  th{background:#fafafa;font-size:12px;color:var(--grey);font-weight:700;padding:8px 10px;text-align:center;}
+  .rowlab{position:sticky;left:0;background:#fff;z-index:2;font-size:13px;font-weight:600;padding:9px 11px;text-align:left;min-width:210px;max-width:210px;white-space:normal;border-right:2px solid var(--line);}
+  thead .rowlab{background:#fafafa;}
+  td input{border:0;border-radius:0;text-align:center;font-size:16px;padding:11px 6px;min-width:84px;}
+  td input:focus{box-shadow:inset 0 0 0 2px var(--red);}
+  .chk{width:100%;min-width:84px;height:44px;border:0;background:#fff;font-size:20px;cursor:pointer;}
+  .chk.ok{color:var(--ok);background:#eef7f0;}.chk.no{color:var(--red);background:#fdecee;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px;z-index:20;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}.hint{font-size:12px;color:var(--grey);margin:8px 4px 0;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
+  @media print{.bar,.toast,.btns{display:none!important}header{position:static}.scroller{overflow:visible}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Weekly checks</strong>Border Holdings — Avonmouth · pick the plant group · tap a check cell for ✓ / ✗</div></div></header>
+
+<div class="wrap">
+  <div class="card"><div class="hgrid">
+    <div><label>Week No.</label><input id="hWeek" inputmode="numeric" placeholder="WK__"></div>
+    <div><label>Date</label><input id="hDate" type="date"></div>
+    <div><label>Engineer</label><input id="hEng" placeholder="Name"></div>
+    <div><label>Ambient °C</label><input id="hAmb"></div>
+  </div></div>
+
+  <div class="btns" id="vbar"></div>
+  <div class="hint">Record cells take text or numbers (FULL, Clear, 100%, −18.6). Tap a check cell to cycle ✓ → ✗.</div>
+  <div id="body"></div>
+
+  <h2>Comments</h2>
+  <div class="card"><textarea id="hComm" rows="3" placeholder="If a compressor is off on temperature, check the oil heater…"></textarea></div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=4"></script>
+<script>
+const T=(a)=>a.map(x=>Array.isArray(x)?x:[x,'txt']);
+const CHAMBER=T([["Cold store set point (controller)"],["Cold store temp air-on"],["Coolers air off"],["Cooling on/off"]]);
+const COND9=T([["Compr abnormal noise / vibration",'chk'],["Compressor abnormal frosting",'chk'],["Compr oil level"],["Compr delivery temperature"],["Oil recovery / separator level"],["Condenser fin face free of debris",'chk'],["Condenser fans abnormal noise",'chk'],["Liquid line sight glass",'chk'],["Receiver level"]]);
+const COOL5=T([["Cooler temperature diff"],["Cooler correct operation",'chk'],["Cooler correct defrosting cycle",'chk'],["Cooler ice build-up & debris",'chk'],["Defrost drain line for leakage",'chk']]);
+const ENERGY=T([["Electric kWhr meter reading"],["Previous kWhr meter reading"],["Total kWhr"],["Chamber total energy"]]);
+
+const VARIANTS={
+ "A & B":{label:"R407F",sections:[
+   {name:"Chamber temperature",cols:["A1","A2","A3","A4","No1 B2","No2 B2","No3 B1","No4 B1"],rows:CHAMBER},
+   {name:"Coolers",cols:["A1","A2","A3","A4","No1 B2","No2 B2","No3 B1","No4 B1"],rows:T([
+     ["Cooler fan correct operation",'chk'],["Cooler correct operation",'chk'],["Cooler correct defrosting cycle",'chk'],["Cooler ice build-up & debris",'chk'],["Defrost drain line for leakage",'chk'],
+     ["Operating suction superheat #"],["% opening of expansion valve #"],["Cooler air temp diff #"]])},
+   {name:"Compressor racks & condenser",cols:["A","B"],rows:T([
+     ["Compr abnormal noise / vibration",'chk'],["Oil cooler fin face free of debris",'chk'],["Oil cooler fans correct operation",'chk'],
+     ["Plant-room ventilation fan (on/off)"],["Plant-room temperature"],["Ambient temperature"],["Wet-matt cooling on/off (hours)"],["System delivery pressure"],
+     ["Condenser fin face free of debris",'chk'],["Condenser fans correct operation"],["Liquid line sight glass"],["Receiver level"],["Oil separator oil level"],
+     ["No1 compressor running & % load"],["No2 compressor running & % load"],["No3 compressor running & % load"],
+     ["No1 compr delivery & econ temp"],["No2 compr delivery & econ temp"],["No3 compr delivery & econ temp"],["Refrigerant leak detection system",'chk']])},
+   {name:"Controls",cols:["A","B"],rows:T([["Suction pressure"],["Suction temperature"],["Suction SH"],["Delivery pressure"],["Common delivery temp"],["Oil temperature"],["HP liquid temperature"],["HP liquid sub-cooling"],["Econ liquid temperature"],["Econ sub-cooling"]])},
+   {name:"Main incoming meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])},
+   {name:"A — pack meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Pack total kWhr"],["A chamber total energy"]])},
+   {name:"B — pack meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Pack total kWhr"],["B chamber total energy"]])},
+   {name:"A & B cooler energy meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])}
+ ]},
+ "C & D":{label:"R404a",sections:[
+   {name:"Chamber temperature",cols:["C1","C2","C3","C4","D1","D2"],rows:CHAMBER},
+   {name:"Condensing units",cols:["C1","C2","C3","C4","D1","D2","D3","D4"],rows:COND9},
+   {name:"Coolers",cols:["C1","C2","C3","C4","D1","D2"],rows:COOL5},
+   {name:"Energy readings",cols:["C2-4 refrig","C1-3 refrig","D 1&2","D 3&4 compr"],rows:ENERGY}
+ ]},
+ "E":{label:"R449a",sections:[
+   {name:"Chamber temperature",cols:["E1","E2"],rows:CHAMBER},
+   {name:"E chamber front-centre temp",cols:["°C"],rows:T([["Front-centre temperature"]])},
+   {name:"Condensing units",cols:["E1 Compr1","E1 Compr2","E2 Compr1","E2 Compr2"],rows:COND9},
+   {name:"Coolers",cols:["E1","E2"],rows:COOL5},
+   {name:"System readings",cols:["E1","E2"],rows:T([["Suction pressure"],["Suction temperature"],["Suction superheat"],["Delivery pressure"],["Liquid refrig temperature"],["Liquid sub"]])},
+   {name:"Energy readings",cols:["E1","E2"],rows:ENERGY}
+ ]}
+};
+
+const $=id=>document.getElementById(id);
+$('hDate').value=new Date().toISOString().slice(0,10);
+let variant=Object.keys(VARIANTS)[0];const state={};
+const vbar=$('vbar');
+Object.keys(VARIANTS).forEach(v=>{const b=document.createElement('button');b.className='vbtn'+(v===variant?' on':'');
+  b.innerHTML=`${v}<span class="n">${VARIANTS[v].label}</span>`;b.onclick=()=>{variant=v;draw();};vbar.appendChild(b);});
+
+function key(si,ri,ci){return `${variant}|${si}|${ri}|${ci}`;}
+function draw(){
+  [...vbar.children].forEach((b,i)=>b.className='vbtn'+(Object.keys(VARIANTS)[i]===variant?' on':''));
+  const root=$('body');root.innerHTML='';
+  VARIANTS[variant].sections.forEach((sec,si)=>{
+    const h=document.createElement('h2');h.textContent=sec.name;root.appendChild(h);
+    const sc=document.createElement('div');sc.className='scroller';
+    let html='<table><thead><tr><th class="rowlab">Item</th>';
+    sec.cols.forEach(c=>html+=`<th>${c}</th>`);html+='</tr></thead><tbody>';
+    sec.rows.forEach((row,ri)=>{const[label,type]=row;html+=`<tr><td class="rowlab">${label}</td>`;
+      sec.cols.forEach((c,ci)=>{const id=key(si,ri,ci);const v=state[id];
+        if(type==='chk')html+=`<td><button class="chk${v?(' '+v):''}" data-id="${id}">${v==='ok'?'✓':v==='no'?'✗':''}</button></td>`;
+        else html+=`<td><input data-id="${id}" value="${v||''}"></td>`;});
+      html+='</tr>';});
+    html+='</tbody></table>';sc.innerHTML=html;root.appendChild(sc);
+  });
+  root.querySelectorAll('.chk').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const cur=state[id]||'';
+    const nx=cur===''?'ok':cur==='ok'?'no':'';if(nx)state[id]=nx;else delete state[id];
+    b.className='chk'+(nx?(' '+nx):'');b.textContent=nx==='ok'?'✓':nx==='no'?'✗':'';});
+  root.querySelectorAll('input[data-id]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];});
+}
+draw();
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+
+// Connect to SharePoint if the shared data layer is present + configured
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  const out=[];let issues=0;
+  Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>sec.rows.forEach((row,ri)=>sec.cols.forEach((c,ci)=>{
+    const val=state[`${v}|${si}|${ri}|${ci}`];if(val==null||val==='')return;if(val==='no')issues++;
+    out.push({group:v,section:sec.name,item:row[0],col:c,value:val==='ok'?'OK':val==='no'?'ISSUE':val});}))));
+  if(out.length===0){toast('Nothing recorded yet');return;}
+  const r={sheet:"Weekly checks",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    week:$('hWeek').value,date:$('hDate').value,engineer:$('hEng').value.trim(),ambient:$('hAmb').value,
+    comments:$('hComm').value.trim(),entries:out,issues,submittedAt:new Date().toISOString(),ref:'WK-'+Date.now().toString(36).toUpperCase()};
+
+  // Save to SharePoint (ServiceVisit header + one Readings row per value)
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const visitFields={Title:r.ref,ServiceType:"Weekly",
+        PlantSection:[...new Set(out.map(e=>e.group))].join(", "),
+        Engineer:r.engineer,VisitDate:r.date,Status:"Fully completed",
+        FaultFound:issues>0?"Yes":"No",Notes:r.comments};
+      const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),ReadingKey:slug(e.section+' '+e.item),
+        Asset:(e.group+' '+e.col).trim(),Value:String(e.value),Unit:'',OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
+      await REDFM.saveVisit(visitFields,readingRows);
+      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
+      // generate + file a branded PDF copy in the Reports library
+      try{
+        const groups=[...new Set(out.map(e=>e.group))].join(', ');
+        // Build one grid table per filled section, matching the on-screen sheet layout
+        const grid=[];
+        Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>{
+          const rows=[];
+          sec.rows.forEach((row,ri)=>{
+            const vals=sec.cols.map((c,ci)=>{const val=state[`${v}|${si}|${ri}|${ci}`];
+              return val==='ok'?'OK':val==='no'?'FAULT':(val==null?'':val);});
+            if(vals.some(x=>x!==''&&x!=null))rows.push([row[0],...vals]);
+          });
+          if(rows.length)grid.push({name:v+' — '+sec.name,cols:sec.cols,rows});
+        }));
+        const blob=REDFM.buildReportPdf({title:'Weekly checks',
+          subtitle:'Border Holdings, Avonmouth',
+          ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,
+          extra:[['Week',r.week||''],['Ambient °C',r.ambient||''],['Issues flagged',String(issues)]]},grid);
+        const fname='Weekly_'+r.date+'_'+groups.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
+        await REDFM.uploadReportPdf(fname,blob);
+        saveMsg+=' · PDF filed';
+      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,textarea,.chk,.vbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.week||'Week'} · ${r.date} · ${r.engineer} · ${out.length} values · ${issues} issue(s) flagged</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Weekly_${r.date}_${r.ref}.json`;a.click();};
+  toast('Submitted ✓');
+});
+</script>
+</body>
+</html>

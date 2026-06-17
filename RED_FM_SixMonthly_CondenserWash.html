@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Six-monthly condenser wash</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:56px;font-size:18px;font-weight:800;padding:12px 0;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}.secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  .item{border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:10px;}
+  .item.done{border-color:var(--ok);background:#f4faf5;}
+  .trow{display:flex;align-items:center;gap:10px;}
+  .chk{width:30px;height:30px;border:2px solid var(--line);border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;background:#fff;cursor:pointer;}
+  .chk.on{background:var(--ok);border-color:var(--ok);}
+  .tname{font-size:15px;font-weight:600;}
+  .fields{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}.item.done .fields{display:grid;}
+  .fields .full{grid-column:1/3;}.lab{font-size:11px;color:var(--grey);font-weight:600;margin-bottom:3px;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}h3{font-size:14px;margin:16px 4px 0;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}.fields{display:grid!important}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Six-monthly — condenser &amp; oil-cooler wash</strong>Border Holdings — Avonmouth · min. 2×/yr, monthly Jun–Sep</div></div></header>
+
+<div class="wrap">
+  <div class="card"><div class="hgrid">
+    <div><label>Date of this visit</label><input id="hDate" type="date"></div>
+    <div><label>Engineer <span style="color:var(--red)">*</span></label><input id="hEng" placeholder="Name"></div>
+  </div></div>
+
+  <div class="note"><b>Tick what you washed this visit.</b> The same unit can be logged again later — through the summer it's washed monthly, so each visit adds its own dated record.</div>
+
+  <div class="secbar" id="secbar"></div>
+  <div id="body"></div>
+
+  <h3>Comments (this visit)</h3>
+  <div class="card"><textarea id="hComm" rows="3" placeholder="e.g. all jet-washed clean — vegetation on all"></textarea></div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit this visit</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const WASH={
+ "A":["A section — air-cooled condenser","A section — air-cooled oil cooler"],
+ "B":["B section — air-cooled condenser","B section — air-cooled oil cooler"],
+ "C":["C1 — air-cooled condenser","C2 — air-cooled condenser","C3 — air-cooled condenser","C4 — air-cooled condenser"],
+ "D":["D1 — air-cooled condenser","D2 — air-cooled condenser","D3 — air-cooled condenser","D4 — air-cooled condenser"],
+ "E":["E1 — air-cooled condenser","E2 — air-cooled condenser"]
+};
+const $=id=>document.getElementById(id);
+$('hDate').value=new Date().toISOString().slice(0,10);
+const SECS=Object.keys(WASH);let cur=SECS[0];const state={};
+const secbar=$('secbar');
+SECS.forEach(s=>{const b=document.createElement('button');b.className='secbtn'+(s===cur?' on':'');
+  b.innerHTML=`${s}<span class="n">section</span>`;b.onclick=()=>{cur=s;draw();};secbar.appendChild(b);});
+
+function uid(s,i){return `${s}_${i}`;}
+function draw(){
+  [...secbar.children].forEach((b,i)=>b.className='secbtn'+(SECS[i]===cur?' on':''));
+  const root=$('body');root.innerHTML='';
+  WASH[cur].forEach((name,i)=>{
+    const id=uid(cur,i);const st=state[id]||{};
+    const d=document.createElement('div');d.className='item'+(st.done?' done':'');
+    d.innerHTML=`<div class="trow"><div class="chk${st.done?' on':''}" data-id="${id}">${st.done?'✓':''}</div><div class="tname">${name}</div></div>
+      <div class="fields">
+        <div><div class="lab">Date washed</div><input data-f="date" data-id="${id}" type="date" value="${st.date||$('hDate').value}"></div>
+        <div class="full"><div class="lab">Comments (optional)</div><input data-f="comment" data-id="${id}" placeholder="e.g. vegetation, extra clean needed" value="${st.comment||''}"></div>
+      </div>`;
+    root.appendChild(d);
+  });
+  root.querySelectorAll('.chk').forEach(c=>c.onclick=()=>{const id=c.dataset.id;state[id]=state[id]||{};
+    state[id].done=!state[id].done;if(state[id].done&&!state[id].date)state[id].date=$('hDate').value;draw();});
+  root.querySelectorAll('input[data-f]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;state[id]=state[id]||{};state[id][inp.dataset.f]=inp.value;});
+}
+draw();
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+let submitted=false;
+$('finish').addEventListener('click',()=>{
+  if(submitted)return;
+  if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  const rows=[];
+  SECS.forEach(s=>WASH[s].forEach((name,i)=>{const st=state[uid(s,i)];
+    if(st&&st.done)rows.push({section:s,item:name,date:st.date||$('hDate').value,comment:st.comment||'',engineer:$('hEng').value.trim()});}));
+  if(rows.length===0){toast('Tick what you washed today');return;}
+  const r={sheet:"Six-monthly condenser & oil-cooler wash",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    visitDate:$('hDate').value,engineer:$('hEng').value.trim(),comments:$('hComm').value.trim(),
+    washes:rows,submittedAt:new Date().toISOString(),ref:'6M-'+Date.now().toString(36).toUpperCase()};
+  submitted=true;
+  document.querySelectorAll('input,textarea,.chk,.secbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${rows.length} unit(s) washed this visit</div>
+    <div class="muted" style="margin-top:4px">Submitted ${new Date(r.submittedAt).toLocaleString()}. Log more washes on the next visit.</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`SixMonthly_Wash_${r.visitDate}_${r.ref}.json`;a.click();};
+  toast('Submitted ✓');
+});
+</script>
+</body>
+</html>

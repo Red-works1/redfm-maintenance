@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Border Holdings Compliance Dashboard</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;--amber:#c2860c;--blue:#175c9e;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:18px;}
+  .brand{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1040px;margin:0 auto;flex-wrap:wrap;}
+  .lhs{display:flex;align-items:center;gap:14px;}
+  .logo{font-weight:800;letter-spacing:1.5px;font-size:32px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.25;}.htitle strong{display:block;color:var(--ink);font-size:17px;}
+  .period{text-align:right;font-size:12px;color:var(--grey);line-height:1.5;}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px 50px;}
+
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px;}
+  @media(max-width:720px){.metrics{grid-template-columns:1fr 1fr;}}
+  .metric{background:#fff;border:1px solid var(--line);border-left:5px solid var(--grey);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .metric.red{border-left-color:var(--red);}.metric.green{border-left-color:var(--ok);}.metric.amber{border-left-color:var(--amber);}.metric.blue{border-left-color:var(--blue);}
+  .metric .l{font-size:11px;letter-spacing:.7px;font-weight:700;color:var(--grey);text-transform:uppercase;}
+  .metric .v{font-size:48px;font-weight:800;line-height:1.05;margin:6px 0 4px;}
+  .metric.red .v{color:var(--red);}.metric.green .v{color:var(--ok);}.metric.amber .v{color:var(--amber);}.metric.blue .v{color:var(--blue);}
+  .metric .s{font-size:13px;color:var(--grey);}
+
+  .sechead{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin:30px 4px 10px;flex-wrap:wrap;}
+  .sechead h2{font-size:19px;font-weight:800;margin:0;}
+  .legend{font-size:12px;color:var(--grey);display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .legend b{color:var(--ok);}.legend i{color:var(--red);font-style:normal;}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .reg{display:grid;grid-template-columns:240px 1fr 150px;gap:20px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);}
+  .reg:last-child{border-bottom:0;}
+  @media(max-width:720px){.reg{grid-template-columns:1fr;gap:12px;}}
+  .rname{font-size:17px;font-weight:800;}
+  .chip{display:inline-block;background:#eef0f2;color:var(--grey);font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-top:6px;}
+  .rsub{font-size:12px;color:var(--grey);margin-top:6px;}
+  .barwrap{position:relative;}
+  .track{height:20px;background:#eef0f2;border-radius:12px;overflow:hidden;}
+  .fill{height:100%;border-radius:12px;}
+  .fill.g{background:var(--ok);}.fill.a{background:var(--amber);}.fill.r{background:var(--red);}
+  .marker{position:absolute;top:-5px;width:0;height:30px;border-left:2px solid #2a2a2a;}
+  .marker:after{content:'▼';position:absolute;top:-15px;left:-6px;font-size:11px;color:#2a2a2a;}
+  .barfoot{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:var(--grey);}
+  .hist{display:flex;gap:4px;align-items:center;}
+  .sq{width:16px;height:16px;border-radius:4px;font-size:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;}
+  .sq.ok{background:var(--ok);}.sq.no{background:var(--red);}.sq.na{background:#d7d9dd;}
+  .rright{text-align:right;}
+  .pct{font-size:30px;font-weight:800;line-height:1;}.pct small{display:block;font-size:11px;color:var(--grey);font-weight:600;margin-top:2px;}
+  .badge{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;letter-spacing:.3px;padding:5px 11px;border-radius:20px;}
+  .badge.g{background:#eef7f0;color:var(--ok);}.badge.a{background:#fdf3e3;color:var(--amber);}.badge.r{background:#fdecee;color:var(--red);}
+  .eot{display:inline-block;margin-top:6px;font-size:10px;font-weight:800;letter-spacing:.4px;padding:3px 9px;border-radius:20px;background:#15151a;color:#fff;}
+
+  .pipe{display:flex;gap:10px;padding:18px;flex-wrap:wrap;}
+  .stage{flex:1;min-width:130px;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center;}
+  .stage .c{font-size:30px;font-weight:800;}.stage .s{font-size:11px;color:var(--grey);font-weight:700;margin-top:3px;text-transform:uppercase;letter-spacing:.3px;}
+  .stage.them{border-color:var(--red);background:#fdecee;}.stage.them .c{color:var(--red);}
+  .stage.us{border-color:var(--amber);background:#fdf3e3;}.stage.us .c{color:var(--amber);}
+  .banner{display:flex;align-items:center;gap:10px;background:#fdecee;color:var(--red);border-radius:12px;padding:13px 15px;margin:14px 18px 0;font-weight:700;font-size:14px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
+  .sev{font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;}
+  .sev.High{background:#fdecee;color:var(--red);}.sev.Medium{background:#fdf3e3;color:var(--amber);}.sev.Low{background:#eef7f0;color:var(--ok);}
+  .who{font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;}
+  .who.Border{background:#fdecee;color:var(--red);}.who.RED{background:#eef0f2;color:var(--grey);}
+  footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
+  @media print{body{background:#fff;}.metric,.card{break-inside:avoid;}}
+</style>
+</head>
+<body>
+<header><div class="brand">
+  <div class="lhs"><div class="logo">RED<b>FM</b></div>
+  <div class="htitle"><strong>Border Holdings — Maintenance compliance</strong>Avonmouth cold store · delivered by Coolstream</div></div>
+  <div class="period">Contract year <b>Jun 2025 – May 2026</b><br>Report generated <b>10 Jun 2026</b><br>F-Gas works delivered by Coolstream</div>
+</div></header>
+
+<div class="wrap">
+  <div class="metrics">
+    <div class="metric blue"><div class="l">Overall completion</div><div class="v">86%</div><div class="s">across all regimes, this term</div></div>
+    <div class="metric green"><div class="l">On time</div><div class="v">7</div><div class="s">regimes tracking to plan</div></div>
+    <div class="metric amber"><div class="l">Need attention</div><div class="v">5</div><div class="s">1 with repeat misses</div></div>
+    <div class="metric red"><div class="l">Open faults</div><div class="v">3</div><div class="s">7 resolved this year</div></div>
+  </div>
+
+  <div class="sechead">
+    <h2>Maintenance regime progress</h2>
+    <div class="legend"><span><b>✓</b> done</span><span><i>✗</i> missed</span><span>▼ plan to date</span><span>bars reset each term · End-of-term badge prompts review</span></div>
+  </div>
+  <div class="card" id="regimes"></div>
+
+  <div class="sechead"><h2>Fault remediation tracker</h2></div>
+  <div class="card">
+    <div class="pipe">
+      <div class="stage"><div class="c">0</div><div class="s">Reported</div></div>
+      <div class="stage us"><div class="c">1</div><div class="s">Awaiting our quote</div></div>
+      <div class="stage them"><div class="c">2</div><div class="s">Awaiting your sign-off</div></div>
+      <div class="stage"><div class="c">0</div><div class="s">Approved</div></div>
+      <div class="stage"><div class="c">7</div><div class="s">Closed this year</div></div>
+    </div>
+    <div class="banner">⚠ 2 faults are awaiting Border sign-off — action is with you. In cold storage an unfixed fault can spoil stock, so the dated sign-off trail matters.</div>
+    <table>
+      <thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Raised</th><th>Days open</th><th>Whose action</th></tr></thead>
+      <tbody>
+        <tr><td><b>D2</b></td><td><span class="sev High">High</span></td><td>Condenser fins corroded, lower section — re-clean to regain air flow; new condenser needed 2027.</td><td>Awaiting your sign-off</td><td>8 Apr 26</td><td>63</td><td><span class="who Border">Border</span></td></tr>
+        <tr><td><b>B</b></td><td><span class="sev Medium">Medium</span></td><td>Plant-room front-door audible alarm not working — to be replaced with new.</td><td>Awaiting your sign-off</td><td>5 Feb 26</td><td>125</td><td><span class="who Border">Border</span></td></tr>
+        <tr><td><b>C1</b></td><td><span class="sev Medium">Medium</span></td><td>Cooler anti-vibration mounts showing high vibration — replace mounts.</td><td>Awaiting our quote</td><td>8 Apr 26</td><td>63</td><td><span class="who RED">RED FM</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<footer>Client report — completion and fault status only, no commercial figures. RED FM holds the underlying signed records; F-Gas statutory records are Coolstream's. RED FM (Red Electrical Bristol Ltd) · maintenance delivered by Coolstream · Border Holdings, Avonmouth.</footer>
+
+<script>
+const REGIMES=[
+ ["Weekly checks","Weekly (Weds)","3 of 4 visits this month",75,75,"g",["ok","ok","ok","no","ok","ok"],"On time · 1 missed","g",0],
+ ["Quarterly — A & B","Quarterly · R407F","Q4 in progress",80,86,"a",["ok","ok","ok"],"Slightly behind","a",0],
+ ["Quarterly — C1–C4","Quarterly · R404a","Q4 complete",100,86,"g",["ok","ok","ok","ok"],"Done","g",1],
+ ["Quarterly — D & E","Quarterly","Q4 in progress",50,86,"r",["ok","no","no"],"Repeat misses","r",0],
+ ["Vibration analysis","Quarterly · trended","Q4 in progress",78,86,"a",["ok","ok","ok"],"Slightly behind","a",0],
+ ["Six-monthly checks","Six-monthly","H1 complete",100,90,"g",["ok","ok"],"Done","g",0],
+ ["F-Gas leak testing","Six-monthly · direct + indirect","H1 complete",100,90,"g",["ok","ok"],"Done","g",0],
+ ["Condenser cleaning","Monthly Jun–Sep","June started",50,60,"a",["ok","ok","na","na"],"Slightly behind","a",0],
+ ["Safety cut-outs","Annual · across visits","11 of 12 done",92,96,"a",["ok","ok","ok"],"Slightly behind","a",0],
+ ["Temperature probes","Annual","Complete",100,96,"g",["ok"],"Done","g",0],
+ ["A & B leak detection","Annual","Complete",100,96,"g",["ok"],"Done","g",0],
+ ["Oil analysis — A & B","Annual · sub report","Report received",100,96,"g",["ok"],"Done","g",0]
+];
+const box=document.getElementById('regimes');
+REGIMES.forEach(([name,chip,sub,done,plan,cls,hist,statusTxt,statusCls,eot])=>{
+  const sq=hist.map(h=>`<div class="sq ${h}">${h==='ok'?'✓':h==='no'?'✗':''}</div>`).join('');
+  const row=document.createElement('div');row.className='reg';
+  row.innerHTML=`<div><div class="rname">${name}</div><div class="chip">${chip}</div><div class="rsub">${sub}</div></div>
+    <div class="barwrap"><div class="track"><div class="fill ${cls}" style="width:${done}%"></div></div>
+      <div class="marker" style="left:${plan}%"></div>
+      <div class="barfoot"><span>Done this term: <b style="color:var(--ink)">${done}%</b></span>
+        <span class="hist">Recent terms ${sq}</span></div></div>
+    <div class="rright"><div class="pct">${done}%<small>this term</small></div>
+      <div class="badge ${statusCls}">${statusTxt.toUpperCase()}</div>
+      ${eot?'<div class="eot">END OF TERM — REVIEW</div>':''}</div>`;
+  box.appendChild(row);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Yearly safety cut-outs</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:56px;font-size:18px;font-weight:800;padding:12px 0;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  h3{font-size:14px;margin:16px 4px 0;}
+  .test{border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:10px;}
+  .test.done{border-color:var(--ok);background:#f4faf5;}
+  .trow{display:flex;align-items:center;gap:10px;}
+  .chk{width:30px;height:30px;border:2px solid var(--line);border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;background:#fff;cursor:pointer;}
+  .chk.on{background:var(--ok);border-color:var(--ok);}
+  .tname{font-size:15px;font-weight:600;}
+  .fields{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .test.done .fields{display:grid;}
+  .fields .full{grid-column:1/3;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}.fields{display:grid!important}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Yearly safety cut-outs</strong>Border Holdings — Avonmouth · annual checks, done across the weekly visits</div></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="hgrid">
+      <div><label>Date of this visit</label><input id="hDate" type="date"></div>
+      <div><label>Engineer <span style="color:var(--red)">*</span></label><input id="hEng" placeholder="Your name / initials"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>Tick only the tests you carried out today.</b> The rest stay open for a later visit — the annual sheet builds up across the year. Each tick records its own setting, date and your name.</div>
+
+  <div class="secbar" id="secbar"></div>
+  <div id="body"></div>
+
+  <h3>Comments (this visit)</h3>
+  <div class="card"><textarea id="hComm" rows="3" placeholder="e.g. plant short-circuited, slow to respond, replaced switch…"></textarea></div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit today's tests</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SHEET={
+ title:"Yearly safety cut-outs",
+ sections:{
+  "A":[
+   {group:"No1 compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out","High temperature cut-out"]},
+   {group:"No2 compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out","High temperature cut-out"]},
+   {group:"No3 compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out","High temperature cut-out"]},
+   {group:"Pack controls",tests:["High pressure cut-out RDM","Low pressure cut-out RDM","High pressure cut-out RDM back-up","Low pressure cut-out RDM back-up"]}],
+  "B":[
+   {group:"No1 compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out","High temperature cut-out"]},
+   {group:"No2 compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out","High temperature cut-out"]},
+   {group:"Pack controls",tests:["High pressure cut-out RDM","Low pressure cut-out RDM","High pressure cut-out RDM back-up","Low pressure cut-out RDM back-up"]}],
+  "C":[
+   {group:"No1 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]},
+   {group:"No2 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]},
+   {group:"No3 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]},
+   {group:"No4 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]}],
+  "D":[
+   {group:"No1 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]},
+   {group:"No2 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]},
+   {group:"No3 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]},
+   {group:"No4 unit / compressor",tests:["High pressure cut-out","Low pressure cut-out","Oil pressure cut-out"]}],
+  "E":[
+   {group:"E1 unit No1 compressor",tests:["High pressure cut-out","Oil pressure cut-out"]},
+   {group:"E1 unit No2 compressor",tests:["High pressure cut-out","Oil pressure cut-out"]},
+   {group:"E1 common switches",tests:["Common low pressure switch","Common high pressure switch"]},
+   {group:"E2 unit No1 compressor",tests:["High pressure cut-out","Oil pressure cut-out"]},
+   {group:"E2 unit No2 compressor",tests:["High pressure cut-out","Oil pressure cut-out"]},
+   {group:"E2 common switches",tests:["Common low pressure switch","Common high pressure switch"]}]
+ }
+};
+
+const $=id=>document.getElementById(id);
+$('hDate').value=new Date().toISOString().slice(0,10);
+const SECS=Object.keys(SHEET.sections);
+let cur=SECS[0];
+
+const secbar=$('secbar');
+SECS.forEach(s=>{const b=document.createElement('button');b.className='secbtn'+(s===cur?' on':'');
+  b.innerHTML=`${s}<span class="n">section</span>`;b.onclick=()=>{cur=s;draw();};secbar.appendChild(b);});
+
+function uid(s,gi,ti){return `${s}_${gi}_${ti}`;}
+function draw(){
+  [...secbar.children].forEach((b,i)=>b.className='secbtn'+(SECS[i]===cur?' on':''));
+  const root=$('body');root.innerHTML='';
+  SHEET.sections[cur].forEach((grp,gi)=>{
+    const h=document.createElement('h3');h.textContent=`${cur} — ${grp.group}`;root.appendChild(h);
+    grp.tests.forEach((t,ti)=>{
+      const id=uid(cur,gi,ti);const st=state[id]||{};
+      const d=document.createElement('div');d.className='test'+(st.done?' done':'');d.id='card_'+id;
+      d.innerHTML=`<div class="trow"><div class="chk${st.done?' on':''}" data-id="${id}">${st.done?'✓':''}</div><div class="tname">Test the ${t.toLowerCase()}</div></div>
+        <div class="fields">
+          <div><label>Setting</label><input data-f="setting" data-id="${id}" inputmode="decimal" placeholder="e.g. 21.0 / 100°C" value="${st.setting||''}"></div>
+          <div><label>Test date</label><input data-f="date" data-id="${id}" type="date" value="${st.date||$('hDate').value}"></div>
+          <div class="full"><label>Comments (optional)</label><input data-f="comment" data-id="${id}" placeholder="e.g. (Actual) / short circuit" value="${st.comment||''}"></div>
+        </div>`;
+      root.appendChild(d);
+    });
+  });
+  root.querySelectorAll('.chk').forEach(c=>c.onclick=()=>{
+    const id=c.dataset.id;state[id]=state[id]||{};state[id].done=!state[id].done;
+    if(state[id].done&&!state[id].date)state[id].date=$('hDate').value;
+    draw();
+  });
+  root.querySelectorAll('input[data-f]').forEach(inp=>inp.oninput=()=>{
+    const id=inp.dataset.id;state[id]=state[id]||{};state[id][inp.dataset.f]=inp.value;
+  });
+}
+const state={};
+draw();
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+let submitted=false;
+$('finish').addEventListener('click',()=>{
+  if(submitted)return;
+  if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  const rows=[];
+  SECS.forEach(s=>SHEET.sections[s].forEach((grp,gi)=>grp.tests.forEach((t,ti)=>{
+    const st=state[uid(s,gi,ti)];
+    if(st&&st.done) rows.push({section:s,group:grp.group,test:`Test the ${t.toLowerCase()}`,
+      setting:st.setting||'',date:st.date||$('hDate').value,comment:st.comment||'',engineer:$('hEng').value.trim()});
+  })));
+  if(rows.length===0){toast('Tick the tests you did today');return;}
+  const r={sheet:SHEET.title,site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    visitDate:$('hDate').value,engineer:$('hEng').value.trim(),comments:$('hComm').value.trim(),
+    tests:rows,submittedAt:new Date().toISOString(),ref:'YR-'+Date.now().toString(36).toUpperCase()};
+  submitted=true;
+  document.querySelectorAll('input,textarea,.chk,.secbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';
+  $('summary').style.display='block';
+  $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${rows.length} cut-out test(s) logged this visit</div>
+    <div class="muted" style="margin-top:4px">Submitted ${new Date(r.submittedAt).toLocaleString()}. The remaining tests stay open for later visits.</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>
+    <div class="muted" style="margin-top:8px">In production each test posts to the SharePoint <b>Readings</b> list with its own date — the annual sheet accumulates automatically. Print only appears after submit.</div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Yearly_${r.visitDate}_${r.ref}.json`;a.click();};
+  toast('Submitted ✓');
+});
+</script>
+</body>
+</html>
