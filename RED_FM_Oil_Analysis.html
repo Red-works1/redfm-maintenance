@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Oil analysis</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amber:#b9770b;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:680px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;}label:first-child{margin-top:0;}
+  label .req{color:var(--red);}
+  input,select,textarea{width:100%;font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+  textarea{min-height:80px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .fixed{font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:10px;background:#faf7f7;color:var(--ink);font-weight:700;}
+  .drop{border:1.5px dashed var(--line);border-radius:10px;background:#fafafa;color:var(--grey);padding:22px 14px;text-align:center;cursor:pointer;}
+  .drop span{font-size:28px;line-height:1;color:var(--red);display:block;margin-bottom:6px;}
+  .drop.has{border-style:solid;border-color:var(--ok);background:#eef7f0;color:var(--ink);}
+  .filename{font-weight:700;word-break:break-all;}
+  .btn{font-size:16px;font-weight:700;padding:15px 18px;border-radius:12px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:680px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Oil analysis</strong>Border Holdings — Avonmouth · upload the lab report</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <div><label>Date</label><input id="oDate" type="date"></div>
+      <div><label>Engineer <span class="req">*</span></label><input id="oEng" placeholder="Your name"></div>
+    </div>
+
+    <label>Plant</label>
+    <div class="fixed">A&amp;B packs</div>
+
+    <label>Lab report <span class="req">*</span></label>
+    <div class="drop" id="drop"><span>&#8682;</span><span class="filename" id="dropText">Tap to upload the oil analysis report (PDF)</span></div>
+    <input id="oFile" type="file" accept="application/pdf,image/*" hidden>
+    <div class="muted" style="margin-top:6px">Upload the lab's oil analysis report. This files the document and marks the analysis as done on the dashboard.</div>
+
+    <label>Notes</label>
+    <textarea id="oNotes" placeholder="Anything worth recording (optional)"></textarea>
+  </div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Submit oil analysis</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=11"></script>
+<script>
+const $=id=>document.getElementById(id);
+$('oDate').value=new Date().toISOString().slice(0,10);
+let theFile=null;
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+
+$('drop').onclick=()=>$('oFile').click();
+$('oFile').addEventListener('change',e=>{
+  theFile=e.target.files[0]||null;
+  if(theFile){$('drop').classList.add('has');$('dropText').textContent=theFile.name;}
+  else{$('drop').classList.remove('has');$('dropText').textContent='Tap to upload the oil analysis report (PDF)';}
+});
+
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  if(!$('oEng').value.trim()){toast('Enter your name');return;}
+  if(!theFile){toast('Upload the lab report');return;}
+  const ref='OIL-'+Date.now().toString(36).toUpperCase();
+  const date=$('oDate').value, eng=$('oEng').value.trim(), notes=$('oNotes').value.trim();
+
+  let saveMsg='SharePoint not configured yet — nothing saved online.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      // record the visit so the dashboard sees the analysis as done
+      await REDFM.saveVisit({Title:ref,ServiceType:"Oil analysis",PlantSection:"A&B packs",
+        Engineer:eng,VisitDate:date,Status:"Fully completed",FaultFound:"No",Notes:notes},[]);
+      saveMsg='Logged as a visit ✓';
+      // file the lab report into the Reports library
+      try{
+        const ext=(theFile.name.split('.').pop()||'pdf').toLowerCase();
+        const fname='OilAnalysis_'+date+'_AandB_packs_'+ref+'.'+ext;
+        await REDFM.uploadFile("Reports",fname,theFile,theFile.type||'application/pdf');
+        saveMsg+=' · report filed to Reports';
+      }catch(ue){saveMsg+=' (report upload skipped: '+(ue.message||ue)+')';}
+    }catch(err){saveMsg='Could not save online. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,select,textarea,.drop').forEach(e=>{e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent=`✓ Oil analysis submitted — ref ${ref}`;
+  $('sumBody').innerHTML=`<div>A&B packs · ${date} · ${eng}</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  toast('Oil analysis submitted ✓');
+});
+</script>
+</body>
+</html>

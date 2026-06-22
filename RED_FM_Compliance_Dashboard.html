@@ -128,7 +128,8 @@ const REGIMES=[
  {key:"F-Gas",             name:"F-Gas leak testing",       chip:"Six-monthly · cert",     freq:"Six-monthly", period:"half",    mode:"readings"},
  {key:"Annual cut-outs",   name:"Safety cut-outs",          chip:"Annual",                 freq:"Annual",      period:"year",    mode:"readings"},
  {key:"Probe calibration", name:"Temperature probes",       chip:"Annual · cert",          freq:"Annual",      period:"year",    mode:"readings"},
- {key:"Leak detection",    name:"A & B leak detection",     chip:"Annual · cert",          freq:"Annual",      period:"year",    mode:"readings"}
+ {key:"Leak detection",    name:"A & B leak detection",     chip:"Annual · cert",          freq:"Annual",      period:"year",    mode:"readings"},
+ {key:"Oil analysis",      name:"Oil analysis — A&B packs", chip:"Annual · lab report",    freq:"Annual",      period:"year",    mode:"event"}
 ];
 
 function startOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1);}
@@ -156,6 +157,11 @@ function computeRegime(reg,visits,readings,catCount){
     const monday=v=>{const d=new Date(v.VisitDate);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toISOString().slice(0,10);};
     done=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(monday)).size; // distinct weeks covered
     detail=done+" of "+expected+" weeks covered · "+label;
+  }else if(reg.mode==="event"){
+    expected=1;
+    const n=visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).length;
+    done=n>0?1:0;
+    detail=(done?("Uploaded · "+n+" this period"):"Not uploaded yet")+" · "+label;
   }else{
     expected=catCount[reg.key]||0;
     const refs=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(v=>v.Title));
