@@ -139,6 +139,27 @@ window.REDFM = (function () {
   async function getReadings() { return listItems("Readings"); }
   async function getCatalogueAll() { return listItems("ReadingCatalogue"); }
 
+  // Faults including the SharePoint item id (needed to update stage / action).
+  async function getFaultsWithId() {
+    const sid = await getSiteId();
+    const lid = await getListId("FaultRegister");
+    let url = "/sites/" + sid + "/lists/" + lid + "/items?$expand=fields&$top=500";
+    const out = [];
+    while (url) {
+      const page = await graph(url);
+      page.value.forEach(i => { const f = i.fields || {}; f._id = i.id; out.push(f); });
+      url = page["@odata.nextLink"] ? page["@odata.nextLink"].replace("https://graph.microsoft.com/v1.0", "") : null;
+    }
+    return out;
+  }
+
+  // Update a fault's stage / action notes. Caller is a signed-in RED / Coolstream user.
+  async function updateFault(id, fields) {
+    const sid = await getSiteId();
+    const lid = await getListId("FaultRegister");
+    return graph("/sites/" + sid + "/lists/" + lid + "/items/" + id + "/fields", "PATCH", fields);
+  }
+
   // ---- Document library uploads (client-side) ----
   const driveIds = {};
   async function getDriveId(name) {
