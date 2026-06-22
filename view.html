@@ -226,10 +226,11 @@ function render(){
         <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
       return `<tr><td><b>${f.Plant||''}</b></td><td><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
         <td>${(f.Description||'').replace(/</g,'&lt;')}</td><td>${STAGE_LABEL[st]}</td>
+        <td>${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
         <td>${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
         <td>${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
         <td><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+    $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
   $('period').innerHTML='Read-only · '+(window.SNAPLABEL||'live');
 }
