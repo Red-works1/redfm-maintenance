@@ -237,7 +237,7 @@ function render(){
 async function load(){
   $('status').textContent='Loading…';
   try{
-    const snap=await (await fetch('./data-snapshot.json?t='+Date.now())).json();
+    const snap=await (await fetch('https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json?t='+Date.now())).json();
     const cat=snap.cat||[];
     const catCount={};cat.forEach(c=>{catCount[c.ServiceType]=(catCount[c.ServiceType]||0)+1;});
     DATA={visits:snap.visits||[],readings:snap.readings||[],faults:snap.faults||[],catCount};
