@@ -340,7 +340,7 @@ window.REDFM = (function () {
   return {
     init, signIn, signOut, getAccount,
     getCatalogue, saveVisit, addItem, addItemsBatch,
-    getServiceVisits, getFaults, getReadings, getCatalogueAll,
-    buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
+    getServiceVisits, getFaults, getFaultsWithId, getReadings, getCatalogueAll,
+    updateFault, buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
   };
 })();
