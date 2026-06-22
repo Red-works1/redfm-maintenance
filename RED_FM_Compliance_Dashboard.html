@@ -180,6 +180,7 @@ function computeRegime(reg,visits,readings,catCount){
 
 const EDITABLE=true; // live signed-in dashboard; the read-only published view sets this false
 const STAGES=["Reported","Awaiting our quote","Awaiting sign-off","Approved","Closed"];
+const SEVERITIES=["Low","Medium","High"];
 const STAGE_WHO={"Reported":"RED","Awaiting our quote":"RED","Awaiting sign-off":"Border","Approved":"RED","Closed":"RED"};
 const STAGE_LABEL={"Reported":"Reported","Awaiting our quote":"Awaiting our quote","Awaiting sign-off":"Awaiting your sign-off","Approved":"Approved — scheduling","Closed":"Closed"};
 
@@ -225,6 +226,7 @@ function render(){
     const rows=C.open.slice().sort((a,b)=>new Date(a.FaultDate)-new Date(b.FaultDate)).map(f=>{
       const st=f.Stage||"Reported";const who=STAGE_WHO[st];
       const upd=EDITABLE?`<td class="upd">
+        <select class="fsev" data-id="${f._id}" style="font-size:12px;padding:3px;margin-right:4px;">${SEVERITIES.map(s=>`<option ${s===(f.Severity||'Low')?'selected':''}>${s}</option>`).join('')}</select>
         <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
         <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
         <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
@@ -234,7 +236,7 @@ function render(){
         <td>${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
         <td>${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
         <td><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+    $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
   $('period').innerHTML=`Live · generated <b>${now.toLocaleDateString('en-GB')}</b><br><a class="hubbtn" href="index.html">⌂ Hub</a>`;
 }
@@ -288,8 +290,9 @@ if(EDITABLE){$('faulttable').addEventListener('click',async e=>{
   const id=btn.dataset.id;
   const sel=document.querySelector('.fstage[data-id="'+id+'"]');
   const act=document.querySelector('.faction[data-id="'+id+'"]');
+  const sev=document.querySelector('.fsev[data-id="'+id+'"]');
   btn.disabled=true;btn.textContent='Saving…';
-  try{await REDFM.updateFault(id,{Stage:sel.value,ActionTaken:act.value});await load();}
+  try{await REDFM.updateFault(id,{Stage:sel.value,ActionTaken:act.value,Severity:sev.value});await load();}
   catch(err){btn.disabled=false;btn.textContent='Save';$('status').textContent='Update failed: '+(err.message||err);}
 });}
 
