@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Border Holdings Compliance (read-only)</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;--amber:#c2860c;--blue:#175c9e;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:18px;}
+  .brand{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1040px;margin:0 auto;flex-wrap:wrap;}
+  .lhs{display:flex;align-items:center;gap:14px;}
+  .logo{font-weight:800;letter-spacing:1.5px;font-size:32px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.25;}.htitle strong{display:block;color:var(--ink);font-size:17px;}
+  .period{text-align:right;font-size:12px;color:var(--grey);line-height:1.5;}
+  .hubbtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap;margin-top:6px;}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px 50px;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;}
+  .btn{font-size:14px;font-weight:700;padding:11px 16px;border-radius:10px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .btn[disabled]{opacity:.5;cursor:default;}
+  .note{font-size:13px;color:var(--grey);}
+  .state{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px;text-align:center;margin-top:18px;color:var(--grey);}
+
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px;}
+  @media(max-width:720px){.metrics{grid-template-columns:1fr 1fr;}}
+  .metric{background:#fff;border:1px solid var(--line);border-left:5px solid var(--grey);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .metric.red{border-left-color:var(--red);}.metric.green{border-left-color:var(--ok);}.metric.amber{border-left-color:var(--amber);}.metric.blue{border-left-color:var(--blue);}
+  .metric .l{font-size:11px;letter-spacing:.7px;font-weight:700;color:var(--grey);text-transform:uppercase;}
+  .metric .v{font-size:48px;font-weight:800;line-height:1.05;margin:6px 0 4px;}
+  .metric.red .v{color:var(--red);}.metric.green .v{color:var(--ok);}.metric.amber .v{color:var(--amber);}.metric.blue .v{color:var(--blue);}
+  .metric .s{font-size:13px;color:var(--grey);}
+
+  .sechead{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin:30px 4px 10px;flex-wrap:wrap;}
+  .sechead h2{font-size:19px;font-weight:800;margin:0;}
+  .legend{font-size:12px;color:var(--grey);display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .legend .g{color:var(--ok);font-weight:700;}.legend .a{color:var(--amber);font-weight:700;}.legend .r{color:var(--red);font-weight:700;}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .reg{display:grid;grid-template-columns:240px 1fr 150px;gap:20px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);}
+  .reg:last-child{border-bottom:0;}
+  @media(max-width:720px){.reg{grid-template-columns:1fr;gap:12px;}}
+  .rname{font-size:17px;font-weight:800;}
+  .chip{display:inline-block;background:#eef0f2;color:var(--grey);font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-top:6px;}
+  .rsub{font-size:12px;color:var(--grey);margin-top:6px;}
+  .barwrap{position:relative;}
+  .track{height:20px;background:#eef0f2;border-radius:12px;overflow:hidden;}
+  .fill{height:100%;border-radius:12px;}
+  .fill.g{background:var(--ok);}.fill.a{background:var(--amber);}.fill.r{background:var(--red);}
+  .marker{position:absolute;top:-5px;width:0;height:30px;border-left:2px solid #2a2a2a;}
+  .marker:after{content:'▼';position:absolute;top:-15px;left:-6px;font-size:11px;color:#2a2a2a;}
+  .barfoot{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:var(--grey);}
+  .rright{text-align:right;}
+  .pct{font-size:30px;font-weight:800;line-height:1;}.pct small{display:block;font-size:11px;color:var(--grey);font-weight:600;margin-top:2px;}
+  .badge{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;letter-spacing:.3px;padding:5px 11px;border-radius:20px;}
+  .badge.g{background:#eef7f0;color:var(--ok);}.badge.a{background:#fdf3e3;color:var(--amber);}.badge.r{background:#fdecee;color:var(--red);}
+
+  .pipe{display:flex;gap:10px;padding:18px;flex-wrap:wrap;}
+  .stage{flex:1;min-width:120px;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center;}
+  .stage .c{font-size:30px;font-weight:800;}.stage .s{font-size:11px;color:var(--grey);font-weight:700;margin-top:3px;text-transform:uppercase;letter-spacing:.3px;}
+  .stage.them{border-color:var(--red);background:#fdecee;}.stage.them .c{color:var(--red);}
+  .stage.us{border-color:var(--amber);background:#fdf3e3;}.stage.us .c{color:var(--amber);}
+  .banner{display:flex;align-items:center;gap:10px;background:#fdecee;color:var(--red);border-radius:12px;padding:13px 15px;margin:14px 18px 0;font-weight:700;font-size:14px;}
+  .empty{padding:22px;color:var(--grey);font-size:14px;text-align:center;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
+  .sev{font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;}
+  .sev.High{background:#fdecee;color:var(--red);}.sev.Medium{background:#fdf3e3;color:var(--amber);}.sev.Low{background:#eef7f0;color:var(--ok);}
+  .who{font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;}
+  .who.Border{background:#fdecee;color:var(--red);}.who.RED{background:#eef0f2;color:var(--grey);}
+  footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
+  @media print{body{background:#fff;}.toolbar,.hubbtn{display:none;}.metric,.card{break-inside:avoid;}}
+</style>
+</head>
+<body>
+<header><div class="brand">
+  <div class="lhs"><div class="logo">RED<b>FM</b></div>
+  <div class="htitle"><strong>Border Holdings — Maintenance compliance</strong>Avonmouth cold store · delivered by Coolstream</div></div>
+  <div class="period" id="period">Read-only view · no commercial figures</div>
+</div></header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <button class="btn btn-red" id="signin" style="display:none">Sign in</button>
+    <button class="btn btn-ghost" id="genpdf" style="display:none" disabled>Report</button>
+    <span class="note" id="status"></span>
+  </div>
+
+  <div id="board" style="display:none">
+    <div class="metrics" id="metrics"></div>
+
+    <div class="sechead">
+      <h2>Maintenance regime progress</h2>
+      <div class="legend"><span class="g">● on track</span><span class="a">● in progress / due soon</span><span class="r">● behind</span><span>▼ where the plan should be today</span></div>
+    </div>
+    <div class="card" id="regimes"></div>
+
+    <div class="sechead"><h2>Fault remediation tracker</h2></div>
+    <div class="card">
+      <div class="pipe" id="pipe"></div>
+      <div id="faultbanner"></div>
+      <div id="faulttable"></div>
+    </div>
+  </div>
+
+  <div class="state" id="loadstate">Loading the latest published compliance snapshot…</div>
+</div>
+
+<footer>Client report — completion and fault status only, no commercial figures. RED FM holds the underlying signed records; F-Gas statutory records are Coolstream's. RED FM (Red Electrical Bristol Ltd) · maintenance delivered by Coolstream · Border Holdings, Avonmouth.</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const now=new Date();
+
+const REGIMES=[
+ {key:"Weekly",            name:"Weekly checks",            chip:"Weekly (Weds)",          freq:"Weekly",      period:"month",   mode:"visits"},
+ {key:"Quarterly A&B",     name:"Quarterly — A & B",        chip:"Quarterly · R407F",      freq:"Quarterly",   period:"quarter", mode:"readings"},
+ {key:"Quarterly C",       name:"Quarterly — C",            chip:"Quarterly · R404a",      freq:"Quarterly",   period:"quarter", mode:"readings"},
+ {key:"Quarterly D&E",     name:"Quarterly — D & E",        chip:"Quarterly · R404a/R449a",freq:"Quarterly",   period:"quarter", mode:"readings"},
+ {key:"Quarterly E",       name:"Quarterly — E",            chip:"Quarterly · R449a",      freq:"Quarterly",   period:"quarter", mode:"readings"},
+ {key:"Six-monthly",       name:"Condenser & oil-cooler wash",chip:"Six-monthly",          freq:"Six-monthly", period:"half",    mode:"readings"},
+ {key:"F-Gas",             name:"F-Gas leak testing",       chip:"Six-monthly · cert",     freq:"Six-monthly", period:"half",    mode:"readings"},
+ {key:"Annual cut-outs",   name:"Safety cut-outs",          chip:"Annual",                 freq:"Annual",      period:"year",    mode:"readings"},
+ {key:"Probe calibration", name:"Temperature probes",       chip:"Annual · cert",          freq:"Annual",      period:"year",    mode:"readings"},
+ {key:"Leak detection",    name:"A & B leak detection",     chip:"Annual · cert",          freq:"Annual",      period:"year",    mode:"readings"}
+];
+
+function startOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1);}
+function periodRange(p){
+  if(p==="month"){const s=startOfMonth(now);return {s,e:new Date(now.getFullYear(),now.getMonth()+1,1),label:now.toLocaleString('en-GB',{month:'long',year:'numeric'})};}
+  if(p==="quarter"){const q=Math.floor(now.getMonth()/3);return {s:new Date(now.getFullYear(),q*3,1),e:new Date(now.getFullYear(),q*3+3,1),label:'Q'+(q+1)+' '+now.getFullYear()};}
+  if(p==="half"){const m=now.getMonth();
+    if(m>=5&&m<=10)return {s:new Date(now.getFullYear(),5,1),e:new Date(now.getFullYear(),11,1),label:'Jun–Nov '+now.getFullYear()};
+    const y=m<=4?now.getFullYear()-1:now.getFullYear();return {s:new Date(y,11,1),e:new Date(y+1,5,1),label:'Dec '+y+' – May '+(y+1)};}
+  const y=now.getMonth()>=5?now.getFullYear():now.getFullYear()-1;
+  return {s:new Date(y,5,1),e:new Date(y+1,5,1),label:'Jun '+y+' – May '+(y+1)};
+}
+function inRange(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function elapsedFrac(s,e){return Math.max(0,Math.min(1,(now-s)/(e-s)));}
+function wednesdays(s){let c=0;const d=new Date(s);while(d<=now){if(d.getDay()===3)c++;d.setDate(d.getDate()+1);}return Math.max(1,c);}
+function daysBetween(a,b){return Math.max(0,Math.round((b-new Date(a))/86400000));}
+
+let DATA=null;
+
+function computeRegime(reg,visits,readings,catCount){
+  const {s,e,label}=periodRange(reg.period);
+  let done,expected,detail;
+  if(reg.mode==="visits"){
+    expected=wednesdays(s);                      // weeks elapsed this month
+    const monday=v=>{const d=new Date(v.VisitDate);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toISOString().slice(0,10);};
+    done=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(monday)).size; // distinct weeks covered
+    detail=done+" of "+expected+" weeks covered · "+label;
+  }else{
+    expected=catCount[reg.key]||0;
+    const refs=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(v=>v.Title));
+    const keys=new Set();
+    readings.forEach(rd=>{if(refs.has(rd.VisitRef)&&rd.ReadingKey)keys.add(rd.ReadingKey);});
+    done=Math.min(keys.size,expected||keys.size);
+    detail=(expected?done+" of "+expected+" readings":done+" readings")+" · "+label;
+  }
+  const pct=expected?Math.min(100,Math.round(done/expected*100)):(done?100:0);
+  const pace=Math.round(elapsedFrac(s,e)*100);
+  let rag,status;
+  if(reg.mode==="visits"){           // weekly — a single missed week is fine, it's just shown
+    rag = done>=expected-1 ? "g" : "a";
+    status = rag==="g" ? "On track" : "Behind";
+  }else{                             // everything else must be completed within its time frame
+    if(pct>=95){rag="g";status="Complete";}
+    else if(pace>=90){rag="r";status="Overdue";}   // period almost up and not done
+    else{rag="a";status="In progress";}
+  }
+  return {reg,done,expected,pct,pace,rag,status,detail,periodLabel:label};
+}
+
+const EDITABLE=false; // live signed-in dashboard; the read-only published view sets this false
+const STAGES=["Reported","Awaiting our quote","Awaiting sign-off","Approved","Closed"];
+const STAGE_WHO={"Reported":"RED","Awaiting our quote":"RED","Awaiting sign-off":"Border","Approved":"RED","Closed":"RED"};
+const STAGE_LABEL={"Reported":"Reported","Awaiting our quote":"Awaiting our quote","Awaiting sign-off":"Awaiting your sign-off","Approved":"Approved — scheduling","Closed":"Closed"};
+
+function compute(){
+  const {visits,readings,faults,catCount}=DATA;
+  const regs=REGIMES.map(r=>computeRegime(r,visits,readings,catCount));
+  const overall=regs.length?Math.round(regs.reduce((a,b)=>a+b.pct,0)/regs.length):0;
+  const onTime=regs.filter(r=>r.rag==="g").length;
+  const attention=regs.filter(r=>r.rag!=="g").length;
+  const open=faults.filter(f=>(f.Stage||"Reported")!=="Closed");
+  const closed=faults.length-open.length;
+  return {regs,overall,onTime,attention,open,closed,faults};
+}
+
+function render(){
+  const C=compute();
+  $('metrics').innerHTML=`
+    <div class="metric blue"><div class="l">Overall completion</div><div class="v">${C.overall}%</div><div class="s">across all regimes, this period</div></div>
+    <div class="metric green"><div class="l">On track</div><div class="v">${C.onTime}</div><div class="s">of ${C.regs.length} regimes</div></div>
+    <div class="metric amber"><div class="l">Need attention</div><div class="v">${C.attention}</div><div class="s">in progress or behind</div></div>
+    <div class="metric red"><div class="l">Open faults</div><div class="v">${C.open.length}</div><div class="s">${C.closed} closed</div></div>`;
+
+  $('regimes').innerHTML=C.regs.map(r=>`
+    <div class="reg">
+      <div><div class="rname">${r.reg.name}</div><div class="chip">${r.reg.chip}</div><div class="rsub">${r.detail}</div></div>
+      <div class="barwrap"><div class="track"><div class="fill ${r.rag}" style="width:${r.pct}%"></div></div>
+        <div class="marker" style="left:${Math.min(99,r.pace)}%"></div>
+        <div class="barfoot"><span>Done this period: <b style="color:var(--ink)">${r.pct}%</b></span><span>Plan to date: ${r.pace}%</span></div></div>
+      <div class="rright"><div class="pct">${r.pct}%<small>this period</small></div><div class="badge ${r.rag}">${r.status.toUpperCase()}</div></div>
+    </div>`).join('');
+
+  const stages=STAGES;
+  const counts={};stages.forEach(s=>counts[s]=0);
+  C.faults.forEach(f=>{const st=f.Stage||"Reported";if(counts[st]!=null)counts[st]++;});
+  const cls={"Awaiting our quote":"us","Awaiting sign-off":"them"};
+  $('pipe').innerHTML=stages.map(s=>`<div class="stage ${cls[s]||''}"><div class="c">${counts[s]}</div><div class="s">${STAGE_LABEL[s]}</div></div>`).join('');
+
+  const awaitingBorder=C.open.filter(f=>STAGE_WHO[f.Stage||"Reported"]==="Border").length;
+  $('faultbanner').innerHTML=awaitingBorder?`<div class="banner">⚠ ${awaitingBorder} fault(s) awaiting Border sign-off — action is with you. In cold storage an unfixed fault can spoil stock, so the dated sign-off trail matters.</div>`:'';
+
+  if(!C.open.length){$('faulttable').innerHTML='<div class="empty">No open faults — all clear.</div>';}
+  else{
+    const rows=C.open.slice().sort((a,b)=>new Date(a.FaultDate)-new Date(b.FaultDate)).map(f=>{
+      const st=f.Stage||"Reported";const who=STAGE_WHO[st];
+      const upd=EDITABLE?`<td class="upd">
+        <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
+        <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
+        <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
+      return `<tr><td><b>${f.Plant||''}</b></td><td><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
+        <td>${(f.Description||'').replace(/</g,'&lt;')}</td><td>${STAGE_LABEL[st]}</td>
+        <td>${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
+        <td>${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
+        <td><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
+    $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  $('period').innerHTML='Read-only · '+(window.SNAPLABEL||'live');
+}
+
+async function load(){
+  $('status').textContent='Loading…';
+  try{
+    const snap=await (await fetch('./data-snapshot.json?t='+Date.now())).json();
+    const cat=snap.cat||[];
+    const catCount={};cat.forEach(c=>{catCount[c.ServiceType]=(catCount[c.ServiceType]||0)+1;});
+    DATA={visits:snap.visits||[],readings:snap.readings||[],faults:snap.faults||[],catCount};
+    window.SNAPLABEL='as of '+new Date(snap.generatedAt).toLocaleString('en-GB');
+    $('loadstate').style.display='none';$('board').style.display='block';
+    $('status').textContent=DATA.visits.length+' visits · '+DATA.faults.length+' faults · '+window.SNAPLABEL;
+    render();
+  }catch(e){$('status').textContent='Could not load snapshot: '+(e.message||e);$('loadstate').textContent='No published snapshot yet — it refreshes hourly once enabled.';}
+}
+
+$('signin').addEventListener('click',async()=>{
+  try{await REDFM.signIn();await load();}catch(e){$('status').textContent='Sign-in failed: '+(e.message||e);}
+});
+
+$('genpdf').addEventListener('click',async()=>{
+  if(!DATA){return;}
+  $('genpdf').disabled=true;$('genpdf').textContent='Building report…';
+  try{
+    const C=compute();
+    const monthLabel=now.toLocaleString('en-GB',{month:'long',year:'numeric'});
+    const regSection={name:"Maintenance regimes — completion this period",cols:["Frequency","Period","Completed","Status"],
+      rows:C.regs.map(r=>[r.reg.name,r.reg.freq,r.periodLabel,r.pct+"% ("+r.done+(r.expected?"/"+r.expected:"")+")",r.status])};
+    const faultSection=C.open.length?{name:"Open faults",cols:["Plant","Severity","Stage","Days open","Action"],
+      rows:C.open.slice().sort((a,b)=>new Date(a.FaultDate)-new Date(b.FaultDate)).map(f=>{const st=f.Stage||"Reported";
+        return [(f.Description||'').slice(0,80),f.Plant||'',f.Severity||'',STAGE_LABEL[st],f.FaultDate?String(daysBetween(f.FaultDate,now)):'',STAGE_WHO[st]==='Border'?'Border':'RED FM'];})}
+      :{name:"Open faults",cols:["Status"],rows:[["No open faults — all clear."]]};
+    const blob=REDFM.buildReportPdf({title:"Monthly compliance report",subtitle:"Border Holdings, Avonmouth",
+      date:now.toLocaleDateString('en-GB'),
+      extra:[["Period",monthLabel],["Overall completion",C.overall+"%"],["Regimes on track",C.onTime+" of "+C.regs.length],
+        ["Open faults",String(C.open.length)],["Delivered by","Coolstream"]]},[regSection,faultSection]);
+    const fname="Border_Compliance_"+now.toISOString().slice(0,7)+".pdf";
+    let msg;
+    try{await REDFM.uploadFile("Client Reports",fname,blob,"application/pdf");msg="Filed to Client Reports ✓";}
+    catch(e){msg="Filed locally only ("+(e.message||e)+")";}
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
+    $('status').textContent=msg+" · "+fname;
+  }catch(e){$('status').textContent='Report failed: '+(e.message||e);}
+  $('genpdf').disabled=false;$('genpdf').textContent='Generate monthly client report (PDF)';
+});
+
+if(EDITABLE){$('faulttable').addEventListener('click',async e=>{
+  const btn=e.target.closest('.savefault');if(!btn)return;
+  const id=btn.dataset.id;
+  const sel=document.querySelector('.fstage[data-id="'+id+'"]');
+  const act=document.querySelector('.faction[data-id="'+id+'"]');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{await REDFM.updateFault(id,{Stage:sel.value,ActionTaken:act.value});await load();}
+  catch(err){btn.disabled=false;btn.textContent='Save';$('status').textContent='Update failed: '+(err.message||err);}
+});}
+
+load();
+</script>
+</body>
+</html>
