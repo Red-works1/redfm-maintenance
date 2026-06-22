@@ -18,7 +18,7 @@ jobs:
         env:
           TENANT_ID: ${{ secrets.TENANT_ID }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          CLIENT_SECRET: ${{ secrets.BORDER_HOLDING_UK }}   # the GitHub secret holding the Azure client-secret value
       - name: Commit snapshot if changed
         run: |
           git config user.name "snapshot-bot"
