@@ -31,8 +31,12 @@
   thead .rowlab{background:#fafafa;}
   td input{border:0;border-radius:0;text-align:center;font-size:16px;padding:11px 6px;min-width:80px;}
   td input:focus{box-shadow:inset 0 0 0 2px var(--red);}
-  .chk{width:100%;min-width:80px;height:44px;border:0;background:#fff;font-size:20px;cursor:pointer;}
+  .chk{width:100%;min-width:80px;height:44px;border:0;background:#fff;font-size:20px;cursor:pointer;position:relative;}
   .chk.ok{color:var(--ok);background:#eef7f0;}.chk.no{color:var(--red);background:#fdecee;}
+  td input.done{background:#eef7f0;color:#1a7f37;font-weight:700;cursor:pointer;}
+  .chk.done{box-shadow:inset 0 0 0 2px var(--ok);cursor:pointer;}
+  .donecell{position:relative;}
+  td .dtag,.chk .dtag{position:absolute;bottom:1px;right:3px;font-size:8px;line-height:1;color:#1a7f37;font-weight:700;pointer-events:none;}
   .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
   .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
   .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px;z-index:20;}.bar .btn{width:100%;}
@@ -56,7 +60,8 @@
     <button class="mbtn on" data-m="readings">Readings</button>
     <button class="mbtn" data-m="checks">Checks</button>
   </div>
-  <div class="hint">Quarterly is spread over the weekly visits — fill the compressors/units you did today, the rest carry to the next visit. Tap a check cell to cycle ✓ / ✗.</div>
+  <div class="hint">Quarterly is spread over the weekly visits — fill the compressors/units you did today, the rest carry to the next visit. Tap a check cell to cycle ✓ / ✗. Cells already done this quarter show <span style="color:#1a7f37;font-weight:700">green</span> with the date — tap one to change it (you'll be asked to confirm).</div>
+  <div id="prog" class="hint" style="font-weight:700;color:#1a7f37"></div>
 
   <div id="body"></div>
 
@@ -104,8 +109,10 @@ const CHAMBERS={
 };
 
 const $=id=>document.getElementById(id);
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
 $('hDate').value=new Date().toISOString().slice(0,10);
-let chamber="A",mode="readings";const state={};
+let chamber="A",mode="readings";const state={};let doneMap={},periodLabel='';
 const cbar=$('cbar');
 Object.keys(CHAMBERS).forEach(c=>{const b=document.createElement('button');b.className='cbtn'+(c===chamber?' on':'');
   b.innerHTML=`${c}<span class="n">chamber</span>`;b.onclick=()=>{chamber=c;draw();};cbar.appendChild(b);});
@@ -123,21 +130,57 @@ function draw(){
     let html='<table><thead><tr><th class="rowlab">'+(isChk?'Check':'Reading')+'</th>';
     sec.cols.forEach(c=>html+=`<th>${c}</th>`);html+='</tr></thead><tbody>';
     sec.rows.forEach((row,ri)=>{html+=`<tr><td class="rowlab">${row}</td>`;
+      const rk=slug(mode+' '+sec.name+' '+row);
       sec.cols.forEach((c,ci)=>{const id=key(si,ri,ci);const v=state[id];
-        if(isChk)html+=`<td><button class="chk${v?(' '+v):''}" data-id="${id}">${v==='ok'?'✓':v==='no'?'✗':''}</button></td>`;
-        else html+=`<td><input data-id="${id}" value="${v||''}" inputmode="text"></td>`;});
+        const dn=(v==null||v==='')?doneMap[rk+'||'+(chamber+' '+c).trim()]:null;
+        if(isChk){
+          if(dn){const t=dn.value==='OK'?'✓':dn.value==='ISSUE'?'✗':'•';const cls=dn.value==='OK'?'ok':dn.value==='ISSUE'?'no':'';
+            html+=`<td><button class="chk done ${cls}" data-id="${id}" data-dn="1" title="Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to change">${t}<span class="dtag">${ddmm(dn.date)}</span></button></td>`;}
+          else html+=`<td><button class="chk${v?(' '+v):''}" data-id="${id}">${v==='ok'?'✓':v==='no'?'✗':''}</button></td>`;
+        }else{
+          if(dn)html+=`<td class="donecell"><input data-id="${id}" data-dn="1" class="done" value="${(''+dn.value).replace(/"/g,'&quot;')}" readonly title="Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to change"><span class="dtag">${ddmm(dn.date)}</span></td>`;
+          else html+=`<td><input data-id="${id}" value="${v||''}" inputmode="text"></td>`;
+        }});
       html+='</tr>';});
     html+='</tbody></table>';sc.innerHTML=html;root.appendChild(sc);
   });
-  root.querySelectorAll('.chk').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const cur=state[id]||'';
+  // done cells (green): tap = confirm-to-change guard
+  root.querySelectorAll('[data-dn="1"]').forEach(el=>el.onclick=()=>guardChange(el.dataset.id));
+  // checks not yet done: normal ✓/✗ cycle
+  root.querySelectorAll('.chk:not([data-dn])').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const cur=state[id]||'';
     const nx=cur===''?'ok':cur==='ok'?'no':'';if(nx)state[id]=nx;else delete state[id];
     b.className='chk'+(nx?(' '+nx):'');b.textContent=nx==='ok'?'✓':nx==='no'?'✗':'';});
-  root.querySelectorAll('input[data-id]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];});
+  // readings not yet done: normal entry
+  root.querySelectorAll('input[data-id]:not([data-dn])').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];});
+  updateProgress();
 }
 draw();
 
+// --- progressive completion: show what's already done THIS quarter (resets each quarter) ---
+function curQuarter(){const n=new Date();const q=Math.floor(n.getMonth()/3);
+  return {s:new Date(n.getFullYear(),q*3,1),e:new Date(n.getFullYear(),q*3+3,1),label:'Q'+(q+1)+' '+n.getFullYear()};}
+function inQ(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function updateProgress(){const el=$('prog');if(!el)return;
+  el.textContent=Object.keys(doneMap).length?(periodLabel+' — '+Object.keys(doneMap).length+' results already recorded this quarter (green). Tap one to change it.'):'';}
+function guardChange(id){const a=id.split('|');const ch=a[0],md=a[1],sec=CHAMBERS[ch][md][+a[2]],row=sec.rows[+a[3]],col=sec.cols[+a[4]];
+  const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+col).trim()];if(!dn)return;
+  if(!confirm('This result was recorded on '+dn.date+(dn.eng?(' by '+dn.eng):'')+'.\n\nReplace it with a new reading? The new value will be dated today and will supersede the old one.'))return;
+  state[id]=md==='checks'?(dn.value==='OK'?'ok':dn.value==='ISSUE'?'no':''):(''+dn.value);
+  draw();const el=document.querySelector('input[data-id="'+id+'"]');if(el){el.focus();try{el.select();}catch(_){}}}
+async function loadDone(){
+  try{
+    const res=await fetch('https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json?t='+Date.now());
+    if(!res.ok)return;const snap=await res.json();
+    const {s,e,label}=curQuarter();periodLabel=label;
+    const vmap={};(snap.visits||[]).forEach(v=>{if(/^Quarterly/.test(v.ServiceType||'')&&inQ(v.VisitDate,s,e))vmap[v.Title]={date:String(v.VisitDate).slice(0,10),eng:v.Engineer||''};});
+    (snap.readings||[]).forEach(rd=>{const vi=vmap[rd.VisitRef];if(!vi||rd.Value==null||rd.Value==='')return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const cur=doneMap[k];if(!cur||vi.date>cur.date)doneMap[k]={value:rd.Value,date:vi.date,eng:vi.eng};});
+    draw();
+  }catch(e){/* no snapshot yet — form behaves as a blank quarterly sheet */}
+}
+loadDone();
+
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
-const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 
 // Connect to SharePoint if the shared data layer is present + configured
 let redfmReady=!!window.REDFM, signedIn=false;
