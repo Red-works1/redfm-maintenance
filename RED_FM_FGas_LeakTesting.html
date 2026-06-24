@@ -196,18 +196,21 @@ $('finish').addEventListener('click',async()=>{
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' test(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per system)
       try{
+        // cumulative period report: every test done THIS period with the date it was done
         const grid=[];
         SYSTEMS.forEach((s,si)=>{
           const gr=[];
           TESTS.forEach((t,ti)=>{const st=state[rid(si,ti)];
-            if(st&&st.result)gr.push([t.label, st.result, st.date||today, st.comment||'']);});
+            if(st&&st.result){gr.push([t.label, st.result, st.date||today, st.comment||'']);return;}
+            const dn=doneMap[slug(t.label+' '+s[0])+'||'+s[0]];
+            if(dn)gr.push([t.label, dn.result, dn.date, (dn.eng?('recorded earlier · '+dn.eng):'recorded earlier')]);});
           if(gr.length)grid.push({name:s[0]+' — '+s[1]+' ('+s[2]+')',cols:['Result','Date','Comments'],rows:gr});
         });
-        const blob=REDFM.buildReportPdf({title:'F-Gas leak testing',
-          subtitle:'Border Holdings, Avonmouth',
+        const blob=REDFM.buildReportPdf({title:'F-Gas leak testing report — '+(periodLabel||'this period'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — date shows when each test was done',
           ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:sys,fgasNo:'REF1018681',
-          extra:[['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Detector',r.detector||''],['Leak/loss flagged',String(leaks)]]},grid);
-        const fname='FGas_'+r.visitDate+'_'+sys.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
+          extra:[['Period',periodLabel||'—'],['As at',r.visitDate],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Detector',r.detector||'']]},grid);
+        const fname='FGas_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+r.ref+'.pdf';
         await REDFM.uploadReportPdf(fname,blob);
         saveMsg+=' · PDF filed';
       }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}

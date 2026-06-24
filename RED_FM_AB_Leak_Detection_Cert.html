@@ -238,22 +238,25 @@ $('finish').addEventListener('click',async()=>{
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' item(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per stage)
       try{
+        // cumulative period report: every check recorded THIS year with the date it was done
         const grid=[];
         SECTIONS.forEach((sec,si)=>{
           const gr=[];
           sec.rows.forEach((row,ri)=>{
-            const st=state[rid(si,ri)];if(!st)return;
-            const prim=st[row.fields[0].key];if(prim==null||prim==='')return;
-            const resultOrMins=st.result||(st.mins?(st.mins+' min'):'')||'';
-            gr.push([row.label+' · '+row.sub, resultOrMins, st.adjustment||'', st.retest||'', st.comments||'']);
+            const st=state[rid(si,ri)];const prim=st&&st[row.fields[0].key];
+            if(st&&prim!=null&&prim!==''){
+              const resultOrMins=st.result||(st.mins?(st.mins+' min'):'')||'';
+              gr.push([row.label+' · '+row.sub, resultOrMins, st.adjustment||'', st.retest||'', ddmm(r.date), st.comments||'']);return;}
+            const dn=doneMap[slug(sec.name+' '+row.label)+'||'+(row.label+(row.sub?(' — '+row.sub):''))];
+            if(dn)gr.push([row.label+' · '+row.sub, dn.value||'', '', '', ddmm(dn.date), 'recorded earlier this year'+(dn.eng?(' · '+dn.eng):'')]);
           });
-          if(gr.length)grid.push({name:sec.name,cols:['Result','Adjustment','Re-test','Comments'],rows:gr});
+          if(gr.length)grid.push({name:sec.name,cols:['Result','Adjustment','Re-test','Date','Comments'],rows:gr});
         });
-        const blob=REDFM.buildReportPdf({title:'A&B leak-detection validation',
-          subtitle:'Border Holdings, Avonmouth — R407F plant room',
+        const blob=REDFM.buildReportPdf({title:'A&B leak-detection validation — '+(periodLabel||'this year'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — R407F plant room',
           ref:r.ref,date:r.date,engineer:r.engineer,plant:'A&B Plant Room',fgasNo:'REF1018681',
-          extra:[['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Job No.',r.jobNo||''],['Refrigerant',r.refrigerant||''],['Not working',String(issues)]]},grid);
-        const fname='LeakDetection_'+r.date+'_'+r.ref+'.pdf';
+          extra:[['Period',periodLabel||'—'],['As at',r.date],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Job No.',r.jobNo||''],['Refrigerant',r.refrigerant||'']]},grid);
+        const fname='LeakDetection_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.date+'_'+r.ref+'.pdf';
         await REDFM.uploadReportPdf(fname,blob);
         saveMsg+=' · PDF filed';
       }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}

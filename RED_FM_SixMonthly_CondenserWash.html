@@ -177,18 +177,21 @@ $('finish').addEventListener('click',async()=>{
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' wash record(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per section)
       try{
+        // cumulative period report: every unit washed THIS period with the date it was done
         const grid=[];
         SECS.forEach(s=>{
           const gr=[];
           WASH[s].forEach((name,i)=>{const st=state[uid(s,i)];
-            if(st&&st.done)gr.push([name, st.date||r.visitDate, st.comment||'']);});
+            if(st&&st.done){gr.push([name, st.date||r.visitDate, st.comment||'']);return;}
+            const dn=doneMap[slug('wash '+name)+'||'+name];
+            if(dn)gr.push([name, dn.date, 'recorded earlier this period'+(dn.eng?(' · '+dn.eng):'')]);});
           if(gr.length)grid.push({name:'Section '+s+' — condenser/oil-cooler wash',cols:['Date washed','Comments'],rows:gr});
         });
-        const blob=REDFM.buildReportPdf({title:'Six-monthly condenser & oil-cooler wash',
-          subtitle:'Border Holdings, Avonmouth',
+        const blob=REDFM.buildReportPdf({title:'Six-monthly wash report — '+(periodLabel||'this period'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — date shows when each unit was washed',
           ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:sections,
-          extra:[['Units washed',String(rows.length)]]},grid);
-        const fname='SixMonthly_Wash_'+r.visitDate+'_'+sections.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
+          extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
+        const fname='SixMonthly_Wash_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+r.ref+'.pdf';
         await REDFM.uploadReportPdf(fname,blob);
         saveMsg+=' · PDF filed';
       }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}

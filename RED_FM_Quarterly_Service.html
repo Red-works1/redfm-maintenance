@@ -221,25 +221,33 @@ $('finish').addEventListener('click',async()=>{
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
       // generate + file a branded PDF copy in the Reports library (one grid table per filled section)
       try{
+        // cumulative period report: every result recorded THIS quarter, each tagged with the day it was taken.
+        // merges what was just entered (dated today) with everything already on file this period (doneMap).
+        const cell=(ch,md,sec,row,c,ci,si,ri)=>{
+          const sv=state[`${ch}|${md}|${si}|${ri}|${ci}`];
+          if(sv!=null&&sv!==''){const v=sv==='ok'?'OK':sv==='no'?'FAULT':sv;return v+' ('+ddmm(r.visitDate)+')';}
+          const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+c).trim()];
+          if(dn){const v=dn.value==='ISSUE'?'FAULT':dn.value;return v+' ('+ddmm(dn.date)+')';}
+          return '';
+        };
         const grid=[];
         Object.keys(CHAMBERS).forEach(ch=>['readings','checks'].forEach(md=>{
           CHAMBERS[ch][md].forEach((sec,si)=>{
             const rows=[];
             sec.rows.forEach((row,ri)=>{
-              const vals=sec.cols.map((c,ci)=>{const v=state[`${ch}|${md}|${si}|${ri}|${ci}`];
-                return v==='ok'?'OK':v==='no'?'FAULT':(v==null?'':v);});
+              const vals=sec.cols.map((c,ci)=>cell(ch,md,sec,row,c,ci,si,ri));
               if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
             });
             if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
           });
         }));
-        const blob=REDFM.buildReportPdf({title:'Quarterly service checks',
-          subtitle:'Border Holdings, Avonmouth',
-          ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:chambers,
-          extra:[['Issues flagged',String(issues)]]},grid);
-        const fname='Quarterly_'+r.visitDate+'_'+chambers.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
+        const blob=REDFM.buildReportPdf({title:'Quarterly service report — '+(periodLabel||'this quarter'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — dates show when each result was taken',
+          ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:'A–E',
+          extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
+        const fname='Quarterly_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+r.ref+'.pdf';
         await REDFM.uploadReportPdf(fname,blob);
-        saveMsg+=' · PDF filed';
+        saveMsg+=' · cumulative report filed';
       }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
     }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
   }

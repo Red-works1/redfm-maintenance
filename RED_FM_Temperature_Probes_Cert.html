@@ -243,21 +243,24 @@ $('finish').addEventListener('click',async()=>{
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' probe(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per probe group)
       try{
+        // cumulative period report: every probe validated THIS year with the date it was done
         const grid=[];
         NAMES.forEach(n=>{
           const gr=[];
           GROUPS[n].forEach(([id,loc])=>{const st=state[id];
             if(st&&st.m!==''&&st.m!=null&&st.d!==''&&st.d!=null){
               const err=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
-              gr.push([id+' · '+loc, String(st.m), String(st.d), (err>0?'+':'')+err, st.c||'']);}
+              gr.push([id+' · '+loc, String(st.m), String(st.d), (err>0?'+':'')+err, ddmm(r.date), st.c||'']);return;}
+            const dn=doneMap[slug('probe '+id)+'||'+(id+' '+loc)];
+            if(dn)gr.push([id+' · '+loc, (dn.meas===''?'':String(dn.meas)), (dn.disp===''?'':String(dn.disp)), (dn.err>0?'+':'')+dn.err, ddmm(dn.date), 'recorded earlier this year'+(dn.eng?(' · '+dn.eng):'')]);
           });
-          if(gr.length)grid.push({name:n+' probes',cols:['Measured °C','Displayed °C','Error °C','Comments'],rows:gr});
+          if(gr.length)grid.push({name:n+' probes',cols:['Measured °C','Displayed °C','Error °C','Date','Comments'],rows:gr});
         });
-        const blob=REDFM.buildReportPdf({title:'Validation of temperature probes',
-          subtitle:'Border Holdings, Avonmouth — F-Gas certificate of test',
+        const blob=REDFM.buildReportPdf({title:'Temperature probe validation — '+(periodLabel||'this year'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — F-Gas certificate of test',
           ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,fgasNo:'REF1018681',
-          extra:[['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Job No.',r.jobNo||''],['Tolerance','±'+r.tolerance+'°C'],['Out of tolerance',String(fails)]]},grid);
-        const fname='ProbeCert_'+r.date+'_'+r.ref+'.pdf';
+          extra:[['Period',periodLabel||'—'],['As at',r.date],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Job No.',r.jobNo||''],['Tolerance','±'+r.tolerance+'°C']]},grid);
+        const fname='ProbeCert_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.date+'_'+r.ref+'.pdf';
         await REDFM.uploadReportPdf(fname,blob);
         saveMsg+=' · PDF filed';
       }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
