@@ -62,6 +62,7 @@
   .stage.them{border-color:var(--red);background:#fdecee;}.stage.them .c{color:var(--red);}
   .stage.us{border-color:var(--amber);background:#fdf3e3;}.stage.us .c{color:var(--amber);}
   .stage.fixed{border-color:#1e8e3e;background:#e7f5ec;}.stage.fixed .c{color:#1e8e3e;}
+  .stage.co{border-color:var(--blue);background:#eaf2fb;}.stage.co .c{color:var(--blue);}
   #calloutbox .cohead{border-top:1px solid var(--line);padding:14px 18px 0;font-size:15px;font-weight:800;}
   #calloutbox .cohead span{color:var(--grey);font-weight:600;font-size:13px;}
   .banner{display:flex;align-items:center;gap:10px;background:#fdecee;color:var(--red);border-radius:12px;padding:13px 15px;margin:14px 18px 0;font-weight:700;font-size:14px;}
@@ -234,7 +235,10 @@ function render(){
   const counts={};stages.forEach(s=>counts[s]=0);
   C.faults.forEach(f=>{const st=f.Stage||"Reported";if(counts[st]!=null)counts[st]++;});
   const cls={"Reported and fixed":"fixed","Awaiting our quote":"us","Awaiting sign-off":"them"};
-  $('pipe').innerHTML=stages.map(s=>`<div class="stage ${cls[s]||''}"><div class="c">${counts[s]}</div><div class="s">${STAGE_LABEL[s]}</div></div>`).join('');
+  const mr=periodRange("month");
+  const coMonth=C.callouts.filter(f=>inRange(f.FaultDate,mr.s,mr.e)).length;
+  $('pipe').innerHTML=stages.map(s=>`<div class="stage ${cls[s]||''}"><div class="c">${counts[s]}</div><div class="s">${STAGE_LABEL[s]}</div></div>`).join('')
+    +`<div class="stage co"><div class="c">${coMonth}</div><div class="s">Call-outs (this month)</div></div>`;
 
   const awaitingBorder=C.open.filter(f=>STAGE_WHO[f.Stage||"Reported"]==="Border").length;
   $('faultbanner').innerHTML=awaitingBorder?`<div class="banner">⚠ ${awaitingBorder} fault(s) awaiting Border sign-off — action is with you. In cold storage an unfixed fault can spoil stock, so the dated sign-off trail matters.</div>`:'';
@@ -258,7 +262,7 @@ function render(){
   }
 
   const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
-  $('calloutbox').innerHTML=`<div class="cohead">Call-outs <span>(${co.length})</span></div>`+
+  $('calloutbox').innerHTML=`<div class="cohead">Call-out log <span>(${co.length} total)</span></div>`+
     (co.length?`<table><thead><tr><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
       co.map(f=>`<tr><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
       `</tbody></table>`:`<div class="empty">No call-outs logged.</div>`);
