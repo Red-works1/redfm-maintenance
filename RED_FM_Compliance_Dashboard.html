@@ -137,10 +137,10 @@ function periodRange(p){
   if(p==="month"){const s=startOfMonth(now);return {s,e:new Date(now.getFullYear(),now.getMonth()+1,1),label:now.toLocaleString('en-GB',{month:'long',year:'numeric'})};}
   if(p==="quarter"){const q=Math.floor(now.getMonth()/3);return {s:new Date(now.getFullYear(),q*3,1),e:new Date(now.getFullYear(),q*3+3,1),label:'Q'+(q+1)+' '+now.getFullYear()};}
   if(p==="half"){const m=now.getMonth();
-    if(m>=5&&m<=10)return {s:new Date(now.getFullYear(),5,1),e:new Date(now.getFullYear(),11,1),label:'Jun–Nov '+now.getFullYear()};
-    const y=m<=4?now.getFullYear()-1:now.getFullYear();return {s:new Date(y,11,1),e:new Date(y+1,5,1),label:'Dec '+y+' – May '+(y+1)};}
-  const y=now.getMonth()>=5?now.getFullYear():now.getFullYear()-1;
-  return {s:new Date(y,5,1),e:new Date(y+1,5,1),label:'Jun '+y+' – May '+(y+1)};
+    if(m>=6)return {s:new Date(now.getFullYear(),6,1),e:new Date(now.getFullYear()+1,0,1),label:'Jul–Dec '+now.getFullYear()};
+    return {s:new Date(now.getFullYear(),0,1),e:new Date(now.getFullYear(),6,1),label:'Jan–Jun '+now.getFullYear()};}
+  const y=now.getMonth()>=6?now.getFullYear():now.getFullYear()-1;
+  return {s:new Date(y,6,1),e:new Date(y+1,6,1),label:'Jul '+y+' – Jun '+(y+1)};
 }
 function inRange(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
 function elapsedFrac(s,e){return Math.max(0,Math.min(1,(now-s)/(e-s)));}
