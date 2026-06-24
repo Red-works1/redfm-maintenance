@@ -64,6 +64,17 @@
       <button class="sevbtn" data-v="High">High</button>
     </div>
 
+    <label>Stage</label>
+    <select id="fStage">
+      <option>Reported</option>
+      <option>Reported and fixed</option>
+      <option>Awaiting our quote</option>
+      <option>Awaiting sign-off</option>
+      <option>Approved</option>
+      <option>Closed</option>
+    </select>
+    <div class="muted" style="margin-top:6px">Defaults to “Reported”. Pick “Reported and fixed” if you sorted it on this visit. Can still be changed later on the dashboard.</div>
+
     <label>Description — what's wrong, and where <span class="req">*</span></label>
     <textarea id="fDesc" placeholder="Describe the fault"></textarea>
 
@@ -134,7 +145,7 @@ $('finish').addEventListener('click',async()=>{
   if(!severity){toast('Pick a severity');return;}
   if(!$('fDesc').value.trim()){toast('Add a description');return;}
   const r={sheet:"Fault register",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
-    date:$('fDate').value,raisedBy:$('fEng').value.trim(),plant:$('fPlant').value,severity:severity,
+    date:$('fDate').value,raisedBy:$('fEng').value.trim(),plant:$('fPlant').value,severity:severity,stage:$('fStage').value,
     description:$('fDesc').value.trim(),action:$('fAction').value.trim(),photoCount:photos.length,
     photoNames:photos.map(p=>p.name),submittedAt:new Date().toISOString(),ref:'FLT-'+Date.now().toString(36).toUpperCase()};
 
@@ -145,14 +156,14 @@ $('finish').addEventListener('click',async()=>{
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
       await REDFM.addItem("FaultRegister",{Title:r.ref,FaultDate:r.date,Plant:r.plant,Severity:r.severity,
-        Description:r.description,ActionTaken:r.action,Stage:"Reported",RaisedBy:r.raisedBy});
+        Description:r.description,ActionTaken:r.action,Stage:r.stage,RaisedBy:r.raisedBy});
       saveMsg='Logged to the Fault Register ✓';
       REDFMDraft.clear(); // submitted online — drop the local draft
       // PDF (with photos embedded, downscaled) → Faults library
       try{
         const pdfPhotos=await Promise.all(photos.map(p=>downscale(p.data,1400)));
         const blob=REDFM.buildFaultPdf({ref:r.ref,date:r.date,plant:r.plant,severity:r.severity,
-          raisedBy:r.raisedBy,stage:"Reported",description:r.description,action:r.action,
+          raisedBy:r.raisedBy,stage:r.stage,description:r.description,action:r.action,
           subtitle:"Border Holdings, Avonmouth"},pdfPhotos);
         const base='Fault_'+r.date+'_'+slug(r.plant)+'_'+r.ref;
         await REDFM.uploadFile("Faults",base+'.pdf',blob,'application/pdf');
@@ -169,7 +180,7 @@ $('finish').addEventListener('click',async()=>{
   document.querySelectorAll('input,select,textarea,.sevbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
   $('finish').style.display='none';$('summary').style.display='block';
   $('sumHead').textContent=`✓ Fault submitted — ref ${r.ref}`;
-  $('sumBody').innerHTML=`<div>${r.plant} · ${r.severity} · ${r.photoCount} photo(s) · ${r.raisedBy}</div>
+  $('sumBody').innerHTML=`<div>${r.plant} · ${r.severity} · ${r.stage} · ${r.photoCount} photo(s) · ${r.raisedBy}</div>
     <div class="muted" style="margin-top:4px">${saveMsg}</div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-red" id="pr">Print / Save PDF</button>
