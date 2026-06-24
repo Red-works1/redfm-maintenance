@@ -72,6 +72,15 @@
   .who.Border{background:#fdecee;color:var(--red);}.who.RED{background:#eef0f2;color:var(--grey);}
   footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
   @media print{body{background:#fff;}.toolbar,.hubbtn{display:none;}.metric,.card{break-inside:avoid;}}
+  @media(max-width:640px){
+    #faulttable table,#faulttable tbody,#faulttable tr,#faulttable td{display:block;width:auto;}
+    #faulttable thead{display:none;}
+    #faulttable tr{border:1px solid var(--line);border-radius:12px;margin:0 0 14px;padding:2px 0;background:#fff;}
+    #faulttable td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
+    #faulttable td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
+    #faulttable td.wide{display:block;text-align:left;}
+    #faulttable td.wide:before{display:block;margin-bottom:4px;}
+  }
 </style>
 </head>
 <body>
@@ -232,12 +241,12 @@ function render(){
         <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
         <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
         <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
-      return `<tr><td><b>${f.Plant||''}</b></td><td><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
-        <td>${(f.Description||'').replace(/</g,'&lt;')}</td><td>${STAGE_LABEL[st]}</td>
-        <td>${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
-        <td>${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
-        <td>${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
-        <td><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
+      return `<tr><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
+        <td class="wide" data-label="Fault">${(f.Description||'').replace(/</g,'&lt;')}</td><td data-label="Stage">${STAGE_LABEL[st]}</td>
+        <td class="wide" data-label="Action taken">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
+        <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
+        <td data-label="Days open">${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
+        <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
     $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
   $('period').innerHTML='Read-only · '+(window.SNAPLABEL||'live');
