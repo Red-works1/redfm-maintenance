@@ -58,6 +58,7 @@
   </div>
 
   <div class="secbar" id="secbar"></div>
+  <div id="prog" class="note" style="color:#1a7f37;font-weight:700;display:none"></div>
   <div id="body"></div>
 
   <h3>Test gas certificates</h3>
@@ -101,8 +102,11 @@ const SECTIONS=[
 ];
 
 const $=id=>document.getElementById(id);
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
 $('hDate').value=new Date().toISOString().slice(0,10);
-let cur=0;const state={};
+let cur=0;const state={};let doneMap={},periodLabel='';
 const secbar=$('secbar');
 SECTIONS.forEach((s,i)=>{const b=document.createElement('button');b.className='secbtn'+(i===cur?' on':'');
   b.innerHTML=`${s.name}<span class="n">${s.rows.length} rows</span>`;b.onclick=()=>{cur=i;draw();};secbar.appendChild(b);});
@@ -127,25 +131,61 @@ function draw(){
     const id=rid(cur,ri);const st=state[id]||{};
     const done=st[row.fields[0].key]!=null&&st[row.fields[0].key]!=='';
     const open=!!st._open;
-    const d=document.createElement('div');d.className='row'+(done?' done':'');
-    d.innerHTML=`<div class="rhead" data-id="${id}">
-        <div class="rtop">${row.label} <span>· ${row.sub}</span></div>
-        <div class="rright">${badgeHTML(row,st)}<span class="chev">${open?'▲':'▼'}</span></div></div>
-      <div class="fields" ${open?'':'hidden'}><div class="fgrid">${row.fields.map(f=>fieldHTML(id,f,st)).join('')}</div></div>`;
+    const dn=(!done)?doneMap[slug(SECTIONS[cur].name+' '+row.label)+'||'+(row.label+(row.sub?(' — '+row.sub):''))]:null;
+    const d=document.createElement('div');
+    if(dn){
+      const short=String(dn.value||'').split(' · ')[0]||'Recorded';const bad=/Not working/.test(dn.value||'');
+      d.className='row done';
+      d.innerHTML=`<div class="rhead" data-id="${id}" data-dn="1">
+          <div class="rtop">${row.label} <span>· ${row.sub}</span></div>
+          <div class="rright"><span class="badge ${bad?'bad':'good'}">${short}</span><span style="font-size:11px;color:#1a7f37;font-weight:700;margin-left:6px">✓ ${ddmm(dn.date)}</span></div></div>
+        <div class="muted" style="padding:4px 12px 8px;font-size:12px">Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} this year${dn.value?(' — '+dn.value):''}. Tap to re-test.</div>`;
+    }else{
+      d.className='row'+(done?' done':'');
+      d.innerHTML=`<div class="rhead" data-id="${id}">
+          <div class="rtop">${row.label} <span>· ${row.sub}</span></div>
+          <div class="rright">${badgeHTML(row,st)}<span class="chev">${open?'▲':'▼'}</span></div></div>
+        <div class="fields" ${open?'':'hidden'}><div class="fgrid">${row.fields.map(f=>fieldHTML(id,f,st)).join('')}</div></div>`;
+    }
     root.appendChild(d);
   });
-  root.querySelectorAll('.rhead').forEach(h=>h.onclick=()=>{const id=h.dataset.id;state[id]=state[id]||{};state[id]._open=!state[id]._open;draw();});
+  root.querySelectorAll('.rhead[data-dn]').forEach(h=>h.onclick=()=>guardChange(h.dataset.id));
+  root.querySelectorAll('.rhead:not([data-dn])').forEach(h=>h.onclick=()=>{const id=h.dataset.id;state[id]=state[id]||{};state[id]._open=!state[id]._open;draw();});
   root.querySelectorAll('[data-f]').forEach(el=>{
     const ev=el.tagName==='SELECT'?'onchange':'oninput';
     el[ev]=()=>{const id=el.dataset.id;state[id]=state[id]||{};state[id][el.dataset.f]=el.value;
       const card=el.closest('.row');const r=SECTIONS[cur].rows[+id.split('_r')[1]];
       card.classList.toggle('done', state[id][r.fields[0].key]!=null&&state[id][r.fields[0].key]!=='');};
   });
+  updateProgress();
 }
 draw();
 
+// --- progressive completion: leak-detection checks already recorded THIS year (Jul–Jun) ---
+function curYear(){const n=new Date();const y=n.getMonth()>=6?n.getFullYear():n.getFullYear()-1;
+  return {s:new Date(y,6,1),e:new Date(y+1,6,1),label:'Jul '+y+' – Jun '+(y+1)};}
+function inYr(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function updateProgress(){const el=$('prog');if(!el)return;
+  let total=0;SECTIONS.forEach(s=>total+=s.rows.length);const done=Object.keys(doneMap).length;
+  if(done){el.style.display='block';el.textContent=periodLabel+' — '+done+' of '+total+' checks already recorded this year (green). Tap one to re-test.';}
+  else el.style.display='none';}
+function guardChange(id){const mm=/s(\d+)_r(\d+)/.exec(id);if(!mm)return;const sec=SECTIONS[+mm[1]],row=sec.rows[+mm[2]];
+  const dn=doneMap[slug(sec.name+' '+row.label)+'||'+(row.label+(row.sub?(' — '+row.sub):''))];if(!dn)return;
+  if(!confirm('"'+row.label+'" was recorded on '+dn.date+(dn.eng?(' by '+dn.eng):'')+(dn.value?(' ('+dn.value+')'):'')+'.\n\nRe-test it this year? The new result will be dated today and supersede the old one.'))return;
+  state[id]={_open:true};draw();}
+async function loadDone(){
+  try{const res=await fetch(SNAP+'?t='+Date.now());if(!res.ok)return;const snap=await res.json();
+    const {s,e,label}=curYear();periodLabel=label;
+    const vmap={};(snap.visits||[]).forEach(v=>{if((v.ServiceType||'')==='Leak detection'&&inYr(v.VisitDate,s,e))vmap[v.Title]={date:String(v.VisitDate).slice(0,10),eng:v.Engineer||''};});
+    (snap.readings||[]).forEach(rd=>{const vi=vmap[rd.VisitRef];if(!vi)return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const c=doneMap[k];
+      if(!c||vi.date>c.vdate)doneMap[k]={value:String(rd.Value||''),date:vi.date,eng:vi.eng,vdate:vi.date};});
+    draw();
+  }catch(e){/* no snapshot yet */}
+}
+loadDone();
+
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
-const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 
 // Connect to SharePoint if the shared data layer is present + configured
 let redfmReady=!!window.REDFM, signedIn=false;

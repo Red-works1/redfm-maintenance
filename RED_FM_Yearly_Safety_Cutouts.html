@@ -57,6 +57,7 @@
   <div class="note"><b>Tick only the tests you carried out today.</b> The rest stay open for a later visit — the annual sheet builds up across the year. Each tick records its own setting, date and your name.</div>
 
   <div class="secbar" id="secbar"></div>
+  <div id="prog" class="note" style="color:#1a7f37;font-weight:700;display:none"></div>
   <div id="body"></div>
 
   <h3>Comments (this visit)</h3>
@@ -106,6 +107,10 @@ const SHEET={
 };
 
 const $=id=>document.getElementById(id);
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
+let doneMap={},periodLabel='';
 $('hDate').value=new Date().toISOString().slice(0,10);
 const SECS=Object.keys(SHEET.sections);
 let cur=SECS[0];
@@ -121,18 +126,28 @@ function draw(){
   SHEET.sections[cur].forEach((grp,gi)=>{
     const h=document.createElement('h3');h.textContent=`${cur} — ${grp.group}`;root.appendChild(h);
     grp.tests.forEach((t,ti)=>{
-      const id=uid(cur,gi,ti);const st=state[id]||{};
-      const d=document.createElement('div');d.className='test'+(st.done?' done':'');d.id='card_'+id;
-      d.innerHTML=`<div class="trow"><div class="chk${st.done?' on':''}" data-id="${id}">${st.done?'✓':''}</div><div class="tname">Test the ${t.toLowerCase()}</div></div>
-        <div class="fields">
-          <div><label>Setting</label><input data-f="setting" data-id="${id}" inputmode="decimal" placeholder="e.g. 21.0 / 100°C" value="${st.setting||''}"></div>
-          <div><label>Test date</label><input data-f="date" data-id="${id}" type="date" value="${st.date||$('hDate').value}"></div>
-          <div class="full"><label>Comments (optional)</label><input data-f="comment" data-id="${id}" placeholder="e.g. (Actual) / short circuit" value="${st.comment||''}"></div>
-        </div>`;
+      const id=uid(cur,gi,ti);const st=state[id]||{};const tname='Test the '+t.toLowerCase();
+      const dn=(!st.done)?doneMap[slug(cur+' '+grp.group+' '+tname)+'||'+(cur+' '+grp.group)]:null;
+      const d=document.createElement('div');d.id='card_'+id;
+      if(dn){
+        d.className='test done';
+        d.innerHTML=`<div class="trow"><div class="chk on" data-id="${id}" data-dn="1" title="Tested ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to re-test">✓</div>
+          <div class="tname">${tname} <span style="color:#1a7f37;font-size:11px;font-weight:700">· tested ${ddmm(dn.date)} this year</span></div></div>
+          <div class="muted" style="margin-top:4px;padding-left:2px">Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''}${dn.setting?(' · '+dn.setting):''}. Tap the tick to re-test.</div>`;
+      }else{
+        d.className='test'+(st.done?' done':'');
+        d.innerHTML=`<div class="trow"><div class="chk${st.done?' on':''}" data-id="${id}">${st.done?'✓':''}</div><div class="tname">${tname}</div></div>
+          <div class="fields">
+            <div><label>Setting</label><input data-f="setting" data-id="${id}" inputmode="decimal" placeholder="e.g. 21.0 / 100°C" value="${st.setting||''}"></div>
+            <div><label>Test date</label><input data-f="date" data-id="${id}" type="date" value="${st.date||$('hDate').value}"></div>
+            <div class="full"><label>Comments (optional)</label><input data-f="comment" data-id="${id}" placeholder="e.g. (Actual) / short circuit" value="${st.comment||''}"></div>
+          </div>`;
+      }
       root.appendChild(d);
     });
   });
-  root.querySelectorAll('.chk').forEach(c=>c.onclick=()=>{
+  root.querySelectorAll('.chk[data-dn]').forEach(c=>c.onclick=()=>guardChange(c.dataset.id));
+  root.querySelectorAll('.chk:not([data-dn])').forEach(c=>c.onclick=()=>{
     const id=c.dataset.id;state[id]=state[id]||{};state[id].done=!state[id].done;
     if(state[id].done&&!state[id].date)state[id].date=$('hDate').value;
     draw();
@@ -140,12 +155,39 @@ function draw(){
   root.querySelectorAll('input[data-f]').forEach(inp=>inp.oninput=()=>{
     const id=inp.dataset.id;state[id]=state[id]||{};state[id][inp.dataset.f]=inp.value;
   });
+  updateProgress();
 }
 const state={};
+
+// --- progressive completion: cut-out tests already done THIS year (Jul–Jun) ---
+function curYear(){const n=new Date();const y=n.getMonth()>=6?n.getFullYear():n.getFullYear()-1;
+  return {s:new Date(y,6,1),e:new Date(y+1,6,1),label:'Jul '+y+' – Jun '+(y+1)};}
+function inYr(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function updateProgress(){const el=$('prog');if(!el)return;
+  let total=0;SECS.forEach(s=>SHEET.sections[s].forEach(g=>total+=g.tests.length));
+  const done=Object.keys(doneMap).length;
+  if(done){el.style.display='block';el.textContent=periodLabel+' — '+done+' of '+total+' cut-out tests already done this year (green). Tap one to re-test.';}
+  else el.style.display='none';}
+function guardChange(id){const p=id.split('_');const ti=+p.pop(),gi=+p.pop(),sec=p.join('_');
+  const grp=SHEET.sections[sec][gi];const tname='Test the '+grp.tests[ti].toLowerCase();
+  const dn=doneMap[slug(sec+' '+grp.group+' '+tname)+'||'+(sec+' '+grp.group)];if(!dn)return;
+  if(!confirm('This cut-out was tested on '+dn.date+(dn.eng?(' by '+dn.eng):'')+(dn.setting?(' ('+dn.setting+')'):'')+'.\n\nRe-test it this year? The new record will be dated today and supersede the old one.'))return;
+  state[id]={done:true,date:$('hDate').value};draw();}
+async function loadDone(){
+  try{const res=await fetch(SNAP+'?t='+Date.now());if(!res.ok)return;const snap=await res.json();
+    const {s,e,label}=curYear();periodLabel=label;
+    const vmap={};(snap.visits||[]).forEach(v=>{if((v.ServiceType||'')==='Annual cut-outs'&&inYr(v.VisitDate,s,e))vmap[v.Title]={date:String(v.VisitDate).slice(0,10),eng:v.Engineer||''};});
+    (snap.readings||[]).forEach(rd=>{const vi=vmap[rd.VisitRef];if(!vi)return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const val=String(rd.Value||'');const setting=val.split(' — ')[0];
+      const dd=(/(\d{4}-\d{2}-\d{2})/.exec(val)||[])[1]||vi.date;
+      const c=doneMap[k];if(!c||vi.date>c.vdate)doneMap[k]={setting:(setting==='Tested'?'':setting),date:dd,eng:vi.eng,vdate:vi.date};});
+    draw();
+  }catch(e){/* no snapshot yet */}
+}
 draw();
+loadDone();
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
-const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 
 // Connect to SharePoint if the shared data layer is present + configured
 let redfmReady=!!window.REDFM, signedIn=false;

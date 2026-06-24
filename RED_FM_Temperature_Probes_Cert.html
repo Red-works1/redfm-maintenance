@@ -66,6 +66,7 @@
   <div class="note"><b>Error = Displayed − Measured (auto).</b> Fill the probes you validated — leave the rest for a later visit if you're doing them bit by bit. Anything beyond ± the tolerance is flagged.</div>
 
   <div class="secbar" id="secbar"></div>
+  <div id="prog" class="note" style="color:#1a7f37;font-weight:700;display:none"></div>
   <div id="body"></div>
 
   <h3>Test instrument</h3>
@@ -105,8 +106,11 @@ const GROUPS={
   ["D1","D1 cooler air off probe"],["D2","D2 cooler air off probe"],["E1","E1 cooler air off probe"],["E2","E2 cooler air off probe"]]
 };
 const $=id=>document.getElementById(id);
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
 $('hDate').value=new Date().toISOString().slice(0,10);
-const NAMES=Object.keys(GROUPS);let cur=NAMES[0];const state={};
+const NAMES=Object.keys(GROUPS);let cur=NAMES[0];const state={};let doneMap={},periodLabel='';
 const secbar=$('secbar');
 NAMES.forEach(n=>{const b=document.createElement('button');b.className='secbtn'+(n===cur?' on':'');
   b.innerHTML=`${n}<span class="n">${GROUPS[n].length} probes</span>`;b.onclick=()=>{cur=n;draw();};secbar.appendChild(b);});
@@ -119,6 +123,16 @@ function draw(){
     const st=state[id]||{};
     const filled=st.m!==undefined&&st.m!==''&&st.d!==undefined&&st.d!=='';
     const open=!!st.open;
+    const dn=(!filled)?doneMap[slug('probe '+id)+'||'+(id+' '+loc)]:null;
+    if(dn){
+      const bad=Math.abs(dn.err)>tol();
+      const dd=document.createElement('div');dd.className='probe done';
+      dd.innerHTML=`<div class="phead" data-id="${id}" data-dn="1">
+          <div class="ptop">${id} <span>· ${loc}</span></div>
+          <div class="pright"><span class="badge ${bad?'bad':'good'}">${dn.err>0?'+':''}${dn.err}</span><span style="font-size:11px;color:#1a7f37;font-weight:700;margin-left:6px">✓ ${ddmm(dn.date)}</span></div></div>
+        <div class="muted" style="padding:4px 12px 8px;font-size:12px">Validated ${dn.date}${dn.eng?(' by '+dn.eng):''} this year — tap to re-validate.</div>`;
+      root.appendChild(dd);return;
+    }
     let badge='';
     if(filled){const e=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
       badge=`<span class="badge ${Math.abs(e)>tol()?'bad':'good'}">${e>0?'+':''}${e}</span>`;}
@@ -137,13 +151,15 @@ function draw(){
     root.appendChild(d);
     if(open)updErr(id);
   });
-  root.querySelectorAll('.phead').forEach(h=>h.onclick=()=>{
+  root.querySelectorAll('.phead[data-dn]').forEach(h=>h.onclick=()=>guardChange(h.dataset.id));
+  root.querySelectorAll('.phead:not([data-dn])').forEach(h=>h.onclick=()=>{
     const id=h.dataset.id;state[id]=state[id]||{};state[id].open=!state[id].open;draw();
   });
   root.querySelectorAll('input[data-f]').forEach(inp=>inp.oninput=()=>{
     const id=inp.dataset.id;state[id]=state[id]||{};state[id][inp.dataset.f]=inp.value;
     if(inp.dataset.f!=='c')updErr(id);
   });
+  updateProgress();
 }
 function updErr(id){
   const st=state[id]||{};const box=$('e_'+id);if(!box)return;
@@ -151,11 +167,36 @@ function updErr(id){
   if(isNaN(m)||isNaN(d)){box.textContent='—';box.className='errbox';return;}
   const e=+(d-m).toFixed(1);box.textContent=(e>0?'+':'')+e;box.className='errbox '+(Math.abs(e)>tol()?'bad':'good');
 }
+// --- progressive completion: probes already validated THIS year (Jul–Jun) ---
+function curYear(){const n=new Date();const y=n.getMonth()>=6?n.getFullYear():n.getFullYear()-1;
+  return {s:new Date(y,6,1),e:new Date(y+1,6,1),label:'Jul '+y+' – Jun '+(y+1)};}
+function inYr(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function updateProgress(){const el=$('prog');if(!el)return;
+  let total=0;NAMES.forEach(n=>total+=GROUPS[n].length);const done=Object.keys(doneMap).length;
+  if(done){el.style.display='block';el.textContent=periodLabel+' — '+done+' of '+total+' probes already validated this year (green). Tap one to re-validate.';}
+  else el.style.display='none';}
+function findLoc(id){for(const n of NAMES){const f=GROUPS[n].find(p=>p[0]===id);if(f)return f[1];}return '';}
+function guardChange(id){const loc=findLoc(id);const dn=doneMap[slug('probe '+id)+'||'+(id+' '+loc)];if(!dn)return;
+  if(!confirm('Probe '+id+' was validated on '+dn.date+(dn.eng?(' by '+dn.eng):'')+' (error '+(dn.err>0?'+':'')+dn.err+').\n\nRe-validate it this year? The new reading will be dated today and supersede the old one.'))return;
+  state[id]={m:(dn.meas===''?'':dn.meas),d:(dn.disp===''?'':dn.disp),open:true};draw();}
+async function loadDone(){
+  try{const res=await fetch(SNAP+'?t='+Date.now());if(!res.ok)return;const snap=await res.json();
+    const {s,e,label}=curYear();periodLabel=label;
+    const vmap={};(snap.visits||[]).forEach(v=>{if((v.ServiceType||'')==='Probe calibration'&&inYr(v.VisitDate,s,e))vmap[v.Title]={date:String(v.VisitDate).slice(0,10),eng:v.Engineer||''};});
+    (snap.readings||[]).forEach(rd=>{const vi=vmap[rd.VisitRef];if(!vi)return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const val=String(rd.Value||'');
+      const err=parseFloat((/Error ([+-]?\d+(?:\.\d+)?)/.exec(val)||[])[1]);
+      const meas=parseFloat((/Measured ([+-]?\d+(?:\.\d+)?)/.exec(val)||[])[1]);
+      const disp=parseFloat((/Displayed ([+-]?\d+(?:\.\d+)?)/.exec(val)||[])[1]);
+      const c=doneMap[k];if(!c||vi.date>c.vdate)doneMap[k]={err:isNaN(err)?0:err,meas:isNaN(meas)?'':meas,disp:isNaN(disp)?'':disp,date:vi.date,eng:vi.eng,vdate:vi.date};});
+    draw();
+  }catch(e){/* no snapshot yet */}
+}
 draw();
+loadDone();
 $('hTol').oninput=()=>{Object.keys(state).forEach(updErr);};
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
-const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 
 // Connect to SharePoint if the shared data layer is present + configured
 let redfmReady=!!window.REDFM, signedIn=false;

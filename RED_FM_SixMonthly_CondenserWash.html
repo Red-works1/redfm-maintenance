@@ -52,6 +52,7 @@
   <div class="note"><b>Tick what you washed this visit.</b> The same unit can be logged again later — through the summer it's washed monthly, so each visit adds its own dated record.</div>
 
   <div class="secbar" id="secbar"></div>
+  <div id="prog" class="note" style="color:#1a7f37;font-weight:700;display:none"></div>
   <div id="body"></div>
 
   <h3>Comments (this visit)</h3>
@@ -76,8 +77,11 @@ const WASH={
  "E":["E1 — air-cooled condenser","E2 — air-cooled condenser"]
 };
 const $=id=>document.getElementById(id);
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
 $('hDate').value=new Date().toISOString().slice(0,10);
-const SECS=Object.keys(WASH);let cur=SECS[0];const state={};
+const SECS=Object.keys(WASH);let cur=SECS[0];const state={};let doneMap={},periodLabel='';
 const secbar=$('secbar');
 SECS.forEach(s=>{const b=document.createElement('button');b.className='secbtn'+(s===cur?' on':'');
   b.innerHTML=`${s}<span class="n">section</span>`;b.onclick=()=>{cur=s;draw();};secbar.appendChild(b);});
@@ -88,22 +92,57 @@ function draw(){
   const root=$('body');root.innerHTML='';
   WASH[cur].forEach((name,i)=>{
     const id=uid(cur,i);const st=state[id]||{};
-    const d=document.createElement('div');d.className='item'+(st.done?' done':'');
-    d.innerHTML=`<div class="trow"><div class="chk${st.done?' on':''}" data-id="${id}">${st.done?'✓':''}</div><div class="tname">${name}</div></div>
-      <div class="fields">
-        <div><div class="lab">Date washed</div><input data-f="date" data-id="${id}" type="date" value="${st.date||$('hDate').value}"></div>
-        <div class="full"><div class="lab">Comments (optional)</div><input data-f="comment" data-id="${id}" placeholder="e.g. vegetation, extra clean needed" value="${st.comment||''}"></div>
-      </div>`;
+    const dn=(!st.done)?doneMap[slug('wash '+name)+'||'+name]:null;
+    const d=document.createElement('div');
+    if(dn){
+      d.className='item done';
+      d.innerHTML=`<div class="trow"><div class="chk on" data-id="${id}" data-dn="1" title="Washed ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to log another">✓</div>
+        <div class="tname">${name} <span style="color:#1a7f37;font-size:11px;font-weight:700">· washed ${ddmm(dn.date)} this period</span></div></div>
+        <div class="muted" style="margin-top:4px;padding-left:2px">Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''}. Tap the tick to log another wash.</div>`;
+    }else{
+      d.className='item'+(st.done?' done':'');
+      d.innerHTML=`<div class="trow"><div class="chk${st.done?' on':''}" data-id="${id}">${st.done?'✓':''}</div><div class="tname">${name}</div></div>
+        <div class="fields">
+          <div><div class="lab">Date washed</div><input data-f="date" data-id="${id}" type="date" value="${st.date||$('hDate').value}"></div>
+          <div class="full"><div class="lab">Comments (optional)</div><input data-f="comment" data-id="${id}" placeholder="e.g. vegetation, extra clean needed" value="${st.comment||''}"></div>
+        </div>`;
+    }
     root.appendChild(d);
   });
-  root.querySelectorAll('.chk').forEach(c=>c.onclick=()=>{const id=c.dataset.id;state[id]=state[id]||{};
+  root.querySelectorAll('.chk[data-dn]').forEach(c=>c.onclick=()=>guardChange(c.dataset.id));
+  root.querySelectorAll('.chk:not([data-dn])').forEach(c=>c.onclick=()=>{const id=c.dataset.id;state[id]=state[id]||{};
     state[id].done=!state[id].done;if(state[id].done&&!state[id].date)state[id].date=$('hDate').value;draw();});
   root.querySelectorAll('input[data-f]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;state[id]=state[id]||{};state[id][inp.dataset.f]=inp.value;});
+  updateProgress();
 }
 draw();
 
+// --- progressive completion: which units already washed THIS six-month period (Jul–Dec / Jan–Jun) ---
+function curHalf(){const n=new Date();const m=n.getMonth();
+  if(m>=6)return {s:new Date(n.getFullYear(),6,1),e:new Date(n.getFullYear()+1,0,1),label:'Jul–Dec '+n.getFullYear()};
+  return {s:new Date(n.getFullYear(),0,1),e:new Date(n.getFullYear(),6,1),label:'Jan–Jun '+n.getFullYear()};}
+function inHalf(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function updateProgress(){const el=$('prog');if(!el)return;
+  const total=SECS.reduce((n,s)=>n+WASH[s].length,0),done=Object.keys(doneMap).length;
+  if(done){el.style.display='block';el.textContent=periodLabel+' — '+done+' of '+total+' units already washed this period (green). Tap a tick to log another.';}
+  else el.style.display='none';}
+function guardChange(id){const us=id.split('_');const idx=+us.pop();const sec=us.join('_');const name=(WASH[sec]||[])[idx];if(!name)return;
+  const dn=doneMap[slug('wash '+name)+'||'+name];if(!dn)return;
+  if(!confirm('This unit was logged as washed on '+dn.date+(dn.eng?(' by '+dn.eng):'')+'.\n\nLog another wash for it this period? The new record will be dated today.'))return;
+  state[id]={done:true,date:$('hDate').value};draw();}
+async function loadDone(){
+  try{const res=await fetch(SNAP+'?t='+Date.now());if(!res.ok)return;const snap=await res.json();
+    const {s,e,label}=curHalf();periodLabel=label;
+    const vmap={};(snap.visits||[]).forEach(v=>{if((v.ServiceType||'')==='Six-monthly'&&inHalf(v.VisitDate,s,e))vmap[v.Title]={date:String(v.VisitDate).slice(0,10),eng:v.Engineer||''};});
+    (snap.readings||[]).forEach(rd=>{const vi=vmap[rd.VisitRef];if(!vi)return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const wd=(/Washed (\d{4}-\d{2}-\d{2})/.exec(rd.Value||'')||[])[1]||vi.date;
+      const c=doneMap[k];if(!c||vi.date>c.vdate)doneMap[k]={date:wd,eng:vi.eng,vdate:vi.date};});
+    draw();
+  }catch(e){/* no snapshot yet — blank wash sheet */}
+}
+loadDone();
+
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
-const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 
 // Connect to SharePoint if the shared data layer is present + configured
 let redfmReady=!!window.REDFM, signedIn=false;
