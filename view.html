@@ -62,6 +62,8 @@
   .stage.them{border-color:var(--red);background:#fdecee;}.stage.them .c{color:var(--red);}
   .stage.us{border-color:var(--amber);background:#fdf3e3;}.stage.us .c{color:var(--amber);}
   .stage.fixed{border-color:#1e8e3e;background:#e7f5ec;}.stage.fixed .c{color:#1e8e3e;}
+  #calloutbox .cohead{border-top:1px solid var(--line);padding:14px 18px 0;font-size:15px;font-weight:800;}
+  #calloutbox .cohead span{color:var(--grey);font-weight:600;font-size:13px;}
   .banner{display:flex;align-items:center;gap:10px;background:#fdecee;color:var(--red);border-radius:12px;padding:13px 15px;margin:14px 18px 0;font-weight:700;font-size:14px;}
   .empty{padding:22px;color:var(--grey);font-size:14px;text-align:center;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -112,6 +114,7 @@
       <div class="pipe" id="pipe"></div>
       <div id="faultbanner"></div>
       <div id="faulttable"></div>
+      <div id="calloutbox"></div>
     </div>
   </div>
 
@@ -191,11 +194,12 @@ function computeRegime(reg,visits,readings,catCount){
 }
 
 const EDITABLE=false; // live signed-in dashboard; the read-only published view sets this false
-const STAGES=["Reported","Reported and fixed","Awaiting our quote","Awaiting sign-off","Approved","Closed"];
+const STAGES=["Call out","Reported","Reported and fixed","Awaiting our quote","Awaiting sign-off","Approved","Closed"];
 const SEVERITIES=["Low","Medium","High"];
 const RESOLVED_STAGES=["Closed","Reported and fixed"]; // count as not-open
-const STAGE_WHO={"Reported":"RED","Reported and fixed":"RED","Awaiting our quote":"RED","Awaiting sign-off":"Border","Approved":"RED","Closed":"RED"};
-const STAGE_LABEL={"Reported":"Reported","Reported and fixed":"Reported & fixed","Awaiting our quote":"Awaiting our quote","Awaiting sign-off":"Awaiting your sign-off","Approved":"Approved — scheduling","Closed":"Closed"};
+const CALLOUT_STAGE="Call out"; // tracked separately from the fault remediation list
+const STAGE_WHO={"Call out":"RED","Reported":"RED","Reported and fixed":"RED","Awaiting our quote":"RED","Awaiting sign-off":"Border","Approved":"RED","Closed":"RED"};
+const STAGE_LABEL={"Call out":"Call-out","Reported":"Reported","Reported and fixed":"Reported & fixed","Awaiting our quote":"Awaiting our quote","Awaiting sign-off":"Awaiting your sign-off","Approved":"Approved — scheduling","Closed":"Closed"};
 
 function compute(){
   const {visits,readings,faults,catCount}=DATA;
@@ -203,9 +207,10 @@ function compute(){
   const overall=regs.length?Math.round(regs.reduce((a,b)=>a+b.pct,0)/regs.length):0;
   const onTime=regs.filter(r=>r.rag==="g").length;
   const attention=regs.filter(r=>r.rag!=="g").length;
-  const open=faults.filter(f=>RESOLVED_STAGES.indexOf(f.Stage||"Reported")===-1);
-  const closed=faults.length-open.length;
-  return {regs,overall,onTime,attention,open,closed,faults};
+  const callouts=faults.filter(f=>(f.Stage||"")===CALLOUT_STAGE);
+  const open=faults.filter(f=>{const st=f.Stage||"Reported";return st!==CALLOUT_STAGE && RESOLVED_STAGES.indexOf(st)===-1;});
+  const closed=faults.filter(f=>RESOLVED_STAGES.indexOf(f.Stage||"Reported")!==-1).length;
+  return {regs,overall,onTime,attention,open,closed,callouts,faults};
 }
 
 function render(){
@@ -225,7 +230,7 @@ function render(){
       <div class="rright"><div class="pct">${r.pct}%<small>this period</small></div><div class="badge ${r.rag}">${r.status.toUpperCase()}</div></div>
     </div>`).join('');
 
-  const stages=STAGES;
+  const stages=STAGES.filter(s=>s!==CALLOUT_STAGE);
   const counts={};stages.forEach(s=>counts[s]=0);
   C.faults.forEach(f=>{const st=f.Stage||"Reported";if(counts[st]!=null)counts[st]++;});
   const cls={"Reported and fixed":"fixed","Awaiting our quote":"us","Awaiting sign-off":"them"};
@@ -251,6 +256,13 @@ function render(){
         <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
     $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
+
+  const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
+  $('calloutbox').innerHTML=`<div class="cohead">Call-outs <span>(${co.length})</span></div>`+
+    (co.length?`<table><thead><tr><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
+      co.map(f=>`<tr><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
+      `</tbody></table>`:`<div class="empty">No call-outs logged.</div>`);
+
   $('period').innerHTML='Read-only · '+(window.SNAPLABEL||'live');
 }
 
