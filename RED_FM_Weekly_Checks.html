@@ -28,6 +28,7 @@
   thead .rowlab{background:#fafafa;}
   td input{border:0;border-radius:0;text-align:center;font-size:16px;padding:11px 6px;min-width:84px;}
   td input:focus{box-shadow:inset 0 0 0 2px var(--red);}
+  td input.prefill{background:#eef3fb;color:#175c9e;font-style:italic;}
   .chk{width:100%;min-width:84px;height:44px;border:0;background:#fff;font-size:20px;cursor:pointer;}
   .chk.ok{color:var(--ok);background:#eef7f0;}.chk.no{color:var(--red);background:#fdecee;}
   .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
@@ -51,7 +52,7 @@
   </div></div>
 
   <div class="btns" id="vbar"></div>
-  <div class="hint">Record cells take text or numbers (FULL, Clear, 100%, −18.6). Tap a check cell to cycle ✓ → ✗.</div>
+  <div class="hint">Record cells take text or numbers (FULL, Clear, 100%, −18.6). Tap a check cell to cycle ✓ → ✗. Previous meter readings auto-fill from last week (shown in blue) — overwrite only if a meter was reset/replaced.</div>
   <div id="body"></div>
 
   <h2>Comments</h2>
@@ -110,7 +111,7 @@ const VARIANTS={
 
 const $=id=>document.getElementById(id);
 $('hDate').value=new Date().toISOString().slice(0,10);
-let variant=Object.keys(VARIANTS)[0];const state={};
+let variant=Object.keys(VARIANTS)[0];const state={};let prevMap={};
 const vbar=$('vbar');
 Object.keys(VARIANTS).forEach(v=>{const b=document.createElement('button');b.className='vbtn'+(v===variant?' on':'');
   b.innerHTML=`${v}<span class="n">${VARIANTS[v].label}</span>`;b.onclick=()=>{variant=v;draw();};vbar.appendChild(b);});
@@ -134,9 +135,38 @@ function draw(){
   root.querySelectorAll('.chk').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const cur=state[id]||'';
     const nx=cur===''?'ok':cur==='ok'?'no':'';if(nx)state[id]=nx;else delete state[id];
     b.className='chk'+(nx?(' '+nx):'');b.textContent=nx==='ok'?'✓':nx==='no'?'✗':'';});
-  root.querySelectorAll('input[data-id]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];});
+  root.querySelectorAll('input[data-id]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];inp.classList.remove('prefill');});
+  applyPrev();
 }
 draw();
+
+// --- auto-fill "Previous meter reading" boxes from the last weekly submission ---
+// Pulls from the hourly published snapshot (no login needed); matches each meter section's
+// "Electric kWhr meter reading" from the most recent weekly visit into this week's "Previous" box.
+async function loadPrev(){
+  try{
+    const res=await fetch('https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json?t='+Date.now());
+    if(!res.ok)return;const snap=await res.json();
+    const wkDate={};(snap.visits||[]).forEach(v=>{if(v.ServiceType==='Weekly'&&v.VisitDate)wkDate[v.Title]=String(v.VisitDate).slice(0,10);});
+    (snap.readings||[]).forEach(rd=>{const d=wkDate[rd.VisitRef];if(!d||rd.Value==null||rd.Value==='')return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const cur=prevMap[k];if(!cur||d>cur.date)prevMap[k]={value:rd.Value,date:d};});
+    applyPrev();
+  }catch(e){/* no snapshot yet — engineers just type previous readings as before */}
+}
+function applyPrev(){
+  if(!Object.keys(prevMap).length)return;
+  VARIANTS[variant].sections.forEach((sec,si)=>{
+    const elecRi=sec.rows.findIndex(r=>/electric kwhr meter reading/i.test(r[0]));if(elecRi<0)return;
+    const elecKey=slug(sec.name+' '+sec.rows[elecRi][0]);
+    sec.rows.forEach((row,ri)=>{if(!/^previous/i.test(row[0]))return;
+      sec.cols.forEach((c,ci)=>{const hit=prevMap[elecKey+'||'+(variant+' '+c).trim()];if(!hit)return;
+        const id=key(si,ri,ci);const inp=document.querySelector('input[data-id="'+id+'"]');
+        if(state[id]==null||state[id]===''){state[id]=hit.value;if(inp)inp.value=hit.value;}
+        else if(state[id]!==hit.value){return;}
+        if(inp&&state[id]===hit.value){inp.classList.add('prefill');inp.title='Auto-filled from last weekly ('+hit.date+') — overwrite only if the meter was reset/replaced';}});});
+  });
+}
+loadPrev();
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
