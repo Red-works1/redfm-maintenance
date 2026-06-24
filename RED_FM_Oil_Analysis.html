@@ -63,6 +63,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="redfm-data.js?v=11"></script>
+<script src="redfm-draft.js?v=1"></script>
 <script>
 const $=id=>document.getElementById(id);
 $('oDate').value=new Date().toISOString().slice(0,10);
@@ -97,6 +98,7 @@ $('finish').addEventListener('click',async()=>{
       await REDFM.saveVisit({Title:ref,ServiceType:"Oil analysis",PlantSection:"A&B packs",
         Engineer:eng,VisitDate:date,Status:"Fully completed",FaultFound:"No",Notes:notes},[]);
       saveMsg='Logged as a visit ✓';
+      REDFMDraft.clear(); // submitted online — drop the local draft
       // file the lab report into the Reports library
       try{
         const ext=(theFile.name.split('.').pop()||'pdf').toLowerCase();
@@ -116,6 +118,7 @@ $('finish').addEventListener('click',async()=>{
   $('summary').scrollIntoView({behavior:'smooth'});
   toast('Oil analysis submitted ✓');
 });
+REDFMDraft.init({key:'oil'});
 </script>
 </body>
 </html>

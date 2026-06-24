@@ -88,6 +88,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="redfm-data.js?v=8"></script>
+<script src="redfm-draft.js?v=1"></script>
 <script>
 const $=id=>document.getElementById(id);
 $('fDate').value=new Date().toISOString().slice(0,10);
@@ -146,6 +147,7 @@ $('finish').addEventListener('click',async()=>{
       await REDFM.addItem("FaultRegister",{Title:r.ref,FaultDate:r.date,Plant:r.plant,Severity:r.severity,
         Description:r.description,ActionTaken:r.action,Stage:"Reported",RaisedBy:r.raisedBy});
       saveMsg='Logged to the Fault Register ✓';
+      REDFMDraft.clear(); // submitted online — drop the local draft
       // PDF (with photos embedded, downscaled) → Faults library
       try{
         const pdfPhotos=await Promise.all(photos.map(p=>downscale(p.data,1400)));
@@ -178,6 +180,11 @@ $('finish').addEventListener('click',async()=>{
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Fault_${r.date}_${r.ref}.json`;a.click();};
   toast('Fault submitted ✓');
 });
+REDFMDraft.init({key:'fault',extra:{
+  save:function(){return {severity:severity};},
+  restore:function(o){severity=o.severity||'';
+    $('sev').querySelectorAll('.sevbtn').forEach(function(x){x.className='sevbtn'+(x.dataset.v===severity?' on':'');});}
+}});
 </script>
 </body>
 </html>

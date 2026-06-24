@@ -78,6 +78,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="redfm-data.js?v=5"></script>
+<script src="redfm-draft.js?v=1"></script>
 <script>
 const COOL_AB=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff","Expansion valve superheat & % open"];
 const COOL_STD=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff"];
@@ -218,6 +219,7 @@ $('finish').addEventListener('click',async()=>{
         Asset:(e.chamber+' '+e.col).trim(),Value:String(e.value),Unit:'',
         OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
       await REDFM.saveVisit(visitFields,readingRows);
+      REDFMDraft.clear(); // submitted online — drop the local draft
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
       // generate + file a branded PDF copy in the Reports library (one grid table per filled section)
       try{
@@ -268,6 +270,7 @@ $('finish').addEventListener('click',async()=>{
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Quarterly_${r.visitDate}_${r.ref}.json`;a.click();};
   toast('Submitted ✓');
 });
+REDFMDraft.init({key:'quarterly',state:state,draw:draw});
 </script>
 </body>
 </html>

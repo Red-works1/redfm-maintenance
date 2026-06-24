@@ -61,6 +61,7 @@
   .stage .c{font-size:30px;font-weight:800;}.stage .s{font-size:11px;color:var(--grey);font-weight:700;margin-top:3px;text-transform:uppercase;letter-spacing:.3px;}
   .stage.them{border-color:var(--red);background:#fdecee;}.stage.them .c{color:var(--red);}
   .stage.us{border-color:var(--amber);background:#fdf3e3;}.stage.us .c{color:var(--amber);}
+  .stage.fixed{border-color:#1e8e3e;background:#e7f5ec;}.stage.fixed .c{color:#1e8e3e;}
   .banner{display:flex;align-items:center;gap:10px;background:#fdecee;color:var(--red);border-radius:12px;padding:13px 15px;margin:14px 18px 0;font-weight:700;font-size:14px;}
   .empty{padding:22px;color:var(--grey);font-size:14px;text-align:center;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -190,10 +191,11 @@ function computeRegime(reg,visits,readings,catCount){
 }
 
 const EDITABLE=false; // live signed-in dashboard; the read-only published view sets this false
-const STAGES=["Reported","Awaiting our quote","Awaiting sign-off","Approved","Closed"];
+const STAGES=["Reported","Reported and fixed","Awaiting our quote","Awaiting sign-off","Approved","Closed"];
 const SEVERITIES=["Low","Medium","High"];
-const STAGE_WHO={"Reported":"RED","Awaiting our quote":"RED","Awaiting sign-off":"Border","Approved":"RED","Closed":"RED"};
-const STAGE_LABEL={"Reported":"Reported","Awaiting our quote":"Awaiting our quote","Awaiting sign-off":"Awaiting your sign-off","Approved":"Approved — scheduling","Closed":"Closed"};
+const RESOLVED_STAGES=["Closed","Reported and fixed"]; // count as not-open
+const STAGE_WHO={"Reported":"RED","Reported and fixed":"RED","Awaiting our quote":"RED","Awaiting sign-off":"Border","Approved":"RED","Closed":"RED"};
+const STAGE_LABEL={"Reported":"Reported","Reported and fixed":"Reported & fixed","Awaiting our quote":"Awaiting our quote","Awaiting sign-off":"Awaiting your sign-off","Approved":"Approved — scheduling","Closed":"Closed"};
 
 function compute(){
   const {visits,readings,faults,catCount}=DATA;
@@ -201,7 +203,7 @@ function compute(){
   const overall=regs.length?Math.round(regs.reduce((a,b)=>a+b.pct,0)/regs.length):0;
   const onTime=regs.filter(r=>r.rag==="g").length;
   const attention=regs.filter(r=>r.rag!=="g").length;
-  const open=faults.filter(f=>(f.Stage||"Reported")!=="Closed");
+  const open=faults.filter(f=>RESOLVED_STAGES.indexOf(f.Stage||"Reported")===-1);
   const closed=faults.length-open.length;
   return {regs,overall,onTime,attention,open,closed,faults};
 }
@@ -226,7 +228,7 @@ function render(){
   const stages=STAGES;
   const counts={};stages.forEach(s=>counts[s]=0);
   C.faults.forEach(f=>{const st=f.Stage||"Reported";if(counts[st]!=null)counts[st]++;});
-  const cls={"Awaiting our quote":"us","Awaiting sign-off":"them"};
+  const cls={"Reported and fixed":"fixed","Awaiting our quote":"us","Awaiting sign-off":"them"};
   $('pipe').innerHTML=stages.map(s=>`<div class="stage ${cls[s]||''}"><div class="c">${counts[s]}</div><div class="s">${STAGE_LABEL[s]}</div></div>`).join('');
 
   const awaitingBorder=C.open.filter(f=>STAGE_WHO[f.Stage||"Reported"]==="Border").length;

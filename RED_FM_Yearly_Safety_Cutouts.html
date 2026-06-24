@@ -73,6 +73,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="redfm-data.js?v=5"></script>
+<script src="redfm-draft.js?v=1"></script>
 <script>
 const SHEET={
  title:"Yearly safety cut-outs",
@@ -224,6 +225,7 @@ $('finish').addEventListener('click',async()=>{
         Value:(e.setting||'Tested')+' — '+e.date+(e.comment?(' ('+e.comment+')'):''),
         Unit:'',OutOfRange:'No'}));
       await REDFM.saveVisit(visitFields,readingRows);
+      REDFMDraft.clear(); // submitted online — drop the local draft
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' cut-out test(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per section)
       try{
@@ -267,6 +269,7 @@ $('finish').addEventListener('click',async()=>{
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Yearly_${r.visitDate}_${r.ref}.json`;a.click();};
   toast('Submitted ✓');
 });
+REDFMDraft.init({key:'yearly',state:state,draw:draw});
 </script>
 </body>
 </html>
