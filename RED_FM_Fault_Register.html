@@ -156,6 +156,13 @@ $('finish').addEventListener('click',async()=>{
     $('finish').textContent='Saving…';
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
+      // Simple shared sequential ref (FLT-/CO- 1001, 1002 …); falls back to the timestamp ref if the list can't be read
+      try{
+        const existing=await REDFM.getFaults();
+        let max=1000;
+        existing.forEach(it=>{const m=/-(\d{3,})$/.exec(it.Title||it.FaultRef||'');if(m){const n=parseInt(m[1],10);if(!isNaN(n)&&n>max)max=n;}});
+        r.ref=(r.stage==='Call out'?'CO-':'FLT-')+(max+1);
+      }catch(e){/* keep the fallback timestamp ref */}
       await REDFM.addItem("FaultRegister",{Title:r.ref,FaultDate:r.date,Plant:r.plant,Severity:r.severity,
         Description:r.description,ActionTaken:r.action,Stage:r.stage,RaisedBy:r.raisedBy});
       saveMsg='Logged to the Fault Register ✓';
