@@ -148,7 +148,7 @@ $('finish').addEventListener('click',async()=>{
   const r={sheet:"Fault register",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
     date:$('fDate').value,raisedBy:$('fEng').value.trim(),plant:$('fPlant').value,severity:severity,stage:$('fStage').value,
     description:$('fDesc').value.trim(),action:$('fAction').value.trim(),photoCount:photos.length,
-    photoNames:photos.map(p=>p.name),submittedAt:new Date().toISOString(),ref:'FLT-'+Date.now().toString(36).toUpperCase()};
+    photoNames:photos.map(p=>p.name),submittedAt:new Date().toISOString(),ref:($('fStage').value==='Call out'?'CO-':'FLT-')+Date.now().toString(36).toUpperCase()};
 
   // Save to SharePoint (FaultRegister item) + file a branded PDF AND the original photo(s) into the Faults library
   let saveMsg='SharePoint not configured yet — kept a local copy.';
