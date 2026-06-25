@@ -260,19 +260,19 @@ function render(){
         <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
         <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
         <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
-      return `<tr><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
+      return `<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
         <td class="wide" data-label="Fault">${(f.Description||'').replace(/</g,'&lt;')}</td><td data-label="Stage">${STAGE_LABEL[st]}</td>
         <td class="wide" data-label="Action taken">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
         <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
         <td data-label="Days open">${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
         <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<table><thead><tr><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
   $('calloutbox').innerHTML=`<div class="cohead">Call-out log <span>(${co.length} total)</span></div>`+
-    (co.length?`<table><thead><tr><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
-      co.map(f=>`<tr><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
+    (co.length?`<table><thead><tr><th>Ref</th><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
+      co.map(f=>`<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
       `</tbody></table>`:`<div class="empty">No call-outs logged.</div>`);
 
   $('period').innerHTML=`Live · generated <b>${now.toLocaleDateString('en-GB')}</b><br><a class="hubbtn" href="index.html">⌂ Hub</a>`;
