@@ -71,7 +71,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="redfm-data.js?v=7"></script>
-<script src="redfm-draft.js?v=1"></script>
+<script src="redfm-draft.js?v=2"></script>
 <script>
 const TESTS=[
  {key:"direct",label:"Electronic leak-detector test",sub:"entire plant",opts:["No leak found","Leak found"]},
@@ -194,7 +194,7 @@ $('finish').addEventListener('click',async()=>{
         Value:e.result+' — '+e.date+(e.comment?(' ('+e.comment+')'):''),Unit:'',
         OutOfRange:(e.result.startsWith('Leak')||e.result.startsWith('Loss'))?'Yes':'No'}));
       await REDFM.saveVisit(visitFields,readingRows);
-      REDFMDraft.clear(); // submitted online — drop the local draft
+      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' test(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per system)
       try{

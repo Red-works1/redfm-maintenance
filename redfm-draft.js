@@ -150,7 +150,10 @@ window.REDFMDraft = (function () {
     function storageOK() { try { var k = '__rf'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return true; } catch (e) { return false; } }
 
     // ---- wire up ------------------------------------------------------------
-    if (!ok) return { save: function () {}, clear: function () {}, restore: function () {} };
+    // Expose the instance methods on the singleton so REDFMDraft.clear()/save()/restore()
+    // work from the form's inline script (which calls init() without capturing its return).
+    var noop = function () {};
+    if (!ok) { window.REDFMDraft.save = window.REDFMDraft.clear = window.REDFMDraft.restore = noop; return; }
 
     pill();
     var existing = read();
@@ -180,7 +183,10 @@ window.REDFMDraft = (function () {
       if (document.visibilityState === 'hidden' && userTouched && !pendingRestore && !done) save(false);
     });
 
-    return { save: function () { save(true); }, clear: clear, restore: function () { var s = read(); if (s) applyRestore(s); } };
+    window.REDFMDraft.save = function () { save(true); };
+    window.REDFMDraft.clear = clear;
+    window.REDFMDraft.restore = function () { var s = read(); if (s) applyRestore(s); };
   }
-  return { init: init };
+  // Stubs so REDFMDraft.clear()/save()/restore() never throw even before init runs.
+  return { init: init, save: function () {}, clear: function () {}, restore: function () {} };
 })();

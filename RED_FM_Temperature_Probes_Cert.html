@@ -88,7 +88,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="redfm-data.js?v=7"></script>
-<script src="redfm-draft.js?v=1"></script>
+<script src="redfm-draft.js?v=2"></script>
 <script>
 const GROUPS={
  "Monitoring":[
@@ -241,7 +241,7 @@ $('finish').addEventListener('click',async()=>{
         Value:'Measured '+p.measured+' / Displayed '+p.displayed+' / Error '+(p.error>0?'+':'')+p.error+(p.comments?(' ('+p.comments+')'):''),
         Unit:'°C',OutOfRange:p.outOfTol?'Yes':'No'}));
       await REDFM.saveVisit(visitFields,readingRows);
-      REDFMDraft.clear(); // submitted online — drop the local draft
+      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' probe(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per probe group)
       try{

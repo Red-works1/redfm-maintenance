@@ -68,7 +68,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="redfm-data.js?v=5"></script>
-<script src="redfm-draft.js?v=1"></script>
+<script src="redfm-draft.js?v=2"></script>
 <script>
 const WASH={
  "A":["A section — air-cooled condenser","A section — air-cooled oil cooler"],
@@ -175,7 +175,7 @@ $('finish').addEventListener('click',async()=>{
         ReadingKey:slug('wash '+e.item),Asset:e.item,
         Value:'Washed '+e.date+(e.comment?(' — '+e.comment):''),Unit:'',OutOfRange:'No'}));
       await REDFM.saveVisit(visitFields,readingRows);
-      REDFMDraft.clear(); // submitted online — drop the local draft
+      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' wash record(s)';
       // generate + file a branded PDF copy in the Reports library (one grid table per section)
       try{
