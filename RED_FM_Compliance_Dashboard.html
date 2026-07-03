@@ -189,7 +189,9 @@ function computeRegime(reg,visits,readings,catCount){
     done=Math.min(keys.size,expected||keys.size);
     detail=(expected?done+" of "+expected+" readings":done+" readings")+" · "+label;
   }
-  const pct=expected?Math.min(100,Math.round(done/expected*100)):(done?100:0);
+  // weekly % is progress through the whole month's checks (done / total weeks), not just weeks due so far; RAG below still uses weeks-due
+  const pctDenom=reg.mode==="visits"?wedsInPeriod(s,e):expected;
+  const pct=pctDenom?Math.min(100,Math.round(done/pctDenom*100)):(done?100:0);
   const pace=Math.round(elapsedFrac(s,e)*100);
   let rag,status;
   if(reg.mode==="visits"){           // weekly — a single missed week is fine, it's just shown
