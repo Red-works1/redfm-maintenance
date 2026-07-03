@@ -163,6 +163,7 @@ function periodRange(p){
 function inRange(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
 function elapsedFrac(s,e){return Math.max(0,Math.min(1,(now-s)/(e-s)));}
 function wednesdays(s){let c=0;const d=new Date(s);while(d<=now){if(d.getDay()===3)c++;d.setDate(d.getDate()+1);}return Math.max(1,c);}
+function wedsInPeriod(s,e){let c=0;const d=new Date(s);while(d<e){if(d.getDay()===3)c++;d.setDate(d.getDate()+1);}return c;} // total weekly checks in the whole month
 function daysBetween(a,b){return Math.max(0,Math.round((b-new Date(a))/86400000));}
 
 let DATA=null;
@@ -174,7 +175,7 @@ function computeRegime(reg,visits,readings,catCount){
     expected=wednesdays(s);                      // weeks elapsed this month
     const monday=v=>{const d=new Date(v.VisitDate);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toISOString().slice(0,10);};
     done=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(monday)).size; // distinct weeks covered
-    detail=done+" of "+expected+" weeks covered · "+label;
+    detail=done+" of "+wedsInPeriod(s,e)+" weeks in "+label+" · "+expected+" due so far";
   }else if(reg.mode==="event"){
     expected=1;
     const n=visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).length;
