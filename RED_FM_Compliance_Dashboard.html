@@ -153,7 +153,7 @@ const REGIMES=[
 function startOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1);}
 function periodRange(p){
   if(p==="month"){const s=startOfMonth(now);return {s,e:new Date(now.getFullYear(),now.getMonth()+1,1),label:now.toLocaleString('en-GB',{month:'long',year:'numeric'})};}
-  if(p==="quarter"){const q=Math.floor(now.getMonth()/3);return {s:new Date(now.getFullYear(),q*3,1),e:new Date(now.getFullYear(),q*3+3,1),label:'Q'+(q+1)+' '+now.getFullYear()};}
+  if(p==="quarter"){const q=Math.floor(now.getMonth()/3);const qs=new Date(now.getFullYear(),q*3,1),qe=new Date(now.getFullYear(),q*3+2,1);return {s:qs,e:new Date(now.getFullYear(),q*3+3,1),label:'Q'+(q+1)+' '+now.getFullYear()+' ('+qs.toLocaleString('en-GB',{month:'short'})+'–'+qe.toLocaleString('en-GB',{month:'short'})+' '+now.getFullYear()+')'};}
   if(p==="half"){const m=now.getMonth();
     if(m>=6)return {s:new Date(now.getFullYear(),6,1),e:new Date(now.getFullYear()+1,0,1),label:'Jul–Dec '+now.getFullYear()};
     return {s:new Date(now.getFullYear(),0,1),e:new Date(now.getFullYear(),6,1),label:'Jan–Jun '+now.getFullYear()};}
@@ -175,7 +175,7 @@ function computeRegime(reg,visits,readings,catCount){
     expected=wednesdays(s);                      // weeks elapsed this month
     const monday=v=>{const d=new Date(v.VisitDate);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toISOString().slice(0,10);};
     done=new Set(visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).map(monday)).size; // distinct weeks covered
-    detail=done+" of "+wedsInPeriod(s,e)+" weeks in "+label+" · "+expected+" due so far";
+    detail=done+" of "+wedsInPeriod(s,e)+" weekly checks complete · "+label;
   }else if(reg.mode==="event"){
     expected=1;
     const n=visits.filter(v=>v.ServiceType===reg.key && inRange(v.VisitDate,s,e)).length;
@@ -187,7 +187,7 @@ function computeRegime(reg,visits,readings,catCount){
     const keys=new Set();
     readings.forEach(rd=>{if(refs.has(rd.VisitRef)&&rd.ReadingKey)keys.add(rd.ReadingKey);});
     done=Math.min(keys.size,expected||keys.size);
-    detail=(expected?done+" of "+expected+" readings":done+" readings")+" · "+label;
+    detail=(expected?done+" of "+expected+" readings complete":done+" readings")+" · "+label;
   }
   // weekly % is progress through the whole month's checks (done / total weeks), not just weeks due so far; RAG below still uses weeks-due
   const pctDenom=reg.mode==="visits"?wedsInPeriod(s,e):expected;
