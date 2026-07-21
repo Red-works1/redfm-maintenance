@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Border Holdings Report Library</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:18px;}
+  .brand{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1040px;margin:0 auto;flex-wrap:wrap;}
+  .lhs{display:flex;align-items:center;gap:14px;}
+  .logo{font-weight:800;letter-spacing:1.5px;font-size:32px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.25;}.htitle strong{display:block;color:var(--ink);font-size:17px;}
+  .hubbtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap;}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px 60px;}
+  .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px;}
+  .search{flex:1;min-width:220px;font-size:15px;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;}
+  .search:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);}
+  .state{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px;text-align:center;margin-top:18px;color:var(--grey);}
+  .group{margin-top:26px;}
+  .group h2{font-size:17px;font-weight:800;margin:0 4px 10px;display:flex;align-items:baseline;gap:10px;}
+  .group h2 span{font-size:12px;font-weight:700;color:var(--grey);}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .row{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:0;}
+  .rmain{flex:1;min-width:0;}
+  .rname{font-size:14px;font-weight:700;word-break:break-all;}
+  .rmeta{font-size:12px;color:var(--grey);margin-top:2px;}
+  .dlbtn{flex:0 0 auto;font-size:13px;font-weight:700;padding:9px 15px;border-radius:9px;border:1.5px solid var(--red);background:var(--red);color:#fff;cursor:pointer;text-decoration:none;}
+  .dlbtn:active{opacity:.8;}
+  .empty{padding:22px;color:var(--grey);font-size:14px;text-align:center;}
+  footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
+</style>
+</head>
+<body>
+<header><div class="brand">
+  <div class="lhs"><div class="logo">RED<b>FM</b></div>
+  <div class="htitle"><strong>Border Holdings — Report library</strong>Avonmouth cold store · delivered by Coolstream</div></div>
+  <a class="hubbtn" href="view.html">← Back to dashboard</a>
+</div></header>
+
+<div class="wrap">
+  <div class="bar">
+    <input class="search" id="search" placeholder="Search reports (plant, date, ref, type)…">
+    <span class="note" id="count"></span>
+  </div>
+  <div id="list"><div class="state" id="loadstate">Loading the report library…</div></div>
+</div>
+
+<footer>Completed maintenance reports for Border Holdings, Avonmouth. Updated automatically from the live records. RED FM (Red Electrical Bristol Ltd) · maintenance delivered by Coolstream · no commercial figures.</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const MANIFEST="https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports-manifest.json?t="+Date.now();
+// Order groups sensibly; anything not listed falls to the end.
+const ORDER=["Monthly compliance reports","Weekly checks","Quarterly service","Six-monthly condenser wash",
+  "F-Gas leak testing","Annual safety cut-outs","Temperature probes","A&B leak detection","Oil analysis","Fault reports","Other reports"];
+let ALL=[];
+
+function fmtDate(s){ if(!s) return ""; const d=new Date(s); return isNaN(d)?"":d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+
+async function dl(url,name,btn){
+  const old=btn.textContent; btn.textContent="…";
+  try{ const r=await fetch(url); if(!r.ok) throw new Error(r.status); const b=await r.blob();
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  }catch(e){ window.open(url,'_blank'); }
+  btn.textContent=old;
+}
+
+function render(filter){
+  const f=(filter||"").trim().toLowerCase();
+  const rows=ALL.filter(r=>!f || (r.name+" "+r.type+" "+fmtDate(r.date)).toLowerCase().includes(f));
+  $('count').textContent=rows.length+(rows.length===1?" report":" reports");
+  if(!rows.length){ $('list').innerHTML='<div class="state">No reports match.</div>'; return; }
+  const groups={}; rows.forEach(r=>{(groups[r.type]=groups[r.type]||[]).push(r);});
+  const keys=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
+  $('list').innerHTML=keys.map(k=>{
+    const items=groups[k].slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    return `<div class="group"><h2>${k} <span>${items.length}</span></h2><div class="card">`+
+      items.map(r=>`<div class="row"><div class="rmain"><div class="rname">${r.name}</div>
+        <div class="rmeta">${fmtDate(r.date)}${r.size?" · "+Math.round(r.size/1024)+" KB":""}</div></div>
+        <button class="dlbtn" data-url="${r.url}" data-name="${r.name}">Download</button></div>`).join('')+
+      `</div></div>`;
+  }).join('');
+  $('list').querySelectorAll('.dlbtn').forEach(b=>b.onclick=()=>dl(b.dataset.url,b.dataset.name,b));
+}
+
+async function load(){
+  try{
+    const r=await fetch(MANIFEST); if(!r.ok) throw new Error(r.status);
+    const j=await r.json(); ALL=j.reports||[];
+    if(!ALL.length){ $('list').innerHTML='<div class="state">No reports published yet — the library refreshes automatically as reports come in.</div>'; $('count').textContent=""; return; }
+    render("");
+  }catch(e){ $('list').innerHTML='<div class="state">Could not load the report library ('+(e.message||e)+'). It refreshes hourly — try again shortly.</div>'; }
+}
+$('search').addEventListener('input',e=>render(e.target.value));
+load();
+</script>
+</body>
+</html>

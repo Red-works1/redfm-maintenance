@@ -97,7 +97,8 @@
 <div class="wrap">
   <div class="toolbar">
     <button class="btn btn-red" id="signin" style="display:none">Sign in</button>
-    <button class="btn btn-ghost" id="genpdf" style="display:none" disabled>Report</button>
+    <button class="btn btn-red" id="genpdf" disabled>Download report (PDF)</button>
+    <a class="btn btn-ghost" href="reports.html" style="text-decoration:none;">Report library</a>
     <span class="note" id="status"></span>
   </div>
 
@@ -124,6 +125,9 @@
 
 <footer>Client report — completion and fault status only, no commercial figures. RED FM holds the underlying signed records; F-Gas statutory records are Coolstream's. RED FM (Red Electrical Bristol Ltd) · maintenance delivered by Coolstream · Border Holdings, Avonmouth.</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=11"></script>
 <script>
 const $=id=>document.getElementById(id);
 const now=new Date();
@@ -281,7 +285,7 @@ async function load(){
     const catCount={};cat.forEach(c=>{catCount[c.ServiceType]=(catCount[c.ServiceType]||0)+1;});
     DATA={visits:snap.visits||[],readings:snap.readings||[],faults:snap.faults||[],catCount};
     window.SNAPLABEL='as of '+new Date(snap.generatedAt).toLocaleString('en-GB');
-    $('loadstate').style.display='none';$('board').style.display='block';
+    $('loadstate').style.display='none';$('board').style.display='block';$('genpdf').disabled=false;
     $('status').textContent=DATA.visits.length+' visits · '+DATA.faults.length+' faults · '+window.SNAPLABEL;
     render();
   }catch(e){$('status').textContent='Could not load snapshot: '+(e.message||e);$('loadstate').textContent='No published snapshot yet — it refreshes hourly once enabled.';}
@@ -308,13 +312,11 @@ $('genpdf').addEventListener('click',async()=>{
       extra:[["Period",monthLabel],["Overall completion",C.overall+"%"],["Regimes on track",C.onTime+" of "+C.regs.length],
         ["Open faults",String(C.open.length)],["Delivered by","Coolstream"]]},[regSection,faultSection]);
     const fname="Border_Compliance_"+now.toISOString().slice(0,7)+".pdf";
-    let msg;
-    try{await REDFM.uploadFile("Client Reports",fname,blob,"application/pdf");msg="Filed to Client Reports ✓";}
-    catch(e){msg="Filed locally only ("+(e.message||e)+")";}
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
-    $('status').textContent=msg+" · "+fname;
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    $('status').textContent='Downloaded '+fname;
   }catch(e){$('status').textContent='Report failed: '+(e.message||e);}
-  $('genpdf').disabled=false;$('genpdf').textContent='Generate monthly client report (PDF)';
+  $('genpdf').disabled=false;$('genpdf').textContent='Download report (PDF)';
 });
 
 if(EDITABLE){$('faulttable').addEventListener('click',async e=>{
