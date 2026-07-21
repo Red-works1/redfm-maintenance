@@ -19,17 +19,25 @@
   .search{flex:1;min-width:220px;font-size:15px;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;}
   .search:focus{outline:none;border-color:var(--red);}
   .note{font-size:13px;color:var(--grey);}
+  .toolrow{margin-top:10px;font-size:13px;}
+  .toolrow a{color:var(--red);font-weight:700;text-decoration:none;cursor:pointer;}
   .state{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px;text-align:center;margin-top:18px;color:var(--grey);}
-  .group{margin-top:26px;}
-  .group h2{font-size:17px;font-weight:800;margin:0 4px 10px;display:flex;align-items:baseline;gap:10px;}
-  .group h2 span{font-size:12px;font-weight:700;color:var(--grey);}
-  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
-  .row{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line);}
-  .row:last-child{border-bottom:0;}
+  .group{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .ghead{width:100%;display:flex;align-items:center;gap:12px;padding:16px 18px;background:#fff;border:0;cursor:pointer;text-align:left;font:inherit;}
+  .ghead:hover{background:#fafafa;}
+  .gcaret{color:var(--grey);font-size:13px;transition:transform .15s;flex:0 0 auto;}
+  .group.open .gcaret{transform:rotate(90deg);}
+  .gname{font-size:16px;font-weight:800;flex:1;}
+  .gmeta{font-size:12px;color:var(--grey);font-weight:700;white-space:nowrap;}
+  .gbody{display:none;border-top:1px solid var(--line);}
+  .group.open .gbody{display:block;}
+  .msub{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--grey);background:#fafafa;padding:8px 18px;border-bottom:1px solid var(--line);}
+  .rowr{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid #f1f1f4;}
+  .rowr:last-child{border-bottom:0;}
   .rmain{flex:1;min-width:0;}
   .rname{font-size:14px;font-weight:700;word-break:break-all;}
   .rmeta{font-size:12px;color:var(--grey);margin-top:2px;}
-  .dlbtn{flex:0 0 auto;font-size:13px;font-weight:700;padding:9px 15px;border-radius:9px;border:1.5px solid var(--red);background:var(--red);color:#fff;cursor:pointer;text-decoration:none;}
+  .dlbtn{flex:0 0 auto;font-size:13px;font-weight:700;padding:9px 15px;border-radius:9px;border:1.5px solid var(--red);background:var(--red);color:#fff;cursor:pointer;}
   .dlbtn:active{opacity:.8;}
   .empty{padding:22px;color:var(--grey);font-size:14px;text-align:center;}
   footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
@@ -44,58 +52,83 @@
 
 <div class="wrap">
   <div class="bar">
-    <input class="search" id="search" placeholder="Search reports (plant, date, ref, type)…">
+    <input class="search" id="search" placeholder="Search all reports (plant, date, ref, type)…">
     <span class="note" id="count"></span>
   </div>
+  <div class="toolrow"><a id="toggleall">Expand all</a> · <span class="note">tap a report type to open it</span></div>
   <div id="list"><div class="state" id="loadstate">Loading the report library…</div></div>
 </div>
 
-<footer>Completed maintenance reports for Border Holdings, Avonmouth. Updated automatically from the live records. RED FM (Red Electrical Bristol Ltd) · maintenance delivered by Coolstream · no commercial figures.</footer>
+<footer>Completed maintenance reports for Border Holdings, Avonmouth. Refreshes automatically about once an hour as new reports come in. RED FM (Red Electrical Bristol Ltd) · maintenance delivered by Coolstream · no commercial figures.</footer>
 
 <script>
 const $=id=>document.getElementById(id);
 const MANIFEST="https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports-manifest.json?t="+Date.now();
-// Order groups sensibly; anything not listed falls to the end.
 const ORDER=["Monthly compliance reports","Weekly checks","Quarterly service","Six-monthly condenser wash",
   "F-Gas leak testing","Annual safety cut-outs","Temperature probes","A&B leak detection","Oil analysis","Fault reports","Other reports"];
 let ALL=[];
 
-function fmtDate(s){ if(!s) return ""; const d=new Date(s); return isNaN(d)?"":d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function ord(t){const i=ORDER.indexOf(t);return i<0?99:i;}
+function fmtDate(s){if(!s)return"";const d=new Date(s);return isNaN(d)?"":d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+function monthKey(s){const d=new Date(s);return isNaN(d)?"Undated":d.toLocaleDateString('en-GB',{month:'long',year:'numeric'});}
+function byDateDesc(a,b){return (b.date||"").localeCompare(a.date||"");}
 
 async function dl(url,name,btn){
-  const old=btn.textContent; btn.textContent="…";
-  try{ const r=await fetch(url); if(!r.ok) throw new Error(r.status); const b=await r.blob();
-    const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  const old=btn.textContent;btn.textContent="…";
+  try{const r=await fetch(url);if(!r.ok)throw new Error(r.status);const b=await r.blob();
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-  }catch(e){ window.open(url,'_blank'); }
+  }catch(e){window.open(url,'_blank');}
   btn.textContent=old;
+}
+
+function rowHtml(r){
+  return `<div class="rowr"><div class="rmain"><div class="rname">${r.name}</div>
+    <div class="rmeta">${fmtDate(r.date)}${r.size?' · '+Math.round(r.size/1024)+' KB':''}</div></div>
+    <button class="dlbtn" data-url="${r.url}" data-name="${r.name}">Download</button></div>`;
+}
+// Big types (>8 reports) get grouped by month so a year of weeklies is easy to scan.
+function bodyHtml(items){
+  if(items.length>8){
+    const m={};items.forEach(r=>{const k=monthKey(r.date);(m[k]=m[k]||[]).push(r);});
+    return Object.keys(m).map(mk=>`<div class="msub">${mk} · ${m[mk].length}</div>`+m[mk].map(rowHtml).join('')).join('');
+  }
+  return items.map(rowHtml).join('');
 }
 
 function render(filter){
   const f=(filter||"").trim().toLowerCase();
   const rows=ALL.filter(r=>!f || (r.name+" "+r.type+" "+fmtDate(r.date)).toLowerCase().includes(f));
   $('count').textContent=rows.length+(rows.length===1?" report":" reports");
-  if(!rows.length){ $('list').innerHTML='<div class="state">No reports match.</div>'; return; }
-  const groups={}; rows.forEach(r=>{(groups[r.type]=groups[r.type]||[]).push(r);});
-  const keys=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
+  if(!rows.length){$('list').innerHTML='<div class="state">No reports match your search.</div>';return;}
+  const groups={};rows.forEach(r=>{(groups[r.type]=groups[r.type]||[]).push(r);});
+  const keys=Object.keys(groups).sort((a,b)=>ord(a)-ord(b));
   $('list').innerHTML=keys.map(k=>{
-    const items=groups[k].slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-    return `<div class="group"><h2>${k} <span>${items.length}</span></h2><div class="card">`+
-      items.map(r=>`<div class="row"><div class="rmain"><div class="rname">${r.name}</div>
-        <div class="rmeta">${fmtDate(r.date)}${r.size?" · "+Math.round(r.size/1024)+" KB":""}</div></div>
-        <button class="dlbtn" data-url="${r.url}" data-name="${r.name}">Download</button></div>`).join('')+
-      `</div></div>`;
+    const items=groups[k].slice().sort(byDateDesc);
+    const open=!!f;   // when searching, open matching sections automatically
+    return `<div class="group${open?' open':''}"><button class="ghead" type="button">
+      <span class="gcaret">▸</span><span class="gname">${k}</span>
+      <span class="gmeta">${items.length} report${items.length===1?'':'s'}${items[0]?' · latest '+fmtDate(items[0].date):''}</span></button>
+      <div class="gbody">${bodyHtml(items)}</div></div>`;
   }).join('');
+  $('list').querySelectorAll('.ghead').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('open'));
   $('list').querySelectorAll('.dlbtn').forEach(b=>b.onclick=()=>dl(b.dataset.url,b.dataset.name,b));
 }
 
+$('toggleall').onclick=()=>{
+  const groups=[...document.querySelectorAll('.group')];
+  const anyClosed=groups.some(g=>!g.classList.contains('open'));
+  groups.forEach(g=>g.classList.toggle('open',anyClosed));
+  $('toggleall').textContent=anyClosed?"Collapse all":"Expand all";
+};
+
 async function load(){
   try{
-    const r=await fetch(MANIFEST); if(!r.ok) throw new Error(r.status);
-    const j=await r.json(); ALL=j.reports||[];
-    if(!ALL.length){ $('list').innerHTML='<div class="state">No reports published yet — the library refreshes automatically as reports come in.</div>'; $('count').textContent=""; return; }
+    const r=await fetch(MANIFEST);if(!r.ok)throw new Error(r.status);
+    const j=await r.json();ALL=j.reports||[];
+    if(!ALL.length){$('list').innerHTML='<div class="state">No reports published yet — the library refreshes automatically as reports come in.</div>';$('count').textContent="";return;}
     render("");
-  }catch(e){ $('list').innerHTML='<div class="state">Could not load the report library ('+(e.message||e)+'). It refreshes hourly — try again shortly.</div>'; }
+  }catch(e){$('list').innerHTML='<div class="state">Could not load the report library ('+(e.message||e)+'). It refreshes hourly — try again shortly.</div>';}
 }
 $('search').addEventListener('input',e=>render(e.target.value));
 load();
