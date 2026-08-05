@@ -65,7 +65,8 @@
 const $=id=>document.getElementById(id);
 const MANIFEST="https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports-manifest.json?t="+Date.now();
 const ORDER=["Monthly compliance reports","Weekly checks","Quarterly service","Six-monthly condenser wash",
-  "F-Gas leak testing","Annual safety cut-outs","Temperature probes","A&B leak detection","Oil analysis","Fault reports","Other reports"];
+  "F-Gas leak testing","Annual safety cut-outs","Temperature probes","A&B leak detection","Oil analysis",
+  "Fixed wiring (EICR)","Emergency lighting","Fire alarm services","Fault reports","Other reports"];
 let ALL=[];
 
 function ord(t){const i=ORDER.indexOf(t);return i<0?99:i;}

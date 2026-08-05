@@ -50,6 +50,9 @@ function classify(name) {
   if (n.includes("probe")) return "Temperature probes";
   if (n.includes("leakdetection") || n.includes("leak_detection") || n.includes("ableak")) return "A&B leak detection";
   if (n.includes("oil")) return "Oil analysis";
+  if (n.includes("eicr") || n.includes("fixedwiring") || n.includes("fixed_wiring")) return "Fixed wiring (EICR)";
+  if (n.includes("emergency") || n.includes("emerglight")) return "Emergency lighting";
+  if (n.includes("firealarm") || n.includes("fire_alarm") || n.includes("fire alarm")) return "Fire alarm services";
   if (n.startsWith("fault_")) return "Fault reports";
   if (n.startsWith("border_compliance") || n.includes("compliance")) return "Monthly compliance reports";
   return "Other reports";

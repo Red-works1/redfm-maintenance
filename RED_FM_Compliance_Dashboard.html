@@ -115,6 +115,12 @@
     </div>
     <div class="card" id="regimes"></div>
 
+    <div class="sechead">
+      <h2>Building compliance — electrical &amp; fire</h2>
+      <div class="legend"><span>Managed by RED FM · separate from Coolstream</span><span class="g">● in date</span><span class="a">● due soon</span><span class="r">● overdue</span></div>
+    </div>
+    <div class="card" id="compliance"></div>
+
     <div class="sechead"><h2>Fault remediation tracker</h2></div>
     <div class="card">
       <div class="pipe" id="pipe"></div>
@@ -206,6 +212,46 @@ function computeRegime(reg,visits,readings,catCount){
   return {reg,done,expected,pct,pace,rag,status,detail,periodLabel:label};
 }
 
+// ---- Building compliance (electrical & fire) — RED FM managed, separate from Coolstream ----
+const FM_COMPLIANCE=[
+ {key:"Fixed wiring",       name:"Fixed wiring test (EICR)", chip:"Annual · EICR",  provider:"Logical Heating Ltd", freq:"annual", cert:["eicr","fixedwiring","fixed_wiring","fixed wiring"]},
+ {key:"Emergency lighting", name:"Emergency lighting",       chip:"Annual · cert",  provider:"Logical Heating Ltd", freq:"annual", cert:["emergencylighting","emergency_lighting","emergency lighting","emerg"]},
+ {key:"Fire alarm",         name:"Fire alarm service",       chip:"Six-monthly",    provider:"Lightning Fire",      freq:"half",   cert:["firealarm","fire_alarm","fire alarm"]}
+];
+let FM_MANIFEST=null;
+async function loadManifest(){try{const j=await (await fetch('https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports-manifest.json?t='+Date.now())).json();FM_MANIFEST=j.reports||[];}catch(e){FM_MANIFEST=[];}}
+function addMonths(d,n){const x=new Date(d);x.setMonth(x.getMonth()+n);return x;}
+function fmtD(d){return d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';}
+function certFor(item){
+  if(!FM_MANIFEST)return null;
+  const hits=FM_MANIFEST.filter(r=>{const n=(r.name||'').toLowerCase();return item.cert.some(k=>n.includes(k));});
+  hits.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  return hits[0]||null;
+}
+function computeCompliance(visits){
+  return FM_COMPLIANCE.map(item=>{
+    const mine=(visits||[]).filter(v=>v.ServiceType===item.key && v.VisitDate).sort((a,b)=>new Date(b.VisitDate)-new Date(a.VisitDate));
+    const last=mine[0]||null;
+    const lastDate=last?new Date(last.VisitDate):null;
+    const provider=(last&&last.Engineer)||item.provider;
+    const nextDue=lastDate?addMonths(lastDate,item.freq==='annual'?12:6):null;
+    let rag,status;
+    if(!lastDate){rag='a';status='Awaiting first upload';}
+    else{const days=Math.round((nextDue-now)/86400000);
+      if(days<0){rag='r';status='Overdue';}else if(days<=60){rag='a';status='Due soon';}else{rag='g';status='In date';}}
+    return {item,provider,lastDate,nextDue,rag,status,cert:certFor(item)};
+  });
+}
+function renderCompliance(visits){
+  const rows=computeCompliance(visits);
+  $('compliance').innerHTML=rows.map(r=>`
+    <div class="reg">
+      <div><div class="rname">${r.item.name}</div><div class="chip">${r.item.chip}</div></div>
+      <div class="rsub">Provider: <b style="color:var(--ink)">${r.provider}</b> · not Coolstream<br>Last done: ${fmtD(r.lastDate)} &nbsp;·&nbsp; Next due: ${fmtD(r.nextDue)}${r.cert?` &nbsp;·&nbsp; <a href="${r.cert.url}" target="_blank" rel="noopener" style="color:var(--red);font-weight:700;text-decoration:none;">Certificate ↓</a>`:''}</div>
+      <div class="rright"><div class="badge ${r.rag}">${r.status.toUpperCase()}</div></div>
+    </div>`).join('');
+}
+
 const EDITABLE=true; // live signed-in dashboard; the read-only published view sets this false
 const STAGES=["Call out","Reported","Reported and fixed","Awaiting our quote","Awaiting sign-off","Approved","Closed"];
 const SEVERITIES=["Low","Medium","High"];
@@ -292,7 +338,9 @@ async function load(){
     $('loadstate').style.display='none';$('board').style.display='block';
     $('signin').style.display='none';$('genpdf').disabled=false;
     $('status').textContent='Live · '+visits.length+' visits · '+faults.length+' faults loaded';
+    await loadManifest();
     render();
+    renderCompliance(DATA.visits);
   }catch(e){$('status').textContent='Could not load: '+(e.message||e);}
 }
 
