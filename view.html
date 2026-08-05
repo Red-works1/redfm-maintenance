@@ -230,20 +230,29 @@ function computeCompliance(visits){
     const lastDate=last?new Date(last.VisitDate):null;
     const provider=(last&&last.Engineer)||item.provider;
     const nextDue=lastDate?addMonths(lastDate,item.freq==='annual'?12:6):null;
-    let rag,status;
-    if(!lastDate){rag='a';status='Awaiting first upload';}
-    else{const days=Math.round((nextDue-now)/86400000);
-      if(days<0){rag='r';status='Overdue';}else if(days<=60){rag='a';status='Due soon';}else{rag='g';status='In date';}}
-    return {item,provider,lastDate,nextDue,rag,status,cert:certFor(item)};
+    let rag,status,pct=0,pace=0;
+    if(!lastDate){rag='a';status='Awaiting first upload';pct=0;pace=0;}
+    else{
+      const span=nextDue-lastDate;
+      pace=Math.max(0,Math.min(100,Math.round((now-lastDate)/span*100)));
+      const days=Math.round((nextDue-now)/86400000);
+      if(days<0){rag='r';status='Overdue';pct=0;pace=100;}
+      else if(days<=60){rag='a';status='Due soon';pct=100;}
+      else{rag='g';status='In date';pct=100;}
+    }
+    return {item,provider,lastDate,nextDue,rag,status,pct,pace,cert:certFor(item)};
   });
 }
 function renderCompliance(visits){
   const rows=computeCompliance(visits);
   $('compliance').innerHTML=rows.map(r=>`
     <div class="reg">
-      <div><div class="rname">${r.item.name}</div><div class="chip">${r.item.chip}</div></div>
-      <div class="rsub">Provider: <b style="color:var(--ink)">${r.provider}</b> · not Coolstream<br>Last done: ${fmtD(r.lastDate)} &nbsp;·&nbsp; Next due: ${fmtD(r.nextDue)}${r.cert?` &nbsp;·&nbsp; <a href="${r.cert.url}" target="_blank" rel="noopener" style="color:var(--red);font-weight:700;text-decoration:none;">Certificate ↓</a>`:''}</div>
-      <div class="rright"><div class="badge ${r.rag}">${r.status.toUpperCase()}</div></div>
+      <div><div class="rname">${r.item.name}</div><div class="chip">${r.item.chip}</div>
+        <div class="rsub">${r.provider} · not Coolstream · done ${fmtD(r.lastDate)} · due ${fmtD(r.nextDue)}${r.cert?` · <a href="${r.cert.url}" target="_blank" rel="noopener" style="color:var(--red);font-weight:700;text-decoration:none;">Certificate ↓</a>`:''}</div></div>
+      <div class="barwrap"><div class="track"><div class="fill ${r.rag}" style="width:${r.pct}%"></div></div>
+        <div class="marker" style="left:${Math.min(99,r.pace)}%"></div>
+        <div class="barfoot"><span>Done this period: <b style="color:var(--ink)">${r.pct}%</b></span><span>Plan to date: ${r.pace}%</span></div></div>
+      <div class="rright"><div class="pct">${r.pct}%<small>this period</small></div><div class="badge ${r.rag}">${r.status.toUpperCase()}</div></div>
     </div>`).join('');
 }
 
