@@ -209,48 +209,56 @@ $('finish').addEventListener('click',async()=>{
     $('finish').textContent='Saving…';
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
-      const chambers=[...new Set(out.map(e=>e.chamber))].join(', ');
+      // Each dashboard regime (A&B / C / D&E / E) must be its OWN ServiceVisit, else only the first shows.
       const qType=c=>c==='C'?'Quarterly C':c==='D'?'Quarterly D&E':c==='E'?'Quarterly E':'Quarterly A&B';
-      const visitFields={Title:r.ref,ServiceType:qType(out[0].chamber),
-        PlantSection:chambers,Engineer:r.engineer,VisitDate:r.visitDate,
-        Status:"Partially completed",FaultFound:issues>0?"Yes":"No",Notes:r.comments};
-      const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),
-        ReadingKey:slug(e.mode+' '+e.section+' '+e.row),
-        Asset:(e.chamber+' '+e.col).trim(),Value:String(e.value),Unit:'',
-        OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
-      await REDFM.saveVisit(visitFields,readingRows);
-      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
-      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
-      // generate + file a branded PDF copy in the Reports library (one grid table per filled section)
-      try{
-        // cumulative period report: every result recorded THIS quarter, each tagged with the day it was taken.
-        // merges what was just entered (dated today) with everything already on file this period (doneMap).
-        const cell=(ch,md,sec,row,c,ci,si,ri)=>{
-          const sv=state[`${ch}|${md}|${si}|${ri}|${ci}`];
-          if(sv!=null&&sv!==''){const v=sv==='ok'?'OK':sv==='no'?'FAULT':sv;return v+' ('+ddmm(r.visitDate)+')';}
-          const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+c).trim()];
-          if(dn){const v=dn.value==='ISSUE'?'FAULT':dn.value;return v+' ('+ddmm(dn.date)+')';}
-          return '';
-        };
-        const grid=[];
-        Object.keys(CHAMBERS).forEach(ch=>['readings','checks'].forEach(md=>{
-          CHAMBERS[ch][md].forEach((sec,si)=>{
-            const rows=[];
-            sec.rows.forEach((row,ri)=>{
-              const vals=sec.cols.map((c,ci)=>cell(ch,md,sec,row,c,ci,si,ri));
-              if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
+      const suffix=t=>t==='Quarterly C'?'C':t==='Quarterly D&E'?'DE':t==='Quarterly E'?'E':'AB';
+      // group everything entered by regime so each becomes a separate visit + report
+      const groups={};out.forEach(e=>{const t=qType(e.chamber);(groups[t]=groups[t]||[]).push(e);});
+      const cell=(ch,md,sec,row,c,ci,si,ri)=>{  // cumulative: value + the day it was taken
+        const sv=state[`${ch}|${md}|${si}|${ri}|${ci}`];
+        if(sv!=null&&sv!==''){const v=sv==='ok'?'OK':sv==='no'?'FAULT':sv;return v+' ('+ddmm(r.visitDate)+')';}
+        const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+c).trim()];
+        if(dn){const v=dn.value==='ISSUE'?'FAULT':dn.value;return v+' ('+ddmm(dn.date)+')';}
+        return '';
+      };
+      let totalReadings=0;const savedTypes=[];
+      for(const t of Object.keys(groups)){
+        const g=groups[t];
+        const gref=r.ref+'-'+suffix(t);
+        const gChambers=[...new Set(g.map(e=>e.chamber))];
+        const gIssues=g.filter(e=>e.value==='ISSUE').length;
+        const visitFields={Title:gref,ServiceType:t,PlantSection:gChambers.join(', '),
+          Engineer:r.engineer,VisitDate:r.visitDate,Status:"Partially completed",
+          FaultFound:gIssues>0?"Yes":"No",Notes:r.comments};
+        const readingRows=g.map((e,i)=>({Title:gref+'-'+(i+1),
+          ReadingKey:slug(e.mode+' '+e.section+' '+e.row),
+          Asset:(e.chamber+' '+e.col).trim(),Value:String(e.value),Unit:'',
+          OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
+        await REDFM.saveVisit(visitFields,readingRows);
+        totalReadings+=readingRows.length;savedTypes.push(t);
+        // branded cumulative PDF for THIS regime's chambers only
+        try{
+          const grid=[];
+          gChambers.forEach(ch=>['readings','checks'].forEach(md=>{
+            CHAMBERS[ch][md].forEach((sec,si)=>{
+              const rows=[];
+              sec.rows.forEach((row,ri)=>{
+                const vals=sec.cols.map((c,ci)=>cell(ch,md,sec,row,c,ci,si,ri));
+                if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
+              });
+              if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
             });
-            if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
-          });
-        }));
-        const blob=REDFM.buildReportPdf({title:'Quarterly service report — '+(periodLabel||'this quarter'),
-          subtitle:'Border Holdings, Avonmouth · cumulative — dates show when each result was taken',
-          ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:'A–E',
-          extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
-        const fname='Quarterly_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+r.ref+'.pdf';
-        await REDFM.uploadReportPdf(fname,blob);
-        saveMsg+=' · cumulative report filed';
-      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+          }));
+          const blob=REDFM.buildReportPdf({title:t+' report — '+(periodLabel||'this quarter'),
+            subtitle:'Border Holdings, Avonmouth · cumulative — dates show when each result was taken',
+            ref:gref,date:r.visitDate,engineer:r.engineer,plant:gChambers.join(', '),
+            extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
+          const fname='Quarterly_'+suffix(t)+'_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+gref+'.pdf';
+          await REDFM.uploadReportPdf(fname,blob);
+        }catch(pe){/* this regime's PDF skipped; data still saved */}
+      }
+      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
+      saveMsg='Saved to SharePoint ✓ — '+totalReadings+' readings across '+savedTypes.length+' report(s): '+savedTypes.join(', ');
     }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
   }
 
