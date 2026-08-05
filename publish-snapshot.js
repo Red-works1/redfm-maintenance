@@ -113,6 +113,17 @@ async function syncLib(sid, title) {
     try { reports = reports.concat(await syncLib(sid, lib)); }
     catch (e) { console.error("sync " + lib + " failed: " + e.message); }
   }
+  // Also list any PDFs committed straight into reports/ (e.g. building-compliance certs
+  // seeded into the repo) that aren't already sourced from a SharePoint library.
+  try {
+    const seen = new Set(reports.map(r => r.name));
+    for (const fn of fs.readdirSync("reports")) {
+      if (!/\.pdf$/i.test(fn) || seen.has(fn)) continue;
+      const st = fs.statSync("reports/" + fn);
+      reports.push({ name: fn, type: classify(fn), date: st.mtime.toISOString(), size: st.size, url: RAW_BASE + encodeURIComponent(fn) });
+      console.log("included committed report: " + fn);
+    }
+  } catch (e) { console.error("local reports scan failed: " + e.message); }
   reports.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   fs.writeFileSync("reports-manifest.json", JSON.stringify({ generatedAt: new Date().toISOString(), reports }));
   console.log(`reports library: ${reports.length} PDFs total`);

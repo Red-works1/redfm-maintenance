@@ -22,6 +22,8 @@
   .toolrow{margin-top:10px;font-size:13px;}
   .toolrow a{color:var(--red);font-weight:700;text-decoration:none;cursor:pointer;}
   .state{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px;text-align:center;margin-top:18px;color:var(--grey);}
+  .superhead{font-size:13px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--red);margin:26px 4px 2px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--red);padding-bottom:6px;}
+  .superhead span{color:var(--grey);font-size:12px;font-weight:700;}
   .group{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
   .ghead{width:100%;display:flex;align-items:center;gap:12px;padding:16px 18px;background:#fff;border:0;cursor:pointer;text-align:left;font:inherit;}
   .ghead:hover{background:#fafafa;}
@@ -67,6 +69,12 @@ const MANIFEST="https://raw.githubusercontent.com/Red-works1/redfm-maintenance/m
 const ORDER=["Monthly compliance reports","Weekly checks","Quarterly service","Six-monthly condenser wash",
   "F-Gas leak testing","Annual safety cut-outs","Temperature probes","A&B leak detection","Oil analysis",
   "Fixed wiring (EICR)","Emergency lighting","Fire alarm services","Fault reports","Other reports"];
+// Top-level split so certificates are easy to find, separate from Coolstream's refrigeration reports.
+const BUILDING=new Set(["Fixed wiring (EICR)","Emergency lighting","Fire alarm services"]);
+const SUPER=[
+  {name:"Refrigeration maintenance", match:t=>!BUILDING.has(t)},
+  {name:"Building compliance — electrical & fire", match:t=>BUILDING.has(t)}
+];
 let ALL=[];
 
 function ord(t){const i=ORDER.indexOf(t);return i<0?99:i;}
@@ -97,20 +105,26 @@ function bodyHtml(items){
   return items.map(rowHtml).join('');
 }
 
+function accordion(k,items,open){
+  const s=items.slice().sort(byDateDesc);
+  return `<div class="group${open?' open':''}"><button class="ghead" type="button">
+    <span class="gcaret">▸</span><span class="gname">${k}</span>
+    <span class="gmeta">${s.length} report${s.length===1?'':'s'}${s[0]?' · latest '+fmtDate(s[0].date):''}</span></button>
+    <div class="gbody">${bodyHtml(s)}</div></div>`;
+}
 function render(filter){
   const f=(filter||"").trim().toLowerCase();
   const rows=ALL.filter(r=>!f || (r.name+" "+r.type+" "+fmtDate(r.date)).toLowerCase().includes(f));
   $('count').textContent=rows.length+(rows.length===1?" report":" reports");
   if(!rows.length){$('list').innerHTML='<div class="state">No reports match your search.</div>';return;}
   const groups={};rows.forEach(r=>{(groups[r.type]=groups[r.type]||[]).push(r);});
-  const keys=Object.keys(groups).sort((a,b)=>ord(a)-ord(b));
-  $('list').innerHTML=keys.map(k=>{
-    const items=groups[k].slice().sort(byDateDesc);
-    const open=!!f;   // when searching, open matching sections automatically
-    return `<div class="group${open?' open':''}"><button class="ghead" type="button">
-      <span class="gcaret">▸</span><span class="gname">${k}</span>
-      <span class="gmeta">${items.length} report${items.length===1?'':'s'}${items[0]?' · latest '+fmtDate(items[0].date):''}</span></button>
-      <div class="gbody">${bodyHtml(items)}</div></div>`;
+  const open=!!f;   // when searching, open matching sections automatically
+  $('list').innerHTML=SUPER.map(sup=>{
+    const keys=Object.keys(groups).filter(sup.match).sort((a,b)=>ord(a)-ord(b));
+    if(!keys.length)return '';
+    const total=keys.reduce((n,k)=>n+groups[k].length,0);
+    return `<div class="superhead">${sup.name}<span>${total} report${total===1?'':'s'}</span></div>`
+      +keys.map(k=>accordion(k,groups[k],open)).join('');
   }).join('');
   $('list').querySelectorAll('.ghead').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('open'));
   $('list').querySelectorAll('.dlbtn').forEach(b=>b.onclick=()=>dl(b.dataset.url,b.dataset.name,b));
