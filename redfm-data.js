@@ -351,14 +351,16 @@ window.REDFM = (function () {
           startY: y + 6, margin: { left: 40, right: 40 },
           head: [["Ref", "Asset", "Location / item", "Severity", "Action taken"]],
           body: faults.map(f => [
-            pdfSafe(f.ref || ""), pdfSafe(f.assetId || ""), pdfSafe(f.line || ""),
-            pdfSafe(f.severity || ""), pdfSafe(f.action || "")
+            pdfSafe(f.ref || "") + (f.repeatCount > 1 ? " (x" + f.repeatCount + ")" : ""),
+            pdfSafe(f.assetId || ""), pdfSafe(f.line || ""),
+            pdfSafe(f.severity || "") + (f.repeatCount >= 3 ? "\nESCALATED" : ""),
+            pdfSafe(f.action || "")
           ]),
           styles: { fontSize: 8, cellPadding: 3.5, overflow: "linebreak", lineColor: [225, 225, 228], lineWidth: 0.5 },
           headStyles: { fillColor: RED, textColor: 255, fontSize: 8 },
           columnStyles: {
             0: { cellWidth: 54, fontStyle: "bold" }, 1: { cellWidth: 60, fontStyle: "bold" },
-            3: { cellWidth: 50 }
+            3: { cellWidth: 62 }
           },
           didParseCell: d => {
             if (d.section !== "body" || d.column.index !== 3) return;
@@ -369,6 +371,33 @@ window.REDFM = (function () {
         });
         y = doc.lastAutoTable.finalY + 16;
       }
+      // Items 4 + 5 — the reverse sign-off, in the audit trail rather than just the tracker
+      var reviewed = meta.reviewed || [];
+      if (reviewed.length) {
+        if (y > H - 120) { doc.addPage(); y = 56; }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(10.5); doc.setTextColor.apply(doc, RED);
+        doc.text("Open faults reviewed on this visit (" + reviewed.length + ")", 40, y);
+        doc.autoTable({
+          startY: y + 6, margin: { left: 40, right: 40 },
+          head: [["Ref", "Asset", "Open (days)", "Position", "Evidence / reason"]],
+          body: reviewed.map(function (r) {
+            return [pdfSafe(r.ref || ""), pdfSafe(r.assetId || ""), String(r.ageDays == null ? "" : r.ageDays),
+              r.outcome === "fixed" ? "FIXED " + pdfSafe(r.fixedDate || "") : "STILL OPEN",
+              pdfSafe(r.note || "")];
+          }),
+          styles: { fontSize: 8, cellPadding: 3.5, overflow: "linebreak", lineColor: [225, 225, 228], lineWidth: 0.5 },
+          headStyles: { fillColor: RED, textColor: 255, fontSize: 8 },
+          columnStyles: { 0: { cellWidth: 54, fontStyle: "bold" }, 1: { cellWidth: 60, fontStyle: "bold" }, 2: { cellWidth: 58 }, 3: { cellWidth: 74 } },
+          didParseCell: function (d) {
+            if (d.section !== "body" || d.column.index !== 3) return;
+            var v = String(d.cell.raw || "");
+            if (/^FIXED/.test(v)) { d.cell.styles.textColor = [26, 127, 55]; d.cell.styles.fontStyle = "bold"; }
+            else { d.cell.styles.textColor = [185, 119, 11]; d.cell.styles.fontStyle = "bold"; }
+          }
+        });
+        y = doc.lastAutoTable.finalY + 16;
+      }
+
       if (meta.withdrawn && meta.withdrawn.length) {
         doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(95, 95, 102);
         doc.text(meta.withdrawn.length + " flag(s) withdrawn as ticked in error: " +

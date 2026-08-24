@@ -72,6 +72,30 @@
   #incompletebox tr.inc-r td{background:#fdecee;}
   #incompletebox .age{font-weight:800;color:var(--amber);}
   #incompletebox tr.inc-r .age{color:var(--red);}
+  #latebox tr.late-r td{background:#fdecee;}
+  #latebox .hrs{font-weight:800;color:var(--red);}
+  #faulttable tr.rep-a td{background:#fdf3e3;}
+  #faulttable tr.rep-r td{background:#fdecee;}
+  #faulttable .flags{font-weight:800;color:var(--amber);}
+  #faulttable tr.rep-r .flags{color:var(--red);}
+  #faulttable .esc{display:inline-block;background:#fdecee;color:var(--red);font-size:10px;font-weight:800;letter-spacing:.3px;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
+  #faulttable th,#faulttable td{padding-left:11px;padding-right:11px;}   /* 13 columns now — tighten slightly */
+  #faulttable{overflow-x:auto;}                 /* 13 columns: scroll rather than clip inside the card */
+  #faulttable td.closcell{min-width:140px;max-width:200px;}
+  .open-a{font-weight:800;color:var(--amber);}
+  .open-r{font-weight:800;color:var(--red);}
+  .assetlink,.notelink{color:var(--red);font-weight:700;text-decoration:none;border-bottom:1px dotted var(--red);cursor:pointer;}
+  .clos{white-space:pre-line;}
+  .modalback{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto;z-index:60;}
+  .modal{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 6px 26px rgba(0,0,0,.18);max-width:900px;width:100%;}
+  .modalhead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:16px 20px;border-bottom:1px solid var(--line);}
+  .modalhead h3{margin:0;font-size:18px;font-weight:800;}
+  .modalsub{font-size:12px;color:var(--grey);margin-top:4px;}
+  .modalclose{background:#fff;border:1.5px solid var(--line);border-radius:9px;font-size:15px;font-weight:800;line-height:1;padding:8px 12px;cursor:pointer;color:var(--ink);}
+  .modalsec{padding:16px 20px 6px;font-size:13px;font-weight:800;}
+  .modalsec span{color:var(--grey);font-weight:600;}
+  .modalnote{padding:10px 20px 16px;font-size:12px;color:var(--grey);}
+  .tblscroll{overflow-x:auto;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
@@ -82,13 +106,22 @@
   footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
   @media print{body{background:#fff;}.toolbar,.hubbtn{display:none;}.metric,.card{break-inside:avoid;}}
   @media(max-width:640px){
-    #faulttable table,#faulttable tbody,#faulttable tr,#faulttable td,#incompletebox table,#incompletebox tbody,#incompletebox tr,#incompletebox td{display:block;width:auto;}
-    #faulttable thead,#incompletebox thead{display:none;}
-    #faulttable tr,#incompletebox tr{border:1px solid var(--line);border-radius:12px;margin:0 0 14px;padding:2px 0;background:#fff;}
-    #faulttable td,#incompletebox td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
-    #faulttable td:before,#incompletebox td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
+    #faulttable table,#faulttable tbody,#faulttable tr,#faulttable td,#incompletebox table,#incompletebox tbody,#incompletebox tr,#incompletebox td,#latebox table,#latebox tbody,#latebox tr,#latebox td{display:block;width:auto;}
+    #faulttable thead,#incompletebox thead,#latebox thead{display:none;}
+    #faulttable tr,#incompletebox tr,#latebox tr{border:1px solid var(--line);border-radius:12px;margin:0 0 14px;padding:2px 0;background:#fff;}
+    #faulttable td,#incompletebox td,#latebox td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
+    #faulttable td:before,#incompletebox td:before,#latebox td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
     #faulttable td.wide{display:block;text-align:left;}
     #faulttable td.wide:before{display:block;margin-bottom:4px;}
+    #faulttable td.closcell{max-width:none;}
+    .modalback{padding:12px 8px;}
+    .modalbody table,.modalbody tbody,.modalbody tr,.modalbody td{display:block;width:auto;}
+    .modalbody thead{display:none;}
+    .modalbody tr{border:1px solid var(--line);border-radius:12px;margin:0 16px 12px;padding:2px 0;}
+    .modalbody td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
+    .modalbody td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
+    .modalbody td.wide{display:block;text-align:left;}
+    .modalbody td.wide:before{display:block;margin-bottom:4px;}
     #faulttable td.upd{display:block;text-align:left;background:#fafafa;border-bottom:0;border-radius:10px;margin:8px;padding:12px;}
     #faulttable td.upd:before{content:"Update this fault";display:block;margin-bottom:10px;color:var(--ink);font-size:12px;}
     #faulttable td.upd select,#faulttable td.upd input{width:100%!important;margin:0 0 8px 0!important;font-size:15px!important;padding:11px!important;box-sizing:border-box;}
@@ -121,6 +154,12 @@
     <div class="card" id="incompletebox"></div>
 
     <div class="sechead">
+      <h2>Late submissions (clause 4.1)</h2>
+      <div class="legend"><span class="r">● report filed more than 48 hours after the visit</span></div>
+    </div>
+    <div class="card" id="latebox"></div>
+
+    <div class="sechead">
       <h2>Refrigeration maintenance — regime progress</h2>
       <div class="legend"><span class="g">● on track</span><span class="a">● in progress / due soon</span><span class="r">● behind</span><span>▼ where the plan should be today</span></div>
     </div>
@@ -149,7 +188,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=12"></script>
+<script src="redfm-data.js?v=13"></script>
 <script>
 const $=id=>document.getElementById(id);
 const now=new Date();
@@ -185,6 +224,36 @@ function wedsInPeriod(s,e){let c=0;const d=new Date(s);while(d<e){if(d.getDay()=
 function daysBetween(a,b){return Math.max(0,Math.round((b-new Date(a))/86400000));}
 function ageDays(ds){if(!ds)return 0;const d=new Date(ds);if(isNaN(d))return 0;return Math.max(0,Math.floor((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/86400000));} // whole days, today minus VisitDate
 
+// ---- Phase 2 shared helpers (items 6, 7, 11, 14) ---------------------------------
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function dmy(d){if(!d)return '';const x=new Date(d);return isNaN(x)?'':x.toLocaleDateString('en-GB');}
+// item 6 — RepeatCount is empty on older records; anything unusable counts as a single flag
+function repeatCount(f){const n=Number(f&&f.RepeatCount);return isFinite(n)&&n>=1?Math.floor(n):1;}
+// item 14 — faults store AssetId "A1", readings store Asset "A & B A1"; strip the variant prefix
+function normaliseAsset(s){
+  s=String(s||'').trim();
+  var m=/^(A\s*&\s*B|C\s*&\s*D|[A-E])\s+(.+)$/i.exec(s);
+  var rest=m?m[2]:s;
+  if(/^(kwhr|\u00b0c)$/i.test(rest))return s;   // a unit, not an asset
+  return rest;
+}
+function assetKey(s){return normaliseAsset(s).toLowerCase();}
+function outOfRange(r){const v=r&&r.OutOfRange;return v===true||v===1||/^(true|yes|y|1)$/i.test(String(v==null?'':v));}
+// item 5 — closure evidence Border is allowed to see: fix dates, evidence notes and still-open reasons
+function closureText(f){
+  const p=[];
+  if(f&&f.ClosedDate)p.push('Closed '+dmy(f.ClosedDate)+(f.ClosedBy?' by '+f.ClosedBy:''));
+  if(f&&f.ClosureNote)p.push(String(f.ClosureNote).trim());
+  return p.join('\n');
+}
+function closureCell(f){
+  const t=closureText(f);if(!t)return '\u2014';
+  const flat=t.replace(/\s+/g,' ').trim(),cut=flat.length>90;
+  return '<span class="clos">'+esc(cut?flat.slice(0,90)+'\u2026':flat)+'</span>'+(cut?' <a href="#" class="notelink" data-fault="'+esc(faultKey(f))+'">full note</a>':'');
+}
+function faultKey(f){return String((f&&(f._id||f.Title||f.FaultRef))||'');}
+function findFault(k){k=String(k||'');return ((DATA&&DATA.faults)||[]).filter(f=>faultKey(f)===k)[0]||null;}
+
 let DATA=null;
 
 // ---- Incomplete submissions (fault-capture phase) --------------------------------
@@ -200,6 +269,22 @@ const INCOMPLETE_STATUSES=[INCOMPLETE_FAULT_STATUS,INCOMPLETE_DOC_STATUS];
 // uploaded counts towards any compliance figure.
 function countsAsComplete(v){return INCOMPLETE_STATUSES.indexOf(((v&&v.Status)||""))<0;}
 function incompleteVisits(visits){return (visits||[]).filter(v=>INCOMPLETE_STATUSES.indexOf(v.Status||"")!==-1).slice().sort((a,b)=>new Date(a.VisitDate||0)-new Date(b.VisitDate||0));}
+
+// ---- Item 11 — clause 4.1: the report must be submitted within 48 hours of the visit ----
+// hours = the SharePoint Created stamp on the visit record minus VisitDate. Older records
+// without a Created stamp cannot be judged, so they are simply not listed.
+const LATE_HOURS=48;
+function submissionHours(v){
+  if(!v||!v.VisitDate||!v.Created)return null;
+  const vd=new Date(v.VisitDate),cr=new Date(v.Created);
+  if(isNaN(vd)||isNaN(cr))return null;
+  return (cr-vd)/3600000;
+}
+function lateVisits(visits){
+  const {s,e}=periodRange("month");   // current period only
+  return (visits||[]).filter(v=>inRange(v.VisitDate,s,e)).map(v=>({v,h:submissionHours(v)}))
+    .filter(x=>x.h!=null&&x.h>LATE_HOURS).sort((a,b)=>b.h-a.h);
+}
 
 function computeRegime(reg,visits,readings,catCount){
   visits=(visits||[]).filter(countsAsComplete); // a visit still awaiting its fault detail is not filed — never count it as done
@@ -326,6 +411,59 @@ function renderIncomplete(visits){
   $('incompletebox').innerHTML=`<table><thead><tr><th>Ref</th><th>Date</th><th>Service</th><th>Plant / section</th><th>Engineer</th><th>Outstanding</th><th>Ageing</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+function renderLate(visits){
+  const late=lateVisits(visits);
+  if(!late.length){$('latebox').innerHTML='<div class="empty ok">\u2713 All reports submitted within 48 hours.</div>';return;}
+  const rows=late.map(x=>`<tr class="late-r"><td data-label="Ref"><b>${esc(x.v.Title||'')}</b></td>
+      <td data-label="Date">${dmy(x.v.VisitDate)}</td>
+      <td data-label="Service">${esc(x.v.ServiceType||'')}</td>
+      <td data-label="Engineer">${esc(x.v.Engineer||'')}</td>
+      <td data-label="Hours taken"><span class="hrs">${Math.round(x.h)} hours</span></td></tr>`).join('');
+  $('latebox').innerHTML=`<table><thead><tr><th>Ref</th><th>Date</th><th>Service</th><th>Engineer</th><th>Hours taken</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ---- Item 14 — per-asset history modal (every fault and every reading for one asset) ----
+const ASSET_READING_CAP=100;
+let MODAL=null;
+function modalKey(e){if(e.key==='Escape'||e.key==='Esc')closeModal();}
+function closeModal(){if(!MODAL)return;MODAL.remove();MODAL=null;document.removeEventListener('keydown',modalKey);}
+function openModal(title,sub,body){
+  closeModal();
+  const b=document.createElement('div');b.className='modalback';
+  b.innerHTML=`<div class="modal"><div class="modalhead"><div><h3>${title}</h3><div class="modalsub">${sub}</div></div><button type="button" class="modalclose" aria-label="Close">\u2715 Close</button></div><div class="modalbody">${body}</div></div>`;
+  b.addEventListener('click',e=>{if(e.target===b)closeModal();});          // click outside
+  b.querySelector('.modalclose').addEventListener('click',closeModal);
+  document.body.appendChild(b);MODAL=b;document.addEventListener('keydown',modalKey);
+}
+function assetHistory(code){
+  const k=assetKey(code);
+  const faults=((DATA&&DATA.faults)||[]).filter(f=>f.AssetId&&assetKey(f.AssetId)===k)
+    .slice().sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
+  const vd={};((DATA&&DATA.visits)||[]).forEach(v=>{if(v.Title)vd[v.Title]=v.VisitDate||'';});
+  const readings=((DATA&&DATA.readings)||[]).filter(r=>r.Asset&&assetKey(r.Asset)===k)
+    .map(r=>({r,d:vd[r.VisitRef]||''})).sort((a,b)=>new Date(b.d||0)-new Date(a.d||0));
+  return {faults,readings};
+}
+function openAssetModal(code){
+  const h=assetHistory(code);
+  const fb=h.faults.length?'<div class="tblscroll"><table><thead><tr><th>Ref</th><th>Date</th><th>Severity</th><th>Stage</th><th>Fault</th><th>Flags</th><th>Closure evidence</th></tr></thead><tbody>'+
+    h.faults.map(f=>{const rc=repeatCount(f),t=closureText(f);
+      return `<tr><td data-label="Ref"><b>${esc(f.Title||f.FaultRef||'')}</b></td><td data-label="Date">${dmy(f.FaultDate)}</td><td data-label="Severity"><span class="sev ${esc(f.Severity||'Low')}">${esc(f.Severity||'')}</span></td><td data-label="Stage">${esc(STAGE_LABEL[f.Stage||'Reported']||f.Stage||'')}</td><td class="wide" data-label="Fault">${esc(f.Description||'')||'\u2014'}</td><td data-label="Flags">${rc>=2?'\u00d7'+rc:''}</td><td class="wide" data-label="Closure evidence"><span class="clos">${t?esc(t):'\u2014'}</span></td></tr>`;}).join('')+
+    '</tbody></table></div>':'<div class="empty">No faults recorded against this asset.</div>';
+  const shown=h.readings.slice(0,ASSET_READING_CAP),hidden=h.readings.length-shown.length;
+  const rb=h.readings.length?'<div class="tblscroll"><table><thead><tr><th>Visit ref</th><th>Visit date</th><th>Reading</th><th>Value</th><th>Range</th></tr></thead><tbody>'+
+    shown.map(x=>`<tr><td data-label="Visit ref">${esc(x.r.VisitRef||'')}</td><td data-label="Visit date">${dmy(x.d)}</td><td data-label="Reading">${esc(x.r.ReadingKey||'')}</td><td data-label="Value">${esc(x.r.Value)}</td><td data-label="Range">${outOfRange(x.r)?'<span class="sev High">OUT OF RANGE</span>':'<span class="sev Low">In range</span>'}</td></tr>`).join('')+
+    '</tbody></table></div>'+(hidden>0?`<div class="modalnote">Showing the ${shown.length} most recent readings \u00b7 ${hidden} older reading${hidden===1?'':'s'} not shown.</div>`:'')
+    :'<div class="empty">No readings recorded against this asset.</div>';
+  openModal('Asset '+esc(code),'Everything recorded against this asset \u00b7 '+h.faults.length+' fault'+(h.faults.length===1?'':'s')+' \u00b7 '+h.readings.length+' reading'+(h.readings.length===1?'':'s'),
+    '<div class="modalsec">Faults <span>(newest first)</span></div>'+fb+'<div class="modalsec">Readings <span>(newest first)</span></div>'+rb);
+}
+function openNoteModal(k){
+  const f=findFault(k);if(!f)return;
+  openModal('Closure evidence','Fault '+esc(f.Title||f.FaultRef||'')+(f.FaultDate?' \u00b7 raised '+dmy(f.FaultDate):''),
+    '<div class="modalnote"><span class="clos">'+(esc(closureText(f))||'\u2014')+'</span></div>');
+}
+
 function render(){
   const C=compute();
   $('metrics').innerHTML=`
@@ -334,6 +472,7 @@ function render(){
     <div class="metric amber"><div class="l">Need attention</div><div class="v">${C.attention}</div><div class="s">in progress or behind</div></div>
     <div class="metric red"><div class="l">Open faults</div><div class="v">${C.open.length}</div><div class="s">${C.closed} closed</div></div>`;
   renderIncomplete(DATA.visits);
+  renderLate(DATA.visits);
 
   $('regimes').innerHTML=C.regs.map(r=>`
     <div class="reg">
@@ -365,13 +504,20 @@ function render(){
         <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
         <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
         <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
-      return `<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Asset">${f.AssetId||f.Plant||''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
+      const rc=repeatCount(f);                                   // item 6 — repeat counter / escalation
+      const rcls=rc>=3?'rep-r':(rc===2?'rep-a':'');
+      const age=f.FaultDate?ageDays(f.FaultDate):null;            // item 7 — ageing, amber 14+, red 30+
+      const acls=age==null?'':(age>=30?'open-r':(age>=14?'open-a':''));
+      const asset=f.AssetId||f.Plant||'';                         // item 14 — asset history link
+      return `<tr${rcls?' class="'+rcls+'"':''}><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b>${rc>=3?'<span class="esc">ESCALATED</span>':''}</td><td data-label="Asset">${asset?`<a href="#" class="assetlink" data-asset="${esc(asset)}">${esc(asset)}</a>`:''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
         <td class="wide" data-label="Fault">${(f.Description||'').replace(/</g,'&lt;')}</td><td data-label="Stage">${STAGE_LABEL[st]}</td>
         <td class="wide" data-label="Action taken">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
         <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
-        <td data-label="Days open">${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
+        <td data-label="Open (days)"><span class="${acls}">${age==null?'':age}</span></td>
+        <td data-label="Flags">${rc>=2?`<span class="flags">\u00d7${rc}</span>`:''}</td>
+        <td class="wide closcell" data-label="Closure evidence">${closureCell(f)}</td>
         <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Asset</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Asset</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Open (days)</th><th>Flags</th><th>Closure evidence</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
@@ -439,6 +585,13 @@ if(EDITABLE){$('faulttable').addEventListener('click',async e=>{
   try{await REDFM.updateFault(id,{Stage:sel.value,ActionTaken:act.value,Severity:sev.value});await load();}
   catch(err){btn.disabled=false;btn.textContent='Save';$('status').textContent='Update failed: '+(err.message||err);}
 });}
+
+// item 14 / item 5 — asset-history and closure-note links; delegated because both tables are re-rendered on every load
+document.addEventListener('click',e=>{
+  const t=e.target;if(!t||!t.closest)return;
+  const a=t.closest('.assetlink');if(a){e.preventDefault();openAssetModal(a.getAttribute('data-asset')||'');return;}
+  const n=t.closest('.notelink');if(n){e.preventDefault();openNoteModal(n.getAttribute('data-fault')||'');return;}
+});
 
 if(window.REDFM){REDFM.init().then(s=>{if(s)load();}).catch(()=>{});}
 </script>

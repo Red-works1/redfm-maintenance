@@ -77,9 +77,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=12"></script>
+<script src="redfm-data.js?v=13"></script>
 <script src="redfm-draft.js?v=2"></script>
-<script src="redfm-faultflow.js?v=1"></script>
+<script src="redfm-faultflow.js?v=2"></script>
 <script>
 const COOL_AB=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff","Expansion valve superheat & % open"];
 const COOL_STD=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff"];
@@ -235,7 +235,7 @@ $('finish').addEventListener('click',async()=>{
     const l=String((f&&f.line)||'').trim().toUpperCase();
     return gChambers.some(ch=>{const u=ch.toUpperCase();return a===u||a.indexOf(u)===0||l.indexOf(u+' — ')===0;});
   };
-  async function buildReport(faults,withdrawn){
+  async function buildReport(faults,withdrawn,reviewed){
     const fa=faults||[],wd=withdrawn||[];
     // anything that matches no regime at all goes on the FIRST report — never dropped from every one
     const orphanF=fa.filter(f=>!filed.some(j=>ownedBy(j.gChambers,f)));
@@ -261,7 +261,7 @@ $('finish').addEventListener('click',async()=>{
         const blob=REDFM.buildReportPdf({title:t+' report — '+(periodLabel||'this quarter'),
           subtitle:'Border Holdings, Avonmouth · cumulative — dates show when each result was taken',
           ref:gref,date:r.visitDate,engineer:r.engineer,plant:gChambers.join(', '),
-          faults:jFaults,withdrawn:jWithdrawn,
+          faults:jFaults,withdrawn:jWithdrawn,reviewed:reviewed||[],
           extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
         const fname='Quarterly_'+suffix(t)+'_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+gref+'.pdf';
         if(!first)first={blob:blob,filename:fname};
@@ -312,7 +312,7 @@ $('finish').addEventListener('click',async()=>{
           completeStatus:"Partially completed",   // quarterly submits in parts — never force 'Fully completed'
           visitRef:heldRef,visitDate:r.visitDate,engineer:r.engineer,
           plant:chambers,items:flagged,
-          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+          buildReport:(faults,withdrawn,reviewed)=>buildReport(faults,withdrawn,reviewed)
         });
       }else{
         // Nothing flagged — file each regime's report immediately, as before

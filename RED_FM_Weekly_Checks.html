@@ -67,9 +67,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=12"></script>
+<script src="redfm-data.js?v=13"></script>
 <script src="redfm-draft.js?v=2"></script>
-<script src="redfm-faultflow.js?v=1"></script>
+<script src="redfm-faultflow.js?v=2"></script>
 <script>
 const T=(a)=>a.map(x=>Array.isArray(x)?x:[x,'txt']);
 const CHAMBER=T([["Cold store set point (controller)"],["Cold store temp air-on"],["Coolers air off"],["Cooling on/off"]]);
@@ -196,7 +196,7 @@ $('finish').addEventListener('click',async()=>{
   // Build the report PDF. Called AFTER any flagged faults have been documented so the
   // faults summary block (item 8) and the derived issue count (item 9) are populated.
   const groups=[...new Set(out.map(e=>e.group))].join(', ');
-  function buildReport(faults,withdrawn){
+  function buildReport(faults,withdrawn,reviewed){
     // One grid table per filled section, matching the on-screen sheet layout
     const grid=[];
     Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>{
@@ -211,7 +211,7 @@ $('finish').addEventListener('click',async()=>{
     const blob=REDFM.buildReportPdf({title:'Weekly checks',
       subtitle:'Border Holdings, Avonmouth',
       ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,
-      faults:faults||[],withdrawn:withdrawn||[],
+      faults:faults||[],withdrawn:withdrawn||[],reviewed:reviewed||[],
       extra:[['Week',r.week||''],['Ambient °C',r.ambient||'']]},grid);
     return {blob:blob,filename:'Weekly_'+r.date+'_'+groups.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf'};
   }
@@ -243,7 +243,7 @@ $('finish').addEventListener('click',async()=>{
         startFaultFlow=()=>REDFMFaultFlow.start({
           visitId:visit&&visit.id,visitRef:r.ref,visitDate:r.date,engineer:r.engineer,
           plant:groups,items:flagged,
-          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+          buildReport:(faults,withdrawn,reviewed)=>buildReport(faults,withdrawn,reviewed)
         });
       }else{
         // Nothing flagged — file the report immediately, as before

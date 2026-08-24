@@ -76,9 +76,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=12"></script>
+<script src="redfm-data.js?v=13"></script>
 <script src="redfm-draft.js?v=2"></script>
-<script src="redfm-faultflow.js?v=1"></script>
+<script src="redfm-faultflow.js?v=2"></script>
 <script>
 const SENSORS=[
   ["Sensor No1","Pack A — discharge & oil separator"],
@@ -217,7 +217,7 @@ $('finish').addEventListener('click',async()=>{
 
   // Build the report PDF. Called AFTER any flagged faults have been documented so the
   // faults summary block and the derived issue count are populated.
-  function buildReport(faults,withdrawn){
+  function buildReport(faults,withdrawn,reviewed){
         // cumulative period report: every check recorded THIS year with the date it was done
         const grid=[];
         SECTIONS.forEach((sec,si)=>{
@@ -235,7 +235,7 @@ $('finish').addEventListener('click',async()=>{
         const blob=REDFM.buildReportPdf({title:'A&B leak-detection validation — '+(periodLabel||'this year'),
           subtitle:'Border Holdings, Avonmouth · cumulative — R407F plant room',
           ref:r.ref,date:r.date,engineer:r.engineer,plant:'A&B Plant Room',fgasNo:'REF1018681',
-          faults:faults||[],withdrawn:withdrawn||[],
+          faults:faults||[],withdrawn:withdrawn||[],reviewed:reviewed||[],
           extra:[['Period',periodLabel||'—'],['As at',r.date],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Job No.',r.jobNo||''],['Refrigerant',r.refrigerant||'']]},grid);
         const fname='LeakDetection_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.date+'_'+r.ref+'.pdf';
     return {blob:blob,filename:fname};
@@ -279,7 +279,7 @@ $('finish').addEventListener('click',async()=>{
         startFaultFlow=()=>REDFMFaultFlow.start({
           visitId:visit&&visit.id,completeStatus:"Partially completed",visitRef:r.ref,visitDate:r.date,engineer:r.engineer,
           plant:'A&B Plant Room',items:flagged,
-          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+          buildReport:(faults,withdrawn,reviewed)=>buildReport(faults,withdrawn,reviewed)
         });
       }else{
         // generate + file a branded PDF copy in the Reports library (one grid table per stage)
