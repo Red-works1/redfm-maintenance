@@ -105,6 +105,8 @@ window.REDFMFaultFlow = (function () {
       ".ff-btn.primary{background:#E01322;color:#fff;flex:1;}",
       ".ff-btn.primary:disabled{opacity:.5;cursor:default;}",
       ".ff-link{background:none;border:0;font:inherit;font-size:12.5px;color:#6b6b72;text-decoration:underline;cursor:pointer;padding:6px 0;}",
+      ".ff-hint{font-size:12.5px;color:#b9770b;margin-top:10px;line-height:1.5;}",
+      ".ff-hint.ok{color:#1a7f37;}",
       ".ff-warn{background:#fdecee;border:1px solid #f6c3c8;color:#8c1018;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:12px;line-height:1.5;}",
       ".ff-done{text-align:center;padding:34px 24px;}",
       ".ff-done .tick{font-size:38px;color:#1a7f37;}",
@@ -395,12 +397,31 @@ window.REDFMFaultFlow = (function () {
         wd.type = "button";
         actions.appendChild(go); actions.appendChild(wd);
         body.appendChild(actions);
+        var hint = el("div", "ff-hint");
+        body.appendChild(hint);
         card.appendChild(body);
 
+        // A disabled button with no explanation is useless on a phone in a cold store.
+        // Say exactly what is still outstanding, and keep the bar low enough that a real
+        // one-word answer ("Iced", "Leak") passes while "ok" / "na" does not.
         function validate() {
-          go.disabled = !(desc.value.trim().length >= 5 && severity && act.value.trim().length >= 3 && photos.length);
+          var missing = [];
+          if (desc.value.trim().length < 4) missing.push("what is wrong");
+          if (!severity) missing.push("a severity");
+          if (act.value.trim().length < 3) missing.push("the action you took");
+          if (!photos.length) missing.push("a photo");
+          go.disabled = missing.length > 0;
+          if (!missing.length) {
+            hint.className = "ff-hint ok";
+            hint.textContent = "Ready to log.";
+          } else {
+            hint.className = "ff-hint";
+            hint.textContent = "Still needed: " + (missing.length === 1 ? missing[0]
+              : missing.slice(0, -1).join(", ") + " and " + missing[missing.length - 1]) + ".";
+          }
         }
         desc.oninput = validate; act.oninput = validate;
+        validate();
 
         /* --- withdraw a mis-tapped flag: allowed, but it has to be explained --- */
         wd.onclick = function () {
