@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Temperature probe validation</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:90px;font-size:14px;font-weight:700;padding:11px 6px;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  .probe{border:1px solid var(--line);border-radius:11px;margin-top:10px;overflow:hidden;}
+  .probe.done{border-color:var(--ok);}
+  .phead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 12px;cursor:pointer;}
+  .probe.done .phead{background:#f4faf5;}
+  .ptop{font-size:15px;font-weight:700;}.ptop span{color:var(--grey);font-weight:500;}
+  .pright{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .chev{color:var(--grey);font-size:12px;}
+  .badge{font-size:14px;font-weight:800;padding:3px 11px;border-radius:20px;}
+  .badge.good{color:var(--ok);background:#eef7f0;}.badge.bad{color:var(--red);background:#fdecee;}
+  .fields{padding:0 12px 12px;}
+  .frow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .frow .lab{font-size:11px;color:var(--grey);font-weight:600;margin-bottom:3px;}
+  .errbox{font-size:16px;font-weight:800;padding:11px;border:1.5px dashed var(--line);border-radius:9px;background:#fafafa;text-align:center;}
+  .errbox.bad{color:var(--red);border-color:var(--red);background:#fdecee;}.errbox.good{color:var(--ok);}
+  .cmt{margin-top:8px;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}h3{font-size:14px;margin:16px 4px 0;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Validation of temperature probes</strong>Border Holdings — Avonmouth · F-Gas certificate of test</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="hgrid">
+      <div><label>Test date</label><input id="hDate" type="date"></div>
+      <div><label>Engineer <span style="color:var(--red)">*</span></label><input id="hEng" placeholder="Name"></div>
+      <div><label>Job No.</label><input id="hJob" placeholder="e.g. JD61787/8"></div>
+      <div><label>Out-of-tolerance flag (±°C)</label><input id="hTol" type="number" inputmode="decimal" step="0.1" value="1.0"></div>
+      <div><label>Equipment</label><input id="hEquip" value="RDM Data Manager"></div>
+      <div><label>Probe type</label><input id="hPtype" value="PT1000"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>Error = Displayed − Measured (auto).</b> Fill the probes you validated — leave the rest for a later visit if you're doing them bit by bit. Anything beyond ± the tolerance is flagged.</div>
+
+  <div class="secbar" id="secbar"></div>
+  <div id="prog" class="note" style="color:#1a7f37;font-weight:700;display:none"></div>
+  <div id="body"></div>
+
+  <h3>Test instrument</h3>
+  <div class="card">
+    <label>Reference thermometer</label><input id="iName" value="ETI reference thermometer, fixed 130mm PT100 probe">
+    <div class="hgrid" style="margin-top:10px">
+      <div><label>Serial No.</label><input id="iSerial" placeholder="e.g. D19485187"></div>
+      <div><label>Calibration cert No.</label><input id="iCert" placeholder="e.g. 178557 (S.M. Gauge Ltd)"></div>
+    </div>
+  </div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=12"></script>
+<script src="redfm-draft.js?v=2"></script>
+<script src="redfm-faultflow.js?v=1"></script>
+<script>
+const GROUPS={
+ "Monitoring":[
+  ["Probe 1","Outside ambient temperature"],["Probe 2","A Chamber far left"],["Probe 3","A Chamber far right"],
+  ["Probe 4","A Chamber near left"],["Probe 5","A Chamber near right"],["Probe 6","B Chamber far"],
+  ["Probe 7","B Chamber near"],["Probe 8","A & B loading bay area"],["Probe 9","C & D loading bay area"]],
+ "Cooler air-on":[
+  ["OO1","A1 cooler air on probe"],["OO2","A2 cooler air on probe"],["OO3","A3 cooler air on probe"],["OO4","A4 cooler air on probe"],
+  ["OO5","B1 cooler air on probe"],["OO6","B2 cooler air on probe"],["OO7","B3 cooler air on probe"],["OO8","B4 cooler air on probe"],
+  ["ChmC01","C Chamber front near"],["ChmC02","C Chamber front far"],["ChmC03","C Chamber back near"],["ChmC04","C Chamber back far"],
+  ["ChmD01","D Chamber near"],["ChmD02","D Chamber far"],["ChmE01","E Chamber near"],["ChmE02","E Chamber far"],["ChmE03","E Chamber front centre"]],
+ "Cooler air-off":[
+  ["A1","A1 cooler air off probe"],["A2","A2 cooler air off probe"],["A3","A3 cooler air off probe"],["A4","A4 cooler air off probe"],
+  ["B1","B1 cooler air off probe"],["B2","B2 cooler air off probe"],["B3","B3 cooler air off probe"],["B4","B4 cooler air off probe"],
+  ["C1","C1 cooler air off probe"],["C2","C2 cooler air off probe"],["C3","C3 cooler air off probe"],["C4","C4 cooler air off probe"],
+  ["D1","D1 cooler air off probe"],["D2","D2 cooler air off probe"],["E1","E1 cooler air off probe"],["E2","E2 cooler air off probe"]]
+};
+const $=id=>document.getElementById(id);
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
+$('hDate').value=new Date().toISOString().slice(0,10);
+const NAMES=Object.keys(GROUPS);let cur=NAMES[0];const state={};let doneMap={},periodLabel='';
+const secbar=$('secbar');
+NAMES.forEach(n=>{const b=document.createElement('button');b.className='secbtn'+(n===cur?' on':'');
+  b.innerHTML=`${n}<span class="n">${GROUPS[n].length} probes</span>`;b.onclick=()=>{cur=n;draw();};secbar.appendChild(b);});
+
+function tol(){return parseFloat($('hTol').value)||1.0;}
+function draw(){
+  [...secbar.children].forEach((b,i)=>b.className='secbtn'+(NAMES[i]===cur?' on':''));
+  const root=$('body');root.innerHTML='';
+  GROUPS[cur].forEach(([id,loc])=>{
+    const st=state[id]||{};
+    const filled=st.m!==undefined&&st.m!==''&&st.d!==undefined&&st.d!=='';
+    const open=!!st.open;
+    const dn=(!filled)?doneMap[slug('probe '+id)+'||'+(id+' '+loc)]:null;
+    if(dn){
+      const bad=Math.abs(dn.err)>tol();
+      const dd=document.createElement('div');dd.className='probe done';
+      dd.innerHTML=`<div class="phead" data-id="${id}" data-dn="1">
+          <div class="ptop">${id} <span>· ${loc}</span></div>
+          <div class="pright"><span class="badge ${bad?'bad':'good'}">${dn.err>0?'+':''}${dn.err}</span><span style="font-size:11px;color:#1a7f37;font-weight:700;margin-left:6px">✓ ${ddmm(dn.date)}</span></div></div>
+        <div class="muted" style="padding:4px 12px 8px;font-size:12px">Validated ${dn.date}${dn.eng?(' by '+dn.eng):''} this year — tap to re-validate.</div>`;
+      root.appendChild(dd);return;
+    }
+    let badge='';
+    if(filled){const e=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
+      badge=`<span class="badge ${Math.abs(e)>tol()?'bad':'good'}">${e>0?'+':''}${e}</span>`;}
+    const d=document.createElement('div');d.className='probe'+(filled?' done':'');
+    d.innerHTML=`<div class="phead" data-id="${id}">
+        <div class="ptop">${id} <span>· ${loc}</span></div>
+        <div class="pright">${badge}<span class="chev">${open?'▲':'▼'}</span></div></div>
+      <div class="fields" ${open?'':'hidden'}>
+        <div class="frow">
+          <div><div class="lab">Measured °C</div><input data-f="m" data-id="${id}" type="number" inputmode="decimal" step="0.1" value="${st.m??''}"></div>
+          <div><div class="lab">Displayed °C</div><input data-f="d" data-id="${id}" type="number" inputmode="decimal" step="0.1" value="${st.d??''}"></div>
+          <div><div class="lab">Error</div><div class="errbox" id="e_${id}">—</div></div>
+        </div>
+        <div class="cmt"><div class="lab">Comments</div><input data-f="c" data-id="${id}" placeholder="e.g. Calibrated by +0.5" value="${st.c??''}"></div>
+      </div>`;
+    root.appendChild(d);
+    if(open)updErr(id);
+  });
+  root.querySelectorAll('.phead[data-dn]').forEach(h=>h.onclick=()=>guardChange(h.dataset.id));
+  root.querySelectorAll('.phead:not([data-dn])').forEach(h=>h.onclick=()=>{
+    const id=h.dataset.id;state[id]=state[id]||{};state[id].open=!state[id].open;draw();
+  });
+  root.querySelectorAll('input[data-f]').forEach(inp=>inp.oninput=()=>{
+    const id=inp.dataset.id;state[id]=state[id]||{};state[id][inp.dataset.f]=inp.value;
+    if(inp.dataset.f!=='c')updErr(id);
+  });
+  updateProgress();
+}
+function updErr(id){
+  const st=state[id]||{};const box=$('e_'+id);if(!box)return;
+  const m=parseFloat(st.m),d=parseFloat(st.d);
+  if(isNaN(m)||isNaN(d)){box.textContent='—';box.className='errbox';return;}
+  const e=+(d-m).toFixed(1);box.textContent=(e>0?'+':'')+e;box.className='errbox '+(Math.abs(e)>tol()?'bad':'good');
+}
+// --- progressive completion: probes already validated THIS year (Jul–Jun) ---
+function curYear(){const n=new Date();const y=n.getMonth()>=6?n.getFullYear():n.getFullYear()-1;
+  return {s:new Date(y,6,1),e:new Date(y+1,6,1),label:'Jul '+y+' – Jun '+(y+1)};}
+function inYr(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function updateProgress(){const el=$('prog');if(!el)return;
+  let total=0;NAMES.forEach(n=>total+=GROUPS[n].length);const done=Object.keys(doneMap).length;
+  if(done){el.style.display='block';el.textContent=periodLabel+' — '+done+' of '+total+' probes already validated this year (green). Tap one to re-validate.';}
+  else el.style.display='none';}
+function findLoc(id){for(const n of NAMES){const f=GROUPS[n].find(p=>p[0]===id);if(f)return f[1];}return '';}
+function guardChange(id){const loc=findLoc(id);const dn=doneMap[slug('probe '+id)+'||'+(id+' '+loc)];if(!dn)return;
+  if(!confirm('Probe '+id+' was validated on '+dn.date+(dn.eng?(' by '+dn.eng):'')+' (error '+(dn.err>0?'+':'')+dn.err+').\n\nRe-validate it this year? The new reading will be dated today and supersede the old one.'))return;
+  state[id]={m:(dn.meas===''?'':dn.meas),d:(dn.disp===''?'':dn.disp),open:true};draw();}
+async function loadDone(){
+  try{const res=await fetch(SNAP+'?t='+Date.now());if(!res.ok)return;const snap=await res.json();
+    const {s,e,label}=curYear();periodLabel=label;
+    const vmap={};(snap.visits||[]).forEach(v=>{if((v.ServiceType||'')==='Probe calibration'&&inYr(v.VisitDate,s,e))vmap[v.Title]={date:String(v.VisitDate).slice(0,10),eng:v.Engineer||''};});
+    (snap.readings||[]).forEach(rd=>{const vi=vmap[rd.VisitRef];if(!vi)return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const val=String(rd.Value||'');
+      const err=parseFloat((/Error ([+-]?\d+(?:\.\d+)?)/.exec(val)||[])[1]);
+      const meas=parseFloat((/Measured ([+-]?\d+(?:\.\d+)?)/.exec(val)||[])[1]);
+      const disp=parseFloat((/Displayed ([+-]?\d+(?:\.\d+)?)/.exec(val)||[])[1]);
+      const c=doneMap[k];if(!c||vi.date>c.vdate)doneMap[k]={err:isNaN(err)?0:err,meas:isNaN(meas)?'':meas,disp:isNaN(disp)?'':disp,date:vi.date,eng:vi.eng,vdate:vi.date};});
+    draw();
+  }catch(e){/* no snapshot yet */}
+}
+draw();
+loadDone();
+$('hTol').oninput=()=>{Object.keys(state).forEach(updErr);};
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+
+// Connect to SharePoint if the shared data layer is present + configured
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  const probes=[];const flagged=[];
+  NAMES.forEach(n=>GROUPS[n].forEach(([id,loc])=>{
+    const st=state[id];if(st&&st.m!==''&&st.m!=null&&st.d!==''&&st.d!=null){
+      const err=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
+      probes.push({group:n,probeId:id,location:loc,measured:+st.m,displayed:+st.d,error:err,
+        outOfTol:Math.abs(err)>tol(),comments:st.c||''});
+      if(Math.abs(err)>tol())flagged.push({
+        assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(n,'Probe validation',id):(n+' '+id).trim(),
+        group:n,section:n+' — Probe validation',item:loc,col:id});}
+  }));
+  if(probes.length===0){toast('Record at least one probe');return;}
+  const fails=probes.filter(p=>p.outOfTol).length;
+  const r={sheet:"Validation of temperature probes",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    date:$('hDate').value,engineer:$('hEng').value.trim(),jobNo:$('hJob').value.trim(),
+    equipment:$('hEquip').value.trim(),probeType:$('hPtype').value.trim(),tolerance:tol(),
+    instrument:{name:$('iName').value.trim(),serial:$('iSerial').value.trim(),calCert:$('iCert').value.trim()},
+    probes,submittedAt:new Date().toISOString(),ref:'TPC-'+Date.now().toString(36).toUpperCase()};
+
+  // Build the report PDF. Called AFTER any flagged faults have been documented so the
+  // faults summary block and the derived issue count are populated.
+  const groups=[...new Set(probes.map(p=>p.group))].join(', ');
+  function buildReport(faults,withdrawn){
+        // cumulative period report: every probe validated THIS year with the date it was done
+        const grid=[];
+        NAMES.forEach(n=>{
+          const gr=[];
+          GROUPS[n].forEach(([id,loc])=>{const st=state[id];
+            if(st&&st.m!==''&&st.m!=null&&st.d!==''&&st.d!=null){
+              const err=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
+              gr.push([id+' · '+loc, String(st.m), String(st.d), (err>0?'+':'')+err, ddmm(r.date), st.c||'']);return;}
+            const dn=doneMap[slug('probe '+id)+'||'+(id+' '+loc)];
+            if(dn)gr.push([id+' · '+loc, (dn.meas===''?'':String(dn.meas)), (dn.disp===''?'':String(dn.disp)), (dn.err>0?'+':'')+dn.err, ddmm(dn.date), 'recorded earlier this year'+(dn.eng?(' · '+dn.eng):'')]);
+          });
+          if(gr.length)grid.push({name:n+' probes',cols:['Measured °C','Displayed °C','Error °C','Date','Comments'],rows:gr});
+        });
+        const blob=REDFM.buildReportPdf({title:'Temperature probe validation — '+(periodLabel||'this year'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — F-Gas certificate of test',
+          ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,fgasNo:'REF1018681',
+          faults:faults||[],withdrawn:withdrawn||[],
+          extra:[['Period',periodLabel||'—'],['As at',r.date],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Job No.',r.jobNo||''],['Tolerance','±'+r.tolerance+'°C']]},grid);
+        const fname='ProbeCert_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.date+'_'+r.ref+'.pdf';
+    return {blob:blob,filename:fname};
+  }
+
+  // Save to SharePoint (ServiceVisit header + one Readings row per probe), then file a branded PDF
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  let startFaultFlow=null;
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const holding=fails>0&&window.REDFMFaultFlow;
+      const visitFields={Title:r.ref,ServiceType:"Probe calibration",
+        PlantSection:groups,Engineer:r.engineer,VisitDate:r.date,
+        Status:holding?"Awaiting fault detail":"Partially completed",
+        FaultsFlagged:fails,FaultsDocumented:0,
+        FaultFound:fails>0?"Yes":"No",
+        Notes:('Job '+(r.jobNo||'—')+'; ref thermometer '+r.instrument.name+
+          (r.instrument.serial?(' (s/n '+r.instrument.serial+', cert '+r.instrument.calCert+')'):'')+
+          '; tolerance ±'+r.tolerance+'°C. '+($('hComm')?$('hComm').value.trim():''))};
+      const readingRows=probes.map((p,i)=>({Title:r.ref+'-'+(i+1),
+        ReadingKey:slug('probe '+p.probeId),
+        Asset:p.probeId+' '+p.location,
+        Value:'Measured '+p.measured+' / Displayed '+p.displayed+' / Error '+(p.error>0?'+':'')+p.error+(p.comments?(' ('+p.comments+')'):''),
+        Unit:'°C',OutOfRange:p.outOfTol?'Yes':'No'}));
+      const visit=await REDFM.saveVisit(visitFields,readingRows);
+      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
+      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' probe(s)';
+      if(holding){
+        // The readings are in, but the visit stays at 'Awaiting fault detail' and NO report
+        // is filed until every flagged item has a fault record behind it.
+        saveMsg+=' · '+fails+' flagged item(s) still to document — report not filed yet';
+        startFaultFlow=()=>REDFMFaultFlow.start({
+          visitId:visit&&visit.id,completeStatus:"Partially completed",visitRef:r.ref,visitDate:r.date,engineer:r.engineer,
+          plant:groups,items:flagged,
+          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+        });
+      }else{
+        // generate + file a branded PDF copy in the Reports library (one grid table per probe group)
+        try{
+          const rep=buildReport([],[]);
+          await REDFM.uploadReportPdf(rep.filename,rep.blob);
+          saveMsg+=' · PDF filed';
+        }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+      }
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,.secbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';
+  $('summary').style.display='block';
+  $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.date} · ${r.engineer} · ${probes.length} probe(s) · ${fails} out of tolerance</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`ProbeCert_${r.date}_${r.ref}.json`;a.click();};
+  toast('Submitted ✓');
+
+  // Flagged items must now be documented. The report is saved but held.
+  if(startFaultFlow){
+    $('sumHead').textContent=`⚠ Submitted — ${fails} flagged item(s) to document`;
+    setTimeout(startFaultFlow,400);
+  }
+});
+REDFMDraft.init({key:'tempprobes',state:state,draw:draw});
+// If a previous visit was abandoned mid-way through documenting its faults, say so.
+try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
+</script>
+</body>
+</html>
