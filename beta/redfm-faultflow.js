@@ -1,0 +1,513 @@
+/* RED FM — fault capture flow (phase 1, items 1 + 2)
+   Shared by every capture form. After a report is submitted, every line item the engineer
+   flagged as a fault must be documented here before the visit counts as complete.
+
+   Usage from a form, after the visit header + readings have saved:
+
+     REDFMFaultFlow.start({
+       visitId | visitIds:[...], completeStatus, visitRef, visitDate, engineer, plant,
+       items: [{assetId, section, item, col}],
+       buildReport: function(faults){ ... return {blob, filename}; }   // optional
+     }).then(function(res){ ...res.faults, res.withdrawn... });
+
+   Requires redfm-data.js (REDFM) to be loaded first. Degrades to a local-only run if
+   SharePoint is unreachable — the queue is kept in localStorage and can be resumed.
+*/
+window.REDFMFaultFlow = (function () {
+  "use strict";
+
+  var QKEY = "redfm_faultqueue_v1";
+  var STYLE_ID = "redfm-faultflow-style";
+
+  /* ---------- canonical asset identity -------------------------------------
+     Faults must carry the same asset code the reading tables already use, so
+     "click E2, see everything" and repeat counters can join the two together. */
+  function assetId(variant, section, col) {
+    var v = String(variant || "").trim();
+    var c = String(col || "").trim();
+    if (!c) return v;
+    // Column is already an asset code: E2, C1, A4, No1 B2, E1 Compr1, D 3&4 compr…
+    if (/^(no\d\s+)?[a-e]\d/i.test(c)) return c;
+    // Units like kWhr / °C are not assets — fall back to the section
+    if (/^(kwhr|°c|c)$/i.test(c)) return (v + " — " + (section || "")).trim();
+    return (v + " " + c).trim();
+  }
+
+  /* ---------- Plant is a fixed CHOICE column on FaultRegister ---------------
+     Confirmed live 24 Aug 2026: A / B / C1-C4 / D1-D4 / E1 / E2 / A&B Plant Room /
+     General. AssetId carries the precise identity, so Plant just has to resolve to a
+     legal choice — never write a raw group name like "C & D" into it. */
+  var PLANT_CHOICES = ["A", "B", "C1", "C2", "C3", "C4", "D1", "D2", "D3", "D4",
+                       "E1", "E2", "A&B Plant Room", "General"];
+  function plantChoice(asset, group) {
+    var a = String(asset || "").trim();
+    var A = a.toUpperCase();
+    if (/a\s*&\s*b/i.test(a)) return "A&B Plant Room";   // plant-room level, not a chamber
+    // longest choice the asset code starts with: "E1 Compr1" -> "E1", "C1" -> "C1"
+    var hit = PLANT_CHOICES.filter(function (c) { return A.indexOf(c.toUpperCase()) === 0; })
+                           .sort(function (x, y) { return y.length - x.length; })[0];
+    if (hit) return hit;
+    var m = /^(?:no\d\s+)?([a-e])/i.exec(a);   // "A1" -> A, "No1 B2" -> B
+    if (m && PLANT_CHOICES.indexOf(m[1].toUpperCase()) >= 0) return m[1].toUpperCase();
+    if (/a\s*&\s*b/i.test(group || "")) return "A&B Plant Room";
+    return "General";
+  }
+
+  /* ---------- storage ------------------------------------------------------ */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(QKEY) || "null"); } catch (e) { return null; }
+  }
+  function save(q) {
+    try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (e) {}
+  }
+  function clear() {
+    try { localStorage.removeItem(QKEY); } catch (e) {}
+  }
+  function pending() {
+    var q = load();
+    if (!q || !q.items) return null;
+    var outstanding = q.items.filter(function (i) { return !i.done; }).length;
+    return outstanding ? { ref: q.visitRef, date: q.visitDate, outstanding: outstanding, total: q.items.length } : null;
+  }
+
+  /* ---------- styling ------------------------------------------------------ */
+  function injectStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    var s = document.createElement("style");
+    s.id = STYLE_ID;
+    s.textContent = [
+      ".ff-wrap{position:fixed;inset:0;z-index:9999;background:rgba(21,21,26,.72);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}",
+      ".ff-card{background:#fff;border-radius:14px;max-width:640px;width:100%;margin:auto;box-shadow:0 18px 50px rgba(0,0,0,.35);overflow:hidden;font-family:inherit;}",
+      ".ff-head{background:#15151a;color:#fff;padding:16px 18px;}",
+      ".ff-head h3{margin:0;font-size:17px;font-weight:800;letter-spacing:.2px;}",
+      ".ff-head p{margin:5px 0 0;font-size:12.5px;color:#b9b9c2;line-height:1.45;}",
+      ".ff-bar{height:4px;background:#2a2a33;}",
+      ".ff-bar i{display:block;height:100%;background:#E01322;transition:width .25s ease;}",
+      ".ff-body{padding:18px;}",
+      ".ff-ctx{background:#f5f5f7;border:1px solid #e3e3e8;border-left:4px solid #E01322;border-radius:10px;padding:12px 14px;margin-bottom:16px;}",
+      ".ff-asset{font-size:21px;font-weight:800;color:#15151a;line-height:1.15;}",
+      ".ff-meta{font-size:12.5px;color:#6b6b72;margin-top:4px;line-height:1.5;}",
+      ".ff-body label{display:block;font-size:13px;font-weight:700;color:#15151a;margin:14px 0 6px;}",
+      ".ff-body label span{color:#E01322;}",
+      ".ff-body textarea,.ff-body input[type=text]{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 12px;border:1.5px solid #e3e3e8;border-radius:10px;background:#fff;color:#15151a;}",
+      ".ff-body textarea{min-height:76px;resize:vertical;}",
+      ".ff-body textarea:focus,.ff-body input:focus{outline:none;border-color:#E01322;}",
+      ".ff-sev{display:flex;gap:8px;}",
+      ".ff-sev button{flex:1;font:inherit;font-size:15px;font-weight:700;padding:12px 0;border-radius:10px;border:1.5px solid #e3e3e8;background:#fff;color:#6b6b72;cursor:pointer;}",
+      '.ff-sev button.on[data-v="Low"]{background:#eef7f0;color:#1a7f37;border-color:#1a7f37;}',
+      '.ff-sev button.on[data-v="Medium"]{background:#fdf3e3;color:#b9770b;border-color:#b9770b;}',
+      '.ff-sev button.on[data-v="High"]{background:#fdecee;color:#E01322;border-color:#E01322;}',
+      ".ff-ph{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}",
+      ".ff-ph .thumb{width:74px;height:74px;border-radius:8px;object-fit:cover;border:1px solid #e3e3e8;}",
+      ".ff-add{width:74px;height:74px;border-radius:8px;border:1.5px dashed #e3e3e8;background:#fff;color:#E01322;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;}",
+      ".ff-actions{display:flex;gap:10px;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid #e3e3e8;}",
+      ".ff-btn{font:inherit;font-size:15px;font-weight:700;padding:13px 20px;border-radius:10px;border:0;cursor:pointer;}",
+      ".ff-btn.primary{background:#E01322;color:#fff;flex:1;}",
+      ".ff-btn.primary:disabled{opacity:.5;cursor:default;}",
+      ".ff-link{background:none;border:0;font:inherit;font-size:12.5px;color:#6b6b72;text-decoration:underline;cursor:pointer;padding:6px 0;}",
+      ".ff-warn{background:#fdecee;border:1px solid #f6c3c8;color:#8c1018;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:12px;line-height:1.5;}",
+      ".ff-done{text-align:center;padding:34px 24px;}",
+      ".ff-done .tick{font-size:38px;color:#1a7f37;}",
+      ".ff-done h3{margin:10px 0 6px;font-size:19px;color:#15151a;}",
+      ".ff-done p{margin:0;font-size:13.5px;color:#6b6b72;line-height:1.55;}",
+      ".ff-banner{background:#fdf3e3;border:1px solid #f0d9a8;border-left:4px solid #b9770b;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13.5px;color:#7a4e05;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}",
+      ".ff-banner button{font:inherit;font-size:13.5px;font-weight:700;padding:9px 15px;border-radius:8px;border:0;background:#b9770b;color:#fff;cursor:pointer;}"
+    ].join("\n");
+    document.head.appendChild(s);
+  }
+
+  /* ---------- helpers ------------------------------------------------------ */
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function slug(s) {
+    return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 80);
+  }
+  function downscale(dataURL, maxDim) {
+    return new Promise(function (res) {
+      var img = new Image();
+      img.onload = function () {
+        var w = img.width, h = img.height, s = Math.min(1, maxDim / Math.max(w, h));
+        var c = document.createElement("canvas");
+        c.width = Math.round(w * s); c.height = Math.round(h * s);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = function () { res(dataURL); };
+      img.src = dataURL;
+    });
+  }
+
+  /* ---------- SharePoint writes -------------------------------------------
+     The extra columns (AssetId, SourceVisitRef, …) are added to SharePoint as part
+     of this phase. Until they exist a POST carrying them returns 400, so the first
+     failure falls back to the legacy field set for the rest of the session and the
+     asset/visit link is carried in the description instead. Never lose a fault
+     because a column is missing. */
+  var extraFieldsOk = true;
+
+  function faultFields(rec, withExtras) {
+    var base = {
+      Title: rec.ref, FaultDate: rec.date, Plant: rec.plant, Severity: rec.severity,
+      Description: rec.description, ActionTaken: rec.action, Stage: "Reported", RaisedBy: rec.raisedBy
+    };
+    if (!withExtras) {
+      base.Description = "[" + rec.assetId + " · " + rec.line + " · from " + rec.visitRef + "] " + rec.description;
+      return base;
+    }
+    base.AssetId = rec.assetId;
+    base.SourceVisitRef = rec.visitRef;
+    base.SourceType = "Engineer report";
+    base.TriageStatus = "Not required";
+    base.RepeatCount = 1;
+    base.LastFlagged = rec.date;
+    return base;
+  }
+
+  async function writeFault(rec) {
+    if (extraFieldsOk) {
+      try {
+        await REDFM.addItem("FaultRegister", faultFields(rec, true));
+        return;
+      } catch (e) {
+        extraFieldsOk = false; // columns not there yet — degrade for the rest of the session
+      }
+    }
+    await REDFM.addItem("FaultRegister", faultFields(rec, false));
+  }
+
+  async function patchVisit(visitIds, fields) {
+    if (!REDFM.updateVisit) return;
+    var ids = (Array.isArray(visitIds) ? visitIds : [visitIds]).filter(Boolean);
+    for (var i = 0; i < ids.length; i++) {
+      try { await REDFM.updateVisit(ids[i], fields); }
+      catch (e) {
+        // Retry without the new counter columns
+        var lean = {};
+        if (fields.Status) lean.Status = fields.Status;
+        if (Object.keys(lean).length) { try { await REDFM.updateVisit(ids[i], lean); } catch (e2) {} }
+      }
+    }
+  }
+
+  async function nextRefBase() {
+    try {
+      var existing = await REDFM.getFaults();
+      var max = 1000;
+      existing.forEach(function (it) {
+        var m = /-(\d{3,})$/.exec(it.Title || it.FaultRef || "");
+        if (m) { var n = parseInt(m[1], 10); if (!isNaN(n) && n > max) max = n; }
+      });
+      return max;
+    } catch (e) {
+      return null; // fall back to timestamp refs
+    }
+  }
+
+  /* ---------- the flow ----------------------------------------------------- */
+  function start(opts) {
+    injectStyle();
+    var q = load();
+    // Resume the stored queue only if it is the same visit; otherwise start fresh.
+    if (!q || q.visitRef !== opts.visitRef) {
+      q = {
+        visitId: opts.visitId || null,
+        visitIds: opts.visitIds || (opts.visitId ? [opts.visitId] : []),
+        // A form that submits in parts (quarterly, certs) must NOT be forced to
+        // "Fully completed" just because its faults are now documented.
+        completeStatus: opts.completeStatus || "Fully completed",
+        visitRef: opts.visitRef, visitDate: opts.visitDate,
+        engineer: opts.engineer, plant: opts.plant || "", formUrl: location.pathname,
+        items: (opts.items || []).map(function (i) {
+          return {
+            assetId: i.assetId, group: i.group || "", section: i.section || "", item: i.item || "", col: i.col || "",
+            done: false, ref: null, withdrawn: false
+          };
+        }),
+        faults: [], withdrawn: []
+      };
+      save(q);
+    } else {
+      if (opts.visitId && !q.visitId) q.visitId = opts.visitId;
+      if (opts.visitIds && opts.visitIds.length) q.visitIds = opts.visitIds;
+      if (opts.completeStatus) q.completeStatus = opts.completeStatus;
+      save(q);
+    }
+    return run(q, opts);
+  }
+
+  function resume(opts) {
+    injectStyle();
+    var q = load();
+    if (!q) return Promise.resolve(null);
+    return run(q, opts || {});
+  }
+
+  function run(q, opts) {
+    return new Promise(function (resolve) {
+      var refBase = null;
+      var wrap = el("div", "ff-wrap");
+      var card = el("div", "ff-card");
+      wrap.appendChild(card);
+      document.body.appendChild(wrap);
+      document.body.style.overflow = "hidden";
+
+      nextRefBase().then(function (b) { refBase = b; });
+
+      function finish() {
+        document.body.style.overflow = "";
+        wrap.remove();
+      }
+
+      function nextIndex() {
+        for (var i = 0; i < q.items.length; i++) if (!q.items[i].done) return i;
+        return -1;
+      }
+
+      async function complete() {
+        var faults = q.faults || [];
+        card.innerHTML = "";
+        var d = el("div", "ff-done");
+        d.innerHTML = '<div class="tick">&#10003;</div><h3>All faults documented</h3>' +
+          '<p>Finishing the report&hellip;</p>';
+        card.appendChild(d);
+
+        var msg = "";
+        // Build + file the report now that the faults block has something to show
+        if (typeof opts.buildReport === "function") {
+          try {
+            var out = await opts.buildReport(faults, q.withdrawn || []);
+            if (out && out.blob) {
+              await REDFM.uploadReportPdf(out.filename, out.blob);
+              msg = "Report PDF filed.";
+            }
+          } catch (e) { msg = "Report PDF could not be filed (" + (e.message || e) + ") — the data is saved."; }
+        }
+        await patchVisit(q.visitIds && q.visitIds.length ? q.visitIds : q.visitId, {
+          Status: q.completeStatus || "Fully completed",
+          FaultsFlagged: q.items.length,
+          FaultsDocumented: faults.length
+        });
+        clear();
+        d.innerHTML = '<div class="tick">&#10003;</div><h3>Visit complete</h3>' +
+          "<p>" + faults.length + " fault" + (faults.length === 1 ? "" : "s") + " logged to the Fault Register" +
+          (q.withdrawn.length ? ", " + q.withdrawn.length + " flag withdrawn" : "") + ". " + esc(msg) + "</p>" +
+          '<div style="margin-top:18px"><button class="ff-btn primary" style="flex:0 0 auto">Done</button></div>';
+        d.querySelector("button").onclick = function () {
+          finish();
+          resolve({ faults: faults, withdrawn: q.withdrawn });
+        };
+      }
+
+      function render() {
+        var idx = nextIndex();
+        if (idx < 0) { complete(); return; }
+        var it = q.items[idx];
+        var doneCount = q.items.filter(function (x) { return x.done; }).length;
+        var photos = [];
+        var severity = "";
+
+        card.innerHTML = "";
+        var head = el("div", "ff-head");
+        head.innerHTML = "<h3>Fault detail required &mdash; " + (doneCount + 1) + " of " + q.items.length + "</h3>" +
+          "<p>The report is saved but sits at <b>Awaiting fault detail</b> until every flagged item is documented. " +
+          "No PDF is filed and nothing goes to Border until then.</p>";
+        var bar = el("div", "ff-bar");
+        bar.innerHTML = '<i style="width:' + Math.round((doneCount / q.items.length) * 100) + '%"></i>';
+        card.appendChild(head); card.appendChild(bar);
+
+        var body = el("div", "ff-body");
+        var ctx = el("div", "ff-ctx");
+        ctx.innerHTML = '<div class="ff-asset">' + esc(it.assetId || q.plant || "Plant") + "</div>" +
+          '<div class="ff-meta">' + esc(it.section) + (it.item ? " &middot; " + esc(it.item) : "") +
+          "<br>Visit " + esc(q.visitRef) + " &middot; " + esc(q.visitDate) + " &middot; " + esc(q.engineer) + "</div>";
+        body.appendChild(ctx);
+
+        body.appendChild(el("label", null, 'What is wrong? <span>*</span>'));
+        var desc = el("textarea");
+        desc.placeholder = "Describe the fault as you found it";
+        body.appendChild(desc);
+
+        body.appendChild(el("label", null, "Severity <span>*</span>"));
+        var sev = el("div", "ff-sev");
+        ["Low", "Medium", "High"].forEach(function (v) {
+          var b = el("button", null, v);
+          b.type = "button"; b.dataset.v = v;
+          b.onclick = function () {
+            severity = v;
+            Array.prototype.forEach.call(sev.children, function (x) {
+              x.className = x.dataset.v === severity ? "on" : "";
+            });
+            validate();
+          };
+          sev.appendChild(b);
+        });
+        body.appendChild(sev);
+
+        body.appendChild(el("label", null, "Immediate action taken <span>*</span>"));
+        var act = el("textarea");
+        act.placeholder = "What you did on the day — isolated, adjusted, made safe, parts required, left running…";
+        body.appendChild(act);
+
+        body.appendChild(el("label", null, "Photo <span>*</span>"));
+        var phWrap = el("div", "ff-ph");
+        var add = el("button", "ff-add", "+");
+        add.type = "button";
+        var file = el("input");
+        file.type = "file"; file.accept = "image/*"; file.multiple = true;
+        file.setAttribute("capture", "environment");
+        file.style.display = "none";
+        add.onclick = function () { file.click(); };
+        file.onchange = function () {
+          Array.prototype.forEach.call(file.files, function (f) {
+            var r = new FileReader();
+            r.onload = function () {
+              photos.push({ name: f.name, data: r.result, file: f });
+              var img = el("img", "thumb");
+              img.src = r.result;
+              phWrap.insertBefore(img, add);
+              validate();
+            };
+            r.readAsDataURL(f);
+          });
+          file.value = "";
+        };
+        phWrap.appendChild(add);
+        body.appendChild(phWrap);
+        body.appendChild(file);
+
+        var warn = el("div", "ff-warn");
+        warn.style.display = "none";
+        body.appendChild(warn);
+
+        var actions = el("div", "ff-actions");
+        var go = el("button", "ff-btn primary", "Log this fault");
+        go.type = "button"; go.disabled = true;
+        var wd = el("button", "ff-link", "Ticked in error");
+        wd.type = "button";
+        actions.appendChild(go); actions.appendChild(wd);
+        body.appendChild(actions);
+        card.appendChild(body);
+
+        function validate() {
+          go.disabled = !(desc.value.trim().length >= 5 && severity && act.value.trim().length >= 3 && photos.length);
+        }
+        desc.oninput = validate; act.oninput = validate;
+
+        /* --- withdraw a mis-tapped flag: allowed, but it has to be explained --- */
+        wd.onclick = function () {
+          warn.style.display = "";
+          warn.innerHTML = "Withdrawing a flag is recorded against the visit and shown on the dashboard. " +
+            "Type why this was ticked in error (at least 10 characters):" +
+            '<input type="text" id="ffwhy" style="margin-top:8px" placeholder="e.g. mis-tap, reading was within range">' +
+            '<div style="margin-top:10px;display:flex;gap:8px"><button class="ff-btn primary" id="ffwok" style="flex:0 0 auto;padding:9px 16px;font-size:13.5px" disabled>Withdraw flag</button>' +
+            '<button class="ff-btn" id="ffwno" style="flex:0 0 auto;padding:9px 16px;font-size:13.5px;background:#fff;color:#6b6b72;border:1.5px solid #e3e3e8">Cancel</button></div>';
+          var why = warn.querySelector("#ffwhy");
+          var ok = warn.querySelector("#ffwok");
+          why.oninput = function () { ok.disabled = why.value.trim().length < 10; };
+          warn.querySelector("#ffwno").onclick = function () { warn.style.display = "none"; };
+          ok.onclick = function () {
+            it.done = true; it.withdrawn = true;
+            q.withdrawn.push({ assetId: it.assetId, line: it.section + " · " + it.item, reason: why.value.trim() });
+            save(q);
+            render();
+          };
+        };
+
+        /* --- log the fault --- */
+        go.onclick = async function () {
+          go.disabled = true; go.textContent = "Saving…";
+          var line = (it.section ? it.section + " · " : "") + it.item;
+          var ref = refBase != null
+            ? "FLT-" + (refBase + 1 + q.faults.length)
+            : "FLT-" + Date.now().toString(36).toUpperCase();
+          var rec = {
+            ref: ref, date: q.visitDate, plant: plantChoice(it.assetId, it.group || q.plant),
+            assetId: it.assetId, line: line, visitRef: q.visitRef,
+            severity: severity, description: desc.value.trim(), action: act.value.trim(),
+            raisedBy: q.engineer
+          };
+
+          var saved = false;
+          try {
+            await writeFault(rec);
+            saved = true;
+          } catch (e) {
+            warn.style.display = "";
+            warn.textContent = "Could not save to the Fault Register (" + (e.message || e) +
+              "). It is kept on this device — reconnect and press again.";
+            go.disabled = false; go.textContent = "Log this fault";
+            return;
+          }
+
+          // Fault PDF + original photos → Faults library (never block the save on this)
+          try {
+            var pdfPhotos = await Promise.all(photos.map(function (p) { return downscale(p.data, 1400); }));
+            var blob = REDFM.buildFaultPdf({
+              ref: rec.ref, date: rec.date, plant: rec.assetId + " — " + rec.plant, severity: rec.severity,
+              raisedBy: rec.raisedBy, stage: "Reported", description: rec.description, action: rec.action,
+              subtitle: "Border Holdings, Avonmouth · raised on visit " + rec.visitRef
+            }, pdfPhotos);
+            var base = "Fault_" + rec.date + "_" + slug(rec.assetId) + "_" + rec.ref;
+            await REDFM.uploadFile("Faults", base + ".pdf", blob, "application/pdf");
+            var n = 0;
+            for (var i = 0; i < photos.length; i++) {
+              n++;
+              var p = photos[i];
+              var ext = (p.name.split(".").pop() || "jpg").toLowerCase();
+              await REDFM.uploadFile("Faults", base + "_photo" + n + "." + ext, p.file, p.file.type || "image/jpeg");
+            }
+          } catch (e) { /* PDF/photo filing is best-effort */ }
+
+          if (saved) {
+            it.done = true; it.ref = rec.ref;
+            q.faults.push(rec);
+            save(q);
+            await patchVisit(q.visitIds && q.visitIds.length ? q.visitIds : q.visitId, {
+              FaultsFlagged: q.items.length,
+              FaultsDocumented: q.faults.length
+            });
+            render();
+          }
+        };
+      }
+
+      render();
+    });
+  }
+
+  /* ---------- resume banner for an abandoned queue ------------------------- */
+  function checkPending(container) {
+    var p = pending();
+    if (!p) return null;
+    injectStyle();
+    var b = el("div", "ff-banner");
+    b.innerHTML = "<div><b>" + p.outstanding + " fault" + (p.outstanding === 1 ? "" : "s") +
+      "</b> still to document from visit " + esc(p.ref) + " (" + esc(p.date) + "). " +
+      "That report is not complete and has not been filed.</div>";
+    var btn = el("button", null, "Finish it now");
+    btn.type = "button";
+    btn.onclick = function () { b.remove(); resume(); };
+    b.appendChild(btn);
+    var host = container || document.querySelector(".wrap") || document.querySelector("main") || document.body;
+    host.insertBefore(b, host.firstChild);
+    return b;
+  }
+
+  return {
+    assetId: assetId,
+    start: start,
+    resume: resume,
+    pending: pending,
+    checkPending: checkPending,
+    clear: clear
+  };
+})();
