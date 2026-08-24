@@ -183,7 +183,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=13"></script>
+<script src="redfm-data.js?v=14"></script>
 <script>
 const $=id=>document.getElementById(id);
 const now=new Date();
@@ -432,7 +432,10 @@ function openModal(title,sub,body){
 }
 function assetHistory(code){
   const k=assetKey(code);
-  const faults=((DATA&&DATA.faults)||[]).filter(f=>f.AssetId&&assetKey(f.AssetId)===k)
+  // Fall back to Plant for legacy faults raised before AssetId existed — otherwise
+  // "click D2, see everything" shows zero faults for exactly the historical records
+  // Ray wants to look back at.
+  const faults=((DATA&&DATA.faults)||[]).filter(f=>assetKey(f.AssetId||f.Plant||'')===k)
     .slice().sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
   const vd={};((DATA&&DATA.visits)||[]).forEach(v=>{if(v.Title)vd[v.Title]=v.VisitDate||'';});
   const readings=((DATA&&DATA.readings)||[]).filter(r=>r.Asset&&assetKey(r.Asset)===k)
