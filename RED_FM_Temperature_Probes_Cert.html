@@ -87,8 +87,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=7"></script>
+<script src="redfm-data.js?v=12"></script>
 <script src="redfm-draft.js?v=2"></script>
+<script src="redfm-faultflow.js?v=1"></script>
 <script>
 const GROUPS={
  "Monitoring":[
@@ -207,12 +208,15 @@ let submitted=false;
 $('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
-  const probes=[];
+  const probes=[];const flagged=[];
   NAMES.forEach(n=>GROUPS[n].forEach(([id,loc])=>{
     const st=state[id];if(st&&st.m!==''&&st.m!=null&&st.d!==''&&st.d!=null){
       const err=+(parseFloat(st.d)-parseFloat(st.m)).toFixed(1);
       probes.push({group:n,probeId:id,location:loc,measured:+st.m,displayed:+st.d,error:err,
-        outOfTol:Math.abs(err)>tol(),comments:st.c||''});}
+        outOfTol:Math.abs(err)>tol(),comments:st.c||''});
+      if(Math.abs(err)>tol())flagged.push({
+        assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(n,'Probe validation',id):(n+' '+id).trim(),
+        group:n,section:n+' — Probe validation',item:loc,col:id});}
   }));
   if(probes.length===0){toast('Record at least one probe');return;}
   const fails=probes.filter(p=>p.outOfTol).length;
@@ -222,29 +226,10 @@ $('finish').addEventListener('click',async()=>{
     instrument:{name:$('iName').value.trim(),serial:$('iSerial').value.trim(),calCert:$('iCert').value.trim()},
     probes,submittedAt:new Date().toISOString(),ref:'TPC-'+Date.now().toString(36).toUpperCase()};
 
-  // Save to SharePoint (ServiceVisit header + one Readings row per probe), then file a branded PDF
-  let saveMsg='SharePoint not configured yet — kept a local copy.';
-  if(redfmReady){
-    $('finish').textContent='Saving…';
-    try{
-      if(!signedIn){await REDFM.signIn();signedIn=true;}
-      const groups=[...new Set(probes.map(p=>p.group))].join(', ');
-      const visitFields={Title:r.ref,ServiceType:"Probe calibration",
-        PlantSection:groups,Engineer:r.engineer,VisitDate:r.date,
-        Status:"Partially completed",FaultFound:fails>0?"Yes":"No",
-        Notes:('Job '+(r.jobNo||'—')+'; ref thermometer '+r.instrument.name+
-          (r.instrument.serial?(' (s/n '+r.instrument.serial+', cert '+r.instrument.calCert+')'):'')+
-          '; tolerance ±'+r.tolerance+'°C. '+($('hComm')?$('hComm').value.trim():''))};
-      const readingRows=probes.map((p,i)=>({Title:r.ref+'-'+(i+1),
-        ReadingKey:slug('probe '+p.probeId),
-        Asset:p.probeId+' '+p.location,
-        Value:'Measured '+p.measured+' / Displayed '+p.displayed+' / Error '+(p.error>0?'+':'')+p.error+(p.comments?(' ('+p.comments+')'):''),
-        Unit:'°C',OutOfRange:p.outOfTol?'Yes':'No'}));
-      await REDFM.saveVisit(visitFields,readingRows);
-      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
-      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' probe(s)';
-      // generate + file a branded PDF copy in the Reports library (one grid table per probe group)
-      try{
+  // Build the report PDF. Called AFTER any flagged faults have been documented so the
+  // faults summary block and the derived issue count are populated.
+  const groups=[...new Set(probes.map(p=>p.group))].join(', ');
+  function buildReport(faults,withdrawn){
         // cumulative period report: every probe validated THIS year with the date it was done
         const grid=[];
         NAMES.forEach(n=>{
@@ -261,11 +246,53 @@ $('finish').addEventListener('click',async()=>{
         const blob=REDFM.buildReportPdf({title:'Temperature probe validation — '+(periodLabel||'this year'),
           subtitle:'Border Holdings, Avonmouth · cumulative — F-Gas certificate of test',
           ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,fgasNo:'REF1018681',
+          faults:faults||[],withdrawn:withdrawn||[],
           extra:[['Period',periodLabel||'—'],['As at',r.date],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Job No.',r.jobNo||''],['Tolerance','±'+r.tolerance+'°C']]},grid);
         const fname='ProbeCert_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.date+'_'+r.ref+'.pdf';
-        await REDFM.uploadReportPdf(fname,blob);
-        saveMsg+=' · PDF filed';
-      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+    return {blob:blob,filename:fname};
+  }
+
+  // Save to SharePoint (ServiceVisit header + one Readings row per probe), then file a branded PDF
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  let startFaultFlow=null;
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const holding=fails>0&&window.REDFMFaultFlow;
+      const visitFields={Title:r.ref,ServiceType:"Probe calibration",
+        PlantSection:groups,Engineer:r.engineer,VisitDate:r.date,
+        Status:holding?"Awaiting fault detail":"Partially completed",
+        FaultsFlagged:fails,FaultsDocumented:0,
+        FaultFound:fails>0?"Yes":"No",
+        Notes:('Job '+(r.jobNo||'—')+'; ref thermometer '+r.instrument.name+
+          (r.instrument.serial?(' (s/n '+r.instrument.serial+', cert '+r.instrument.calCert+')'):'')+
+          '; tolerance ±'+r.tolerance+'°C. '+($('hComm')?$('hComm').value.trim():''))};
+      const readingRows=probes.map((p,i)=>({Title:r.ref+'-'+(i+1),
+        ReadingKey:slug('probe '+p.probeId),
+        Asset:p.probeId+' '+p.location,
+        Value:'Measured '+p.measured+' / Displayed '+p.displayed+' / Error '+(p.error>0?'+':'')+p.error+(p.comments?(' ('+p.comments+')'):''),
+        Unit:'°C',OutOfRange:p.outOfTol?'Yes':'No'}));
+      const visit=await REDFM.saveVisit(visitFields,readingRows);
+      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
+      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' probe(s)';
+      if(holding){
+        // The readings are in, but the visit stays at 'Awaiting fault detail' and NO report
+        // is filed until every flagged item has a fault record behind it.
+        saveMsg+=' · '+fails+' flagged item(s) still to document — report not filed yet';
+        startFaultFlow=()=>REDFMFaultFlow.start({
+          visitId:visit&&visit.id,completeStatus:"Partially completed",visitRef:r.ref,visitDate:r.date,engineer:r.engineer,
+          plant:groups,items:flagged,
+          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+        });
+      }else{
+        // generate + file a branded PDF copy in the Reports library (one grid table per probe group)
+        try{
+          const rep=buildReport([],[]);
+          await REDFM.uploadReportPdf(rep.filename,rep.blob);
+          saveMsg+=' · PDF filed';
+        }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+      }
     }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
   }
 
@@ -284,8 +311,16 @@ $('finish').addEventListener('click',async()=>{
   $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`ProbeCert_${r.date}_${r.ref}.json`;a.click();};
   toast('Submitted ✓');
+
+  // Flagged items must now be documented. The report is saved but held.
+  if(startFaultFlow){
+    $('sumHead').textContent=`⚠ Submitted — ${fails} flagged item(s) to document`;
+    setTimeout(startFaultFlow,400);
+  }
 });
 REDFMDraft.init({key:'tempprobes',state:state,draw:draw});
+// If a previous visit was abandoned mid-way through documenting its faults, say so.
+try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
 </script>
 </body>
 </html>

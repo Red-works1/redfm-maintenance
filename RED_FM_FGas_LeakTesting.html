@@ -70,8 +70,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=7"></script>
+<script src="redfm-data.js?v=12"></script>
 <script src="redfm-draft.js?v=2"></script>
+<script src="redfm-faultflow.js?v=1"></script>
 <script>
 const TESTS=[
  {key:"direct",label:"Electronic leak-detector test",sub:"entire plant",opts:["No leak found","Leak found"]},
@@ -173,49 +174,77 @@ $('finish').addEventListener('click',async()=>{
     if(st&&st.result)out.push({system:s[1],code:s[0],charge:s[2],test:t.label,
       result:st.result,date:st.date||today,comment:st.comment||'',engineer:$('hEng').value.trim()});}));
   if(out.length===0){toast('Log at least one test');return;}
-  const leaks=out.filter(r=>r.result.startsWith('Leak')||r.result.startsWith('Loss')).length;
+  const flagged=[];
+  out.forEach(e=>{if(!(e.result.startsWith('Leak')||e.result.startsWith('Loss')))return;
+    flagged.push({assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(e.code,e.system,e.code):(e.code+' '+e.code).trim(),
+      group:e.code,section:e.code+' — '+e.system,item:e.test,col:e.code});});
+  const leaks=flagged.length;
   const r={sheet:"F-Gas leak testing",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
     visitDate:$('hDate').value,engineer:$('hEng').value.trim(),detector:$('hDet').value.trim(),
     comments:$('hComm').value.trim(),tests:out,submittedAt:new Date().toISOString(),ref:'FG-'+Date.now().toString(36).toUpperCase()};
 
+  // Build the report PDF (one grid table per system). Called AFTER any flagged leak/loss has
+  // been documented so the faults summary block (item 8) and the derived count (item 9) are populated.
+  const sys=[...new Set(out.map(e=>e.code))].join(', ');
+  function buildReport(faults,withdrawn){
+    // cumulative period report: every test done THIS period with the date it was done
+    const grid=[];
+    SYSTEMS.forEach((s,si)=>{
+      const gr=[];
+      TESTS.forEach((t,ti)=>{const st=state[rid(si,ti)];
+        if(st&&st.result){gr.push([t.label, st.result, st.date||today, st.comment||'']);return;}
+        const dn=doneMap[slug(t.label+' '+s[0])+'||'+s[0]];
+        if(dn)gr.push([t.label, dn.result, dn.date, (dn.eng?('recorded earlier · '+dn.eng):'recorded earlier')]);});
+      if(gr.length)grid.push({name:s[0]+' — '+s[1]+' ('+s[2]+')',cols:['Result','Date','Comments'],rows:gr});
+    });
+    const blob=REDFM.buildReportPdf({title:'F-Gas leak testing report — '+(periodLabel||'this period'),
+      subtitle:'Border Holdings, Avonmouth · cumulative — date shows when each test was done',
+      ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:sys,fgasNo:'REF1018681',
+      faults:faults||[],withdrawn:withdrawn||[],
+      extra:[['Period',periodLabel||'—'],['As at',r.visitDate],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Detector',r.detector||'']]},grid);
+    const fname='FGas_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+r.ref+'.pdf';
+    return {blob:blob,filename:fname};
+  }
+
   // Save to SharePoint (ServiceVisit header + one Readings row per test), then file a branded PDF
   let saveMsg='SharePoint not configured yet — kept a local copy.';
+  let startFaultFlow=null;
   if(redfmReady){
     $('finish').textContent='Saving…';
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
-      const sys=[...new Set(out.map(e=>e.code))].join(', ');
+      const holding=leaks>0&&window.REDFMFaultFlow;
       const visitFields={Title:r.ref,ServiceType:"F-Gas",
         PlantSection:sys,Engineer:r.engineer,VisitDate:r.visitDate,
-        Status:"Partially completed",FaultFound:leaks>0?"Yes":"No",
+        Status:holding?"Awaiting fault detail":"Partially completed",
+        FaultsFlagged:leaks,FaultsDocumented:0,
+        FaultFound:leaks>0?"Yes":"No",
         Notes:(r.detector?('Detector: '+r.detector+'. '):'')+r.comments};
       const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),
         ReadingKey:slug(e.test+' '+e.code),Asset:e.code,
         Value:e.result+' — '+e.date+(e.comment?(' ('+e.comment+')'):''),Unit:'',
         OutOfRange:(e.result.startsWith('Leak')||e.result.startsWith('Loss'))?'Yes':'No'}));
-      await REDFM.saveVisit(visitFields,readingRows);
+      const visit=await REDFM.saveVisit(visitFields,readingRows);
       try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' test(s)';
-      // generate + file a branded PDF copy in the Reports library (one grid table per system)
-      try{
-        // cumulative period report: every test done THIS period with the date it was done
-        const grid=[];
-        SYSTEMS.forEach((s,si)=>{
-          const gr=[];
-          TESTS.forEach((t,ti)=>{const st=state[rid(si,ti)];
-            if(st&&st.result){gr.push([t.label, st.result, st.date||today, st.comment||'']);return;}
-            const dn=doneMap[slug(t.label+' '+s[0])+'||'+s[0]];
-            if(dn)gr.push([t.label, dn.result, dn.date, (dn.eng?('recorded earlier · '+dn.eng):'recorded earlier')]);});
-          if(gr.length)grid.push({name:s[0]+' — '+s[1]+' ('+s[2]+')',cols:['Result','Date','Comments'],rows:gr});
+
+      if(holding){
+        // Item 1 + 2 — the tests are in, but the visit stays at 'Awaiting fault detail'
+        // and NO report is filed until every flagged leak/loss has a fault record behind it.
+        saveMsg+=' · '+leaks+' flagged item(s) still to document — report not filed yet';
+        startFaultFlow=()=>REDFMFaultFlow.start({
+          visitId:visit&&visit.id,completeStatus:"Partially completed",visitRef:r.ref,visitDate:r.visitDate,engineer:r.engineer,
+          plant:sys,items:flagged,
+          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
         });
-        const blob=REDFM.buildReportPdf({title:'F-Gas leak testing report — '+(periodLabel||'this period'),
-          subtitle:'Border Holdings, Avonmouth · cumulative — date shows when each test was done',
-          ref:r.ref,date:r.visitDate,engineer:r.engineer,plant:sys,fgasNo:'REF1018681',
-          extra:[['Period',periodLabel||'—'],['As at',r.visitDate],['Contractor','Coolstream (UK) Ltd'],['F-Gas certification','Refcom company cert REF1018681 · valid to 08 Jul 2027'],['Detector',r.detector||'']]},grid);
-        const fname='FGas_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+r.ref+'.pdf';
-        await REDFM.uploadReportPdf(fname,blob);
-        saveMsg+=' · PDF filed';
-      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+      }else{
+        // Nothing flagged — file the report immediately, as before
+        try{
+          const rep=buildReport([],[]);
+          await REDFM.uploadReportPdf(rep.filename,rep.blob);
+          saveMsg+=' · PDF filed';
+        }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+      }
     }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
   }
 
@@ -234,8 +263,16 @@ $('finish').addEventListener('click',async()=>{
   $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`FGas_${r.visitDate}_${r.ref}.json`;a.click();};
   toast('Submitted ✓');
+
+  // Item 1 — flagged items must now be documented. The report is saved but held.
+  if(startFaultFlow){
+    $('sumHead').textContent=`⚠ Submitted — ${leaks} flagged item(s) to document`;
+    setTimeout(startFaultFlow,400);
+  }
 });
 REDFMDraft.init({key:'fgas',state:state,draw:draw});
+// If a previous visit was abandoned mid-way through documenting its faults, say so.
+try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
 </script>
 </body>
 </html>

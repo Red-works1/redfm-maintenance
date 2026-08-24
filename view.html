@@ -67,6 +67,11 @@
   #calloutbox .cohead span{color:var(--grey);font-weight:600;font-size:13px;}
   .banner{display:flex;align-items:center;gap:10px;background:#fdecee;color:var(--red);border-radius:12px;padding:13px 15px;margin:14px 18px 0;font-weight:700;font-size:14px;}
   .empty{padding:22px;color:var(--grey);font-size:14px;text-align:center;}
+  .empty.ok{color:var(--ok);font-weight:700;}
+  #incompletebox tr.inc-a td{background:#fdf3e3;}
+  #incompletebox tr.inc-r td{background:#fdecee;}
+  #incompletebox .age{font-weight:800;color:var(--amber);}
+  #incompletebox tr.inc-r .age{color:var(--red);}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
@@ -77,11 +82,11 @@
   footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
   @media print{body{background:#fff;}.toolbar,.hubbtn{display:none;}.metric,.card{break-inside:avoid;}}
   @media(max-width:640px){
-    #faulttable table,#faulttable tbody,#faulttable tr,#faulttable td{display:block;width:auto;}
-    #faulttable thead{display:none;}
-    #faulttable tr{border:1px solid var(--line);border-radius:12px;margin:0 0 14px;padding:2px 0;background:#fff;}
-    #faulttable td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
-    #faulttable td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
+    #faulttable table,#faulttable tbody,#faulttable tr,#faulttable td,#incompletebox table,#incompletebox tbody,#incompletebox tr,#incompletebox td{display:block;width:auto;}
+    #faulttable thead,#incompletebox thead{display:none;}
+    #faulttable tr,#incompletebox tr{border:1px solid var(--line);border-radius:12px;margin:0 0 14px;padding:2px 0;background:#fff;}
+    #faulttable td,#incompletebox td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
+    #faulttable td:before,#incompletebox td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
     #faulttable td.wide{display:block;text-align:left;}
     #faulttable td.wide:before{display:block;margin-bottom:4px;}
   }
@@ -104,6 +109,12 @@
 
   <div id="board" style="display:none">
     <div class="metrics" id="metrics"></div>
+
+    <div class="sechead">
+      <h2>Incomplete submissions</h2>
+      <div class="legend"><span class="a">● awaiting completion</span><span class="r">● 3 days or more</span></div>
+    </div>
+    <div class="card" id="incompletebox"></div>
 
     <div class="sechead">
       <h2>Refrigeration maintenance — regime progress</h2>
@@ -133,7 +144,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=11"></script>
+<script src="redfm-data.js?v=12"></script>
 <script>
 const $=id=>document.getElementById(id);
 const now=new Date();
@@ -167,10 +178,26 @@ function elapsedFrac(s,e){return Math.max(0,Math.min(1,(now-s)/(e-s)));}
 function wednesdays(s){let c=0;const d=new Date(s);while(d<=now){if(d.getDay()===3)c++;d.setDate(d.getDate()+1);}return Math.max(1,c);}
 function wedsInPeriod(s,e){let c=0;const d=new Date(s);while(d<e){if(d.getDay()===3)c++;d.setDate(d.getDate()+1);}return c;} // total weekly checks in the whole month
 function daysBetween(a,b){return Math.max(0,Math.round((b-new Date(a))/86400000));}
+function ageDays(ds){if(!ds)return 0;const d=new Date(ds);if(isNaN(d))return 0;return Math.max(0,Math.floor((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/86400000));} // whole days, today minus VisitDate
 
 let DATA=null;
 
+// ---- Incomplete submissions (fault-capture phase) --------------------------------
+// "Awaiting fault detail" = engineer flagged faults but has not documented them; the report PDF
+// has not been filed and nothing has gone to Border, so such a visit is NOT a completed visit.
+// "Awaiting document" = the visit happened and is recorded but its PDF did not upload; it is listed
+// here and, like a held visit, does NOT count towards any completion figure (item 10).
+const INCOMPLETE_FAULT_STATUS="Awaiting fault detail";
+const INCOMPLETE_DOC_STATUS="Awaiting document";
+const INCOMPLETE_STATUSES=[INCOMPLETE_FAULT_STATUS,INCOMPLETE_DOC_STATUS];
+// Item 10 — a visit is only complete when the thing that proves it exists. Neither a
+// visit still awaiting its fault detail nor one whose certificate/report never
+// uploaded counts towards any compliance figure.
+function countsAsComplete(v){return INCOMPLETE_STATUSES.indexOf(((v&&v.Status)||""))<0;}
+function incompleteVisits(visits){return (visits||[]).filter(v=>INCOMPLETE_STATUSES.indexOf(v.Status||"")!==-1).slice().sort((a,b)=>new Date(a.VisitDate||0)-new Date(b.VisitDate||0));}
+
 function computeRegime(reg,visits,readings,catCount){
+  visits=(visits||[]).filter(countsAsComplete); // a visit still awaiting its fault detail is not filed — never count it as done
   const {s,e,label}=periodRange(reg.period);
   let done,expected,detail;
   if(reg.mode==="visits"){
@@ -225,7 +252,7 @@ function certFor(item){
 }
 function computeCompliance(visits){
   return FM_COMPLIANCE.map(item=>{
-    const mine=(visits||[]).filter(v=>v.ServiceType===item.key && v.VisitDate).sort((a,b)=>new Date(b.VisitDate)-new Date(a.VisitDate));
+    const mine=(visits||[]).filter(v=>v.ServiceType===item.key && v.VisitDate && countsAsComplete(v)).sort((a,b)=>new Date(b.VisitDate)-new Date(a.VisitDate));
     const last=mine[0]||null;
     const lastDate=last?new Date(last.VisitDate):null;
     const provider=(last&&last.Engineer)||item.provider;
@@ -276,6 +303,24 @@ function compute(){
   return {regs,overall,onTime,attention,open,closed,callouts,faults};
 }
 
+function renderIncomplete(visits){
+  const inc=incompleteVisits(visits);
+  if(!inc.length){$('incompletebox').innerHTML='<div class="empty ok">\u2713 All submitted visits are complete.</div>';return;}
+  const rows=inc.map(v=>{
+    const age=ageDays(v.VisitDate);
+    const nf=(v.FaultsFlagged==null||v.FaultsFlagged==='')?null:Number(v.FaultsFlagged);
+    const nd=Number(v.FaultsDocumented||0);
+    const outstanding=(v.Status===INCOMPLETE_FAULT_STATUS)?(nd+" of "+(nf==null?"?":nf)+" faults documented"):"certificate/report not filed";
+    return `<tr class="${age>=3?'inc-r':'inc-a'}"><td data-label="Ref"><b>${v.Title||''}</b></td>
+      <td data-label="Date">${v.VisitDate?new Date(v.VisitDate).toLocaleDateString('en-GB'):''}</td>
+      <td data-label="Service">${v.ServiceType||''}</td>
+      <td data-label="Plant / section">${v.PlantSection||''}</td>
+      <td data-label="Engineer">${v.Engineer||''}</td>
+      <td data-label="Outstanding">${outstanding}</td>
+      <td data-label="Ageing"><span class="age">${age} day${age===1?'':'s'}</span></td></tr>`;}).join('');
+  $('incompletebox').innerHTML=`<table><thead><tr><th>Ref</th><th>Date</th><th>Service</th><th>Plant / section</th><th>Engineer</th><th>Outstanding</th><th>Ageing</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 function render(){
   const C=compute();
   $('metrics').innerHTML=`
@@ -283,6 +328,7 @@ function render(){
     <div class="metric green"><div class="l">On track</div><div class="v">${C.onTime}</div><div class="s">of ${C.regs.length} regimes</div></div>
     <div class="metric amber"><div class="l">Need attention</div><div class="v">${C.attention}</div><div class="s">in progress or behind</div></div>
     <div class="metric red"><div class="l">Open faults</div><div class="v">${C.open.length}</div><div class="s">${C.closed} closed</div></div>`;
+  renderIncomplete(DATA.visits);
 
   $('regimes').innerHTML=C.regs.map(r=>`
     <div class="reg">
@@ -314,19 +360,19 @@ function render(){
         <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
         <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
         <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
-      return `<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
+      return `<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Asset">${f.AssetId||f.Plant||''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
         <td class="wide" data-label="Fault">${(f.Description||'').replace(/</g,'&lt;')}</td><td data-label="Stage">${STAGE_LABEL[st]}</td>
         <td class="wide" data-label="Action taken">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
         <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
         <td data-label="Days open">${f.FaultDate?daysBetween(f.FaultDate,now):''}</td>
         <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Asset</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Days open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
   $('calloutbox').innerHTML=`<div class="cohead">Call-out log <span>(${co.length} total)</span></div>`+
-    (co.length?`<table><thead><tr><th>Ref</th><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
-      co.map(f=>`<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
+    (co.length?`<table><thead><tr><th>Ref</th><th>Asset</th><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
+      co.map(f=>`<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Asset">${f.AssetId||f.Plant||''}</td><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
       `</tbody></table>`:`<div class="empty">No call-outs logged.</div>`);
 
   $('period').innerHTML='Read-only · '+(window.SNAPLABEL||'live');

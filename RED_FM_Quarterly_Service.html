@@ -77,8 +77,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=5"></script>
+<script src="redfm-data.js?v=12"></script>
 <script src="redfm-draft.js?v=2"></script>
+<script src="redfm-faultflow.js?v=1"></script>
 <script>
 const COOL_AB=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff","Expansion valve superheat & % open"];
 const COOL_STD=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff"];
@@ -191,11 +192,13 @@ let submitted=false;
 $('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
-  const out=[];let issues=0;
+  const out=[];const flagged=[];let issues=0;
   Object.keys(CHAMBERS).forEach(ch=>['readings','checks'].forEach(md=>{
     CHAMBERS[ch][md].forEach((sec,si)=>sec.rows.forEach((row,ri)=>sec.cols.forEach((c,ci)=>{
       const v=state[`${ch}|${md}|${si}|${ri}|${ci}`];if(v==null||v==='')return;
-      if(v==='no')issues++;
+      if(v==='no'){issues++;flagged.push({
+        assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(ch,sec.name,c):(ch+' '+c).trim(),
+        group:ch,section:ch+' — '+sec.name,item:row,col:c});}
       out.push({chamber:ch,mode:md,section:sec.name,row:row,col:c,value:v==='ok'?'OK':v==='no'?'ISSUE':v});
     })));}));
   if(out.length===0){toast('Nothing recorded yet');return;}
@@ -203,62 +206,121 @@ $('finish').addEventListener('click',async()=>{
     visitDate:$('hDate').value,engineer:$('hEng').value.trim(),comments:$('hComm').value.trim(),
     entries:out,issues,submittedAt:new Date().toISOString(),ref:'QS-'+Date.now().toString(36).toUpperCase()};
 
+  // Each dashboard regime (A&B / C / D&E / E) must be its OWN ServiceVisit, else only the first shows.
+  const qType=c=>c==='C'?'Quarterly C':c==='D'?'Quarterly D&E':c==='E'?'Quarterly E':'Quarterly A&B';
+  const suffix=t=>t==='Quarterly C'?'C':t==='Quarterly D&E'?'DE':t==='Quarterly E'?'E':'AB';
+  // group everything entered by regime so each becomes a separate visit + report
+  const groups={};out.forEach(e=>{const t=qType(e.chamber);(groups[t]=groups[t]||[]).push(e);});
+  const chambers=[...new Set(out.map(e=>e.chamber))].join(', ');
+  const cell=(ch,md,sec,row,c,ci,si,ri)=>{  // cumulative: value + the day it was taken
+    const sv=state[`${ch}|${md}|${si}|${ri}|${ci}`];
+    if(sv!=null&&sv!==''){const v=sv==='ok'?'OK':sv==='no'?'FAULT':sv;return v+' ('+ddmm(r.visitDate)+')';}
+    const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+c).trim()];
+    if(dn){const v=dn.value==='ISSUE'?'FAULT':dn.value;return v+' ('+ddmm(dn.date)+')';}
+    return '';
+  };
+
+  // Build the report PDFs. Called AFTER any flagged faults have been documented so the faults
+  // summary block (item 8) and the derived issue count (item 9) are populated. Each regime keeps
+  // its OWN branded cumulative report: the first is returned for the caller to file, any further
+  // regimes are filed here (the fault flow only ever files the one report it is handed back).
+  const filed=[];  // regimes saved by this submission — {t,gref,gChambers}
+  // Each regime report carries only ITS OWN faults — a chamber A fault must never turn up on
+  // the Quarterly C report. Match on the fault's plant/group (the chamber we flagged it under)
+  // and fall back to its asset code / line, both of which start with the chamber letter.
+  const ownedBy=(gChambers,f)=>{
+    const p=String((f&&(f.plant||f.group))||'').trim();
+    if(p&&gChambers.indexOf(p)>=0)return true;
+    const a=String((f&&f.assetId)||'').trim().toUpperCase();
+    const l=String((f&&f.line)||'').trim().toUpperCase();
+    return gChambers.some(ch=>{const u=ch.toUpperCase();return a===u||a.indexOf(u)===0||l.indexOf(u+' — ')===0;});
+  };
+  async function buildReport(faults,withdrawn){
+    const fa=faults||[],wd=withdrawn||[];
+    // anything that matches no regime at all goes on the FIRST report — never dropped from every one
+    const orphanF=fa.filter(f=>!filed.some(j=>ownedBy(j.gChambers,f)));
+    const orphanW=wd.filter(w=>!filed.some(j=>ownedBy(j.gChambers,w)));
+    let first=null;
+    for(const j of filed){
+      const t=j.t,gref=j.gref,gChambers=j.gChambers;
+      try{
+        const isFirst=!first;
+        const jFaults=fa.filter(f=>ownedBy(gChambers,f)).concat(isFirst?orphanF:[]);
+        const jWithdrawn=wd.filter(w=>ownedBy(gChambers,w)).concat(isFirst?orphanW:[]);
+        const grid=[];
+        gChambers.forEach(ch=>['readings','checks'].forEach(md=>{
+          CHAMBERS[ch][md].forEach((sec,si)=>{
+            const rows=[];
+            sec.rows.forEach((row,ri)=>{
+              const vals=sec.cols.map((c,ci)=>cell(ch,md,sec,row,c,ci,si,ri));
+              if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
+            });
+            if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
+          });
+        }));
+        const blob=REDFM.buildReportPdf({title:t+' report — '+(periodLabel||'this quarter'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — dates show when each result was taken',
+          ref:gref,date:r.visitDate,engineer:r.engineer,plant:gChambers.join(', '),
+          faults:jFaults,withdrawn:jWithdrawn,
+          extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
+        const fname='Quarterly_'+suffix(t)+'_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+gref+'.pdf';
+        if(!first)first={blob:blob,filename:fname};
+        else await REDFM.uploadReportPdf(fname,blob);
+      }catch(pe){/* this regime's PDF skipped; data still saved */}
+    }
+    return first||{blob:null,filename:null};
+  }
+
   // Save to SharePoint (ServiceVisit header + one Readings row per value), then file a branded PDF
   let saveMsg='SharePoint not configured yet — kept a local copy.';
+  let startFaultFlow=null;
   if(redfmReady){
     $('finish').textContent='Saving…';
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
-      // Each dashboard regime (A&B / C / D&E / E) must be its OWN ServiceVisit, else only the first shows.
-      const qType=c=>c==='C'?'Quarterly C':c==='D'?'Quarterly D&E':c==='E'?'Quarterly E':'Quarterly A&B';
-      const suffix=t=>t==='Quarterly C'?'C':t==='Quarterly D&E'?'DE':t==='Quarterly E'?'E':'AB';
-      // group everything entered by regime so each becomes a separate visit + report
-      const groups={};out.forEach(e=>{const t=qType(e.chamber);(groups[t]=groups[t]||[]).push(e);});
-      const cell=(ch,md,sec,row,c,ci,si,ri)=>{  // cumulative: value + the day it was taken
-        const sv=state[`${ch}|${md}|${si}|${ri}|${ci}`];
-        if(sv!=null&&sv!==''){const v=sv==='ok'?'OK':sv==='no'?'FAULT':sv;return v+' ('+ddmm(r.visitDate)+')';}
-        const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+c).trim()];
-        if(dn){const v=dn.value==='ISSUE'?'FAULT':dn.value;return v+' ('+ddmm(dn.date)+')';}
-        return '';
-      };
-      let totalReadings=0;const savedTypes=[];
+      let totalReadings=0;const savedTypes=[];const heldVisitIds=[];let heldVisit=null,heldRef=r.ref;
       for(const t of Object.keys(groups)){
         const g=groups[t];
         const gref=r.ref+'-'+suffix(t);
         const gChambers=[...new Set(g.map(e=>e.chamber))];
         const gIssues=g.filter(e=>e.value==='ISSUE').length;
+        const holding=gIssues>0&&window.REDFMFaultFlow;
         const visitFields={Title:gref,ServiceType:t,PlantSection:gChambers.join(', '),
-          Engineer:r.engineer,VisitDate:r.visitDate,Status:"Partially completed",
+          Engineer:r.engineer,VisitDate:r.visitDate,
+          Status:holding?"Awaiting fault detail":"Partially completed",
+          FaultsFlagged:gIssues,FaultsDocumented:0,
           FaultFound:gIssues>0?"Yes":"No",Notes:r.comments};
         const readingRows=g.map((e,i)=>({Title:gref+'-'+(i+1),
           ReadingKey:slug(e.mode+' '+e.section+' '+e.row),
           Asset:(e.chamber+' '+e.col).trim(),Value:String(e.value),Unit:'',
           OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
-        await REDFM.saveVisit(visitFields,readingRows);
+        const visit=await REDFM.saveVisit(visitFields,readingRows);
+        if(holding){if(!heldVisit){heldVisit=visit;heldRef=gref;}if(visit&&visit.id)heldVisitIds.push(visit.id);}
         totalReadings+=readingRows.length;savedTypes.push(t);
-        // branded cumulative PDF for THIS regime's chambers only
-        try{
-          const grid=[];
-          gChambers.forEach(ch=>['readings','checks'].forEach(md=>{
-            CHAMBERS[ch][md].forEach((sec,si)=>{
-              const rows=[];
-              sec.rows.forEach((row,ri)=>{
-                const vals=sec.cols.map((c,ci)=>cell(ch,md,sec,row,c,ci,si,ri));
-                if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
-              });
-              if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
-            });
-          }));
-          const blob=REDFM.buildReportPdf({title:t+' report — '+(periodLabel||'this quarter'),
-            subtitle:'Border Holdings, Avonmouth · cumulative — dates show when each result was taken',
-            ref:gref,date:r.visitDate,engineer:r.engineer,plant:gChambers.join(', '),
-            extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
-          const fname='Quarterly_'+suffix(t)+'_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+gref+'.pdf';
-          await REDFM.uploadReportPdf(fname,blob);
-        }catch(pe){/* this regime's PDF skipped; data still saved */}
+        // this regime's branded cumulative PDF is built once every flagged fault is documented
+        filed.push({t:t,gref:gref,gChambers:gChambers});
       }
       try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+totalReadings+' readings across '+savedTypes.length+' report(s): '+savedTypes.join(', ');
+
+      if(issues>0&&window.REDFMFaultFlow){
+        // Item 1 + 2 — the readings are in, but the flagged regimes stay at 'Awaiting fault
+        // detail' and NO report is filed until every flagged item has a fault record behind it.
+        saveMsg+=' · '+issues+' flagged item(s) still to document — report not filed yet';
+        startFaultFlow=()=>REDFMFaultFlow.start({
+          visitId:heldVisit&&heldVisit.id,visitIds:heldVisitIds,
+          completeStatus:"Partially completed",   // quarterly submits in parts — never force 'Fully completed'
+          visitRef:heldRef,visitDate:r.visitDate,engineer:r.engineer,
+          plant:chambers,items:flagged,
+          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+        });
+      }else{
+        // Nothing flagged — file each regime's report immediately, as before
+        try{
+          const rep=await buildReport([],[]);
+          if(rep&&rep.blob)await REDFM.uploadReportPdf(rep.filename,rep.blob);
+        }catch(pe){/* PDF skipped; data still saved */}
+      }
     }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
   }
 
@@ -277,8 +339,16 @@ $('finish').addEventListener('click',async()=>{
   $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Quarterly_${r.visitDate}_${r.ref}.json`;a.click();};
   toast('Submitted ✓');
+
+  // Item 1 — flagged items must now be documented. The report is saved but held.
+  if(startFaultFlow){
+    $('sumHead').textContent=`⚠ Submitted — ${issues} flagged item(s) to document`;
+    setTimeout(startFaultFlow,400);
+  }
 });
 REDFMDraft.init({key:'quarterly',state:state,draw:draw});
+// If a previous visit was abandoned mid-way through documenting its faults, say so.
+try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
 </script>
 </body>
 </html>

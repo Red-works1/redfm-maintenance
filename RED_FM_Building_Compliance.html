@@ -70,7 +70,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
-<script src="redfm-data.js?v=11"></script>
+<script src="redfm-data.js?v=12"></script>
 <script src="redfm-draft.js?v=2"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -104,6 +104,8 @@ $('finish').addEventListener('click',async()=>{
   if(!chosen){toast('Pick a compliance item');return;}
   if(!$('cDate').value){toast('Set the date');return;}
   if(!$('cProvider').value.trim()){toast('Enter the provider');return;}
+  // Item 10 — no compliance item can be recorded without its certificate.
+  if(!file){toast('Attach the certificate PDF — the record cannot be saved without it');return;}
   const provider=$('cProvider').value.trim();
   const ref=($('cRef').value.trim()||(chosen.type.replace(/[^A-Za-z]/g,'').slice(0,4).toUpperCase()+'-'+$('cDate').value));
   const title=chosen.prefix.split('_')[0]+'-'+ref;
@@ -113,18 +115,19 @@ $('finish').addEventListener('click',async()=>{
     $('finish').textContent='Saving…';
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
-      await REDFM.addItem("ServiceVisits",{Title:title,ServiceType:chosen.type,VisitDate:$('cDate').value,
-        Engineer:provider,PlantSection:"Whole site",Status:"Complete",FaultFound:"No",
+      // Item 10 — recorded as 'Awaiting document' and only promoted to complete
+      // once the certificate has actually landed in the report library.
+      const visit=await REDFM.addItem("ServiceVisits",{Title:title,ServiceType:chosen.type,VisitDate:$('cDate').value,
+        Engineer:provider,PlantSection:"Whole site",Status:"Awaiting document",FaultFound:"No",
         Notes:(($('cRef').value.trim()?("Cert ref "+$('cRef').value.trim()+". "):"")+($('cNotes').value.trim()||"")).trim()});
       saveMsg='Saved to the dashboard ✓';
       try{REDFMDraft.clear();}catch(e){}
-      if(file){
-        try{
-          const fname=chosen.prefix+'_'+slug(provider)+'_'+ref+'_'+$('cDate').value+'.pdf';
-          await REDFM.uploadFile("Reports",fname,file,'application/pdf');
-          saveMsg+=' · certificate filed to the report library';
-        }catch(pe){saveMsg+=' (certificate upload skipped: '+(pe.message||pe)+')';}
-      }else{saveMsg+=' · no certificate attached yet';}
+      try{
+        const fname=chosen.prefix+'_'+slug(provider)+'_'+ref+'_'+$('cDate').value+'.pdf';
+        await REDFM.uploadFile("Reports",fname,file,'application/pdf');
+        saveMsg+=' · certificate filed to the report library';
+        try{if(visit&&visit.id)await REDFM.updateVisit(visit.id,{Status:"Fully completed"});}catch(se){}
+      }catch(pe){saveMsg+=' — CERTIFICATE DID NOT UPLOAD ('+(pe.message||pe)+'). This item stays incomplete until it does.';}
     }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
   }
 

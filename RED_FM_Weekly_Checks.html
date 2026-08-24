@@ -67,8 +67,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=5"></script>
+<script src="redfm-data.js?v=12"></script>
 <script src="redfm-draft.js?v=2"></script>
+<script src="redfm-faultflow.js?v=1"></script>
 <script>
 const T=(a)=>a.map(x=>Array.isArray(x)?x:[x,'txt']);
 const CHAMBER=T([["Cold store set point (controller)"],["Cold store temp air-on"],["Coolers air off"],["Cooling on/off"]]);
@@ -180,52 +181,78 @@ let submitted=false;
 $('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
-  const out=[];let issues=0;
+  const out=[];const flagged=[];let issues=0;
   Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>sec.rows.forEach((row,ri)=>sec.cols.forEach((c,ci)=>{
-    const val=state[`${v}|${si}|${ri}|${ci}`];if(val==null||val==='')return;if(val==='no')issues++;
+    const val=state[`${v}|${si}|${ri}|${ci}`];if(val==null||val==='')return;
+    if(val==='no'){issues++;flagged.push({
+      assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(v,sec.name,c):(v+' '+c).trim(),
+      group:v,section:v+' — '+sec.name,item:row[0],col:c});}
     out.push({group:v,section:sec.name,item:row[0],col:c,value:val==='ok'?'OK':val==='no'?'ISSUE':val});}))));
   if(out.length===0){toast('Nothing recorded yet');return;}
   const r={sheet:"Weekly checks",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
     week:$('hWeek').value,date:$('hDate').value,engineer:$('hEng').value.trim(),ambient:$('hAmb').value,
     comments:$('hComm').value.trim(),entries:out,issues,submittedAt:new Date().toISOString(),ref:'WK-'+Date.now().toString(36).toUpperCase()};
 
+  // Build the report PDF. Called AFTER any flagged faults have been documented so the
+  // faults summary block (item 8) and the derived issue count (item 9) are populated.
+  const groups=[...new Set(out.map(e=>e.group))].join(', ');
+  function buildReport(faults,withdrawn){
+    // One grid table per filled section, matching the on-screen sheet layout
+    const grid=[];
+    Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>{
+      const rows=[];
+      sec.rows.forEach((row,ri)=>{
+        const vals=sec.cols.map((c,ci)=>{const val=state[`${v}|${si}|${ri}|${ci}`];
+          return val==='ok'?'OK':val==='no'?'FAULT':(val==null?'':val);});
+        if(vals.some(x=>x!==''&&x!=null))rows.push([row[0],...vals]);
+      });
+      if(rows.length)grid.push({name:v+' — '+sec.name,cols:sec.cols,rows});
+    }));
+    const blob=REDFM.buildReportPdf({title:'Weekly checks',
+      subtitle:'Border Holdings, Avonmouth',
+      ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,
+      faults:faults||[],withdrawn:withdrawn||[],
+      extra:[['Week',r.week||''],['Ambient °C',r.ambient||'']]},grid);
+    return {blob:blob,filename:'Weekly_'+r.date+'_'+groups.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf'};
+  }
+
   // Save to SharePoint (ServiceVisit header + one Readings row per value)
   let saveMsg='SharePoint not configured yet — kept a local copy.';
+  let startFaultFlow=null;
   if(redfmReady){
     $('finish').textContent='Saving…';
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const holding=issues>0&&window.REDFMFaultFlow;
       const visitFields={Title:r.ref,ServiceType:"Weekly",
         PlantSection:[...new Set(out.map(e=>e.group))].join(", "),
-        Engineer:r.engineer,VisitDate:r.date,Status:"Fully completed",
+        Engineer:r.engineer,VisitDate:r.date,
+        Status:holding?"Awaiting fault detail":"Fully completed",
+        FaultsFlagged:issues,FaultsDocumented:0,
         FaultFound:issues>0?"Yes":"No",Notes:r.comments};
       const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),ReadingKey:slug(e.section+' '+e.item),
         Asset:(e.group+' '+e.col).trim(),Value:String(e.value),Unit:'',OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
-      await REDFM.saveVisit(visitFields,readingRows);
+      const visit=await REDFM.saveVisit(visitFields,readingRows);
       try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
-      // generate + file a branded PDF copy in the Reports library
-      try{
-        const groups=[...new Set(out.map(e=>e.group))].join(', ');
-        // Build one grid table per filled section, matching the on-screen sheet layout
-        const grid=[];
-        Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>{
-          const rows=[];
-          sec.rows.forEach((row,ri)=>{
-            const vals=sec.cols.map((c,ci)=>{const val=state[`${v}|${si}|${ri}|${ci}`];
-              return val==='ok'?'OK':val==='no'?'FAULT':(val==null?'':val);});
-            if(vals.some(x=>x!==''&&x!=null))rows.push([row[0],...vals]);
-          });
-          if(rows.length)grid.push({name:v+' — '+sec.name,cols:sec.cols,rows});
-        }));
-        const blob=REDFM.buildReportPdf({title:'Weekly checks',
-          subtitle:'Border Holdings, Avonmouth',
-          ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,
-          extra:[['Week',r.week||''],['Ambient °C',r.ambient||''],['Issues flagged',String(issues)]]},grid);
-        const fname='Weekly_'+r.date+'_'+groups.replace(/[^A-Za-z0-9]+/g,'')+'_'+r.ref+'.pdf';
-        await REDFM.uploadReportPdf(fname,blob);
-        saveMsg+=' · PDF filed';
-      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+
+      if(holding){
+        // Item 1 + 2 — the readings are in, but the visit stays at 'Awaiting fault detail'
+        // and NO report is filed until every flagged item has a fault record behind it.
+        saveMsg+=' · '+issues+' flagged item(s) still to document — report not filed yet';
+        startFaultFlow=()=>REDFMFaultFlow.start({
+          visitId:visit&&visit.id,visitRef:r.ref,visitDate:r.date,engineer:r.engineer,
+          plant:groups,items:flagged,
+          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+        });
+      }else{
+        // Nothing flagged — file the report immediately, as before
+        try{
+          const rep=buildReport([],[]);
+          await REDFM.uploadReportPdf(rep.filename,rep.blob);
+          saveMsg+=' · PDF filed';
+        }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+      }
     }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
   }
 
@@ -243,8 +270,16 @@ $('finish').addEventListener('click',async()=>{
   $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Weekly_${r.date}_${r.ref}.json`;a.click();};
   toast('Submitted ✓');
+
+  // Item 1 — flagged items must now be documented. The report is saved but held.
+  if(startFaultFlow){
+    $('sumHead').textContent=`⚠ Submitted — ${issues} flagged item(s) to document`;
+    setTimeout(startFaultFlow,400);
+  }
 });
 REDFMDraft.init({key:'weekly',state:state,draw:draw});
+// If a previous visit was abandoned mid-way through documenting its faults, say so.
+try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
 </script>
 </body>
 </html>

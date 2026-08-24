@@ -62,7 +62,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
-<script src="redfm-data.js?v=11"></script>
+<script src="redfm-data.js?v=12"></script>
 <script src="redfm-draft.js?v=2"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -94,9 +94,11 @@ $('finish').addEventListener('click',async()=>{
     $('finish').textContent='Saving…';
     try{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
-      // record the visit so the dashboard sees the analysis as done
-      await REDFM.saveVisit({Title:ref,ServiceType:"Oil analysis",PlantSection:"A&B packs",
-        Engineer:eng,VisitDate:date,Status:"Fully completed",FaultFound:"No",Notes:notes},[]);
+      // Item 10 — the visit is NOT complete until the lab report is actually filed.
+      // It is recorded as 'Awaiting document' first and only promoted once the
+      // upload succeeds, so a record can never show complete with no data behind it.
+      const visit=await REDFM.saveVisit({Title:ref,ServiceType:"Oil analysis",PlantSection:"A&B packs",
+        Engineer:eng,VisitDate:date,Status:"Awaiting document",FaultFound:"No",Notes:notes},[]);
       saveMsg='Logged as a visit ✓';
       try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       // file the lab report into the Reports library
@@ -105,7 +107,8 @@ $('finish').addEventListener('click',async()=>{
         const fname='OilAnalysis_'+date+'_AandB_packs_'+ref+'.'+ext;
         await REDFM.uploadFile("Reports",fname,theFile,theFile.type||'application/pdf');
         saveMsg+=' · report filed to Reports';
-      }catch(ue){saveMsg+=' (report upload skipped: '+(ue.message||ue)+')';}
+        try{if(visit&&visit.id)await REDFM.updateVisit(visit.id,{Status:"Fully completed"});}catch(se){}
+      }catch(ue){saveMsg+=' — LAB REPORT DID NOT UPLOAD ('+(ue.message||ue)+'). This visit stays incomplete until it does.';}
     }catch(err){saveMsg='Could not save online. ('+(err.message||err)+')';}
   }
 

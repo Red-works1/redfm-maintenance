@@ -125,8 +125,19 @@ window.REDFM = (function () {
   }
 
   // Save a visit header + all its reading line-items. Returns the created visit.
+  // Columns added in the Aug-2026 fault-capture phase. If SharePoint has not been
+  // updated yet a POST carrying them 400s — never lose a whole visit over that.
+  const NEW_VISIT_FIELDS = ["FaultsFlagged", "FaultsDocumented"];
   async function saveVisit(visitFields, readingRows) {
-    const visit = await addItem("ServiceVisits", visitFields);
+    let visit;
+    try {
+      visit = await addItem("ServiceVisits", visitFields);
+    } catch (e) {
+      const lean = Object.assign({}, visitFields);
+      NEW_VISIT_FIELDS.forEach(k => delete lean[k]);
+      if (lean.Status === "Awaiting fault detail") lean.Status = "Partially completed";
+      visit = await addItem("ServiceVisits", lean);
+    }
     const ref = visitFields.Title || ("SV-" + visit.id);
     const rows = readingRows.map(rd => Object.assign({ VisitRef: ref }, rd));
     if (rows.length) await addItemsBatch("Readings", rows);
@@ -158,6 +169,34 @@ window.REDFM = (function () {
     const sid = await getSiteId();
     const lid = await getListId("FaultRegister");
     return graph("/sites/" + sid + "/lists/" + lid + "/items/" + id + "/fields", "PATCH", fields);
+  }
+
+  // Patch a ServiceVisit (fault counters, Status) — used by the fault capture flow.
+  async function updateVisit(id, fields) {
+    const sid = await getSiteId();
+    const lid = await getListId("ServiceVisits");
+    return graph("/sites/" + sid + "/lists/" + lid + "/items/" + id + "/fields", "PATCH", fields);
+  }
+
+  // Find a visit's SharePoint item id from its ref (Title), for flows that only kept the ref.
+  async function getVisitIdByRef(ref) {
+    const items = await getServiceVisits();
+    const hit = items.find(v => (v.Title || "") === ref);
+    return hit ? (hit.id || hit.ID || null) : null;
+  }
+
+  // ---- Canonical asset identity -------------------------------------------------
+  // Readings are already stored with Asset = variant + " " + column (e.g. "E E2").
+  // Faults must resolve to the SAME code so per-asset history and repeat counters
+  // can join the two. One function, used by forms, dashboard and view.html.
+  function assetId(variant, section, col) {
+    const v = String(variant || "").trim();
+    const c = String(col || "").trim();
+    if (!c) return v;
+    if (/^(kwhr|°c)$/i.test(c)) return (v + " — " + (section || "")).trim();  // units, not assets
+    if (/^(no\d\s+)?[a-e]\d/i.test(c)) return c;      // E2, C1, A4, No1 B2, E1 Compr1
+    if (/^[a-e]$/i.test(c)) return c.toUpperCase();    // the A / B packs on the A&B sheet
+    return (v + " " + c).trim();
   }
 
   // ---- Document library uploads (client-side) ----
@@ -231,12 +270,42 @@ window.REDFM = (function () {
     }
   }
 
+  // Normalise text so jsPDF's built-in (WinAnsi) fonts can render it. Without this,
+  // multi-byte characters (em dash —, smart quotes, bullets, ticks) come out as "ï¿½".
+  // Latin-1 chars (£, °, é...) are left alone because the standard fonts render them fine.
+  function pdfSafe(v) {
+    return String(v == null ? "" : v)
+      .replace(/[‒-―−]/g, "-")            // ‒–—―−  dashes/minus -> hyphen
+      .replace(/[‘’‚′‵]/g, "'") // ‘’‚ primes -> '
+      .replace(/[“”„″]/g, '"')       // “”„ double primes -> "
+      .replace(/…/g, "...")                          // … -> ...
+      .replace(/[·•∙]/g, "-")             // ·•∙ -> -
+      .replace(/[✓✔]/g, "OK")                  // ✓✔ -> OK
+      .replace(/[✗✘✕✖]/g, "FAULT")   // ✗✘ -> FAULT
+      .replace(/ /g, " ")                            // nbsp -> space
+      .replace(/[^\t\n\r\x20-\x7E¡-ÿ]/g, "");   // drop anything else non-WinAnsi
+  }
+
+  // Wrap doc.text so every string drawn (incl. autoTable cells, which draw via doc.text)
+  // is sanitised. One hook covers titles, headings, table cells, meta and free-text.
+  function safeText(doc) {
+    if (doc.__pdfSafeWrapped) return doc;
+    const orig = doc.text.bind(doc);
+    doc.text = function (txt) {
+      const args = Array.prototype.slice.call(arguments);
+      args[0] = Array.isArray(txt) ? txt.map(pdfSafe) : pdfSafe(txt);
+      return orig.apply(doc, args);
+    };
+    doc.__pdfSafeWrapped = true;
+    return doc;
+  }
+
   // Build a branded RED FM service-sheet PDF (Blob). Needs jsPDF + autotable loaded on the page.
   // meta: {title, subtitle, ref, date, engineer, plant, extra:[[label,value],...]}
   // sections: [{name, cols:[...], rows:[[item, v1, v2, ...]]}]  — one grid table per section, like the paper sheet.
   function buildReportPdf(meta, sections) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const doc = safeText(new jsPDF({ unit: "pt", format: "a4" }));
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
 
@@ -250,16 +319,65 @@ window.REDFM = (function () {
     doc.setDrawColor.apply(doc, RED); doc.setLineWidth(1.5); doc.line(40, 100, W - 40, 100);
 
     // ---- Details block ----
+    // Item 9 — the issue count is DERIVED from the fault records attached to this
+    // report, never from a typed value or a raw cell count. Any "Issues flagged"
+    // passed in meta.extra is dropped in favour of the derived figure.
+    const faults = meta.faults || [];
+    const extra = (meta.extra || []).filter(([k]) => !/^issues?\s*flagged/i.test(String(k)));
     const head = [["Ref", meta.ref], ["Date", meta.date], ["Engineer", meta.engineer]]
-      .concat(meta.plant ? [["Plant", meta.plant]] : []).concat(meta.extra || []);
+      .concat(meta.plant ? [["Plant", meta.plant]] : []).concat(extra)
+      .concat(meta.faults ? [["Faults recorded", String(faults.length)]] : []);
     doc.autoTable({
       startY: 110, theme: "plain", styles: { fontSize: 9, cellPadding: 1.5 }, margin: { left: 40, right: 40 },
       body: head.filter(([, v]) => v != null && v !== "")
         .map(([k, v]) => [{ content: k + ":", styles: { fontStyle: "bold", cellWidth: 80, textColor: [80, 80, 86] } }, String(v)])
     });
 
-    // ---- One grid table per section ----
     let y = doc.lastAutoTable.finalY + 16;
+
+    // ---- Item 8: faults summary, at the TOP, before any grid ----------------
+    // Border had to scroll hunting for flagged issues and found two of six. This
+    // block means every fault on the visit is on page one, with its location.
+    if (meta.faults) {
+      if (y > H - 140) { doc.addPage(); y = 56; }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10.5); doc.setTextColor.apply(doc, RED);
+      doc.text(faults.length ? "Faults recorded on this visit (" + faults.length + ")" : "Faults recorded on this visit", 40, y);
+      if (!faults.length) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(95, 95, 102);
+        doc.text("None — no line item was flagged.", 40, y + 15);
+        y += 34;
+      } else {
+        doc.autoTable({
+          startY: y + 6, margin: { left: 40, right: 40 },
+          head: [["Ref", "Asset", "Location / item", "Severity", "Action taken"]],
+          body: faults.map(f => [
+            pdfSafe(f.ref || ""), pdfSafe(f.assetId || ""), pdfSafe(f.line || ""),
+            pdfSafe(f.severity || ""), pdfSafe(f.action || "")
+          ]),
+          styles: { fontSize: 8, cellPadding: 3.5, overflow: "linebreak", lineColor: [225, 225, 228], lineWidth: 0.5 },
+          headStyles: { fillColor: RED, textColor: 255, fontSize: 8 },
+          columnStyles: {
+            0: { cellWidth: 54, fontStyle: "bold" }, 1: { cellWidth: 60, fontStyle: "bold" },
+            3: { cellWidth: 50 }
+          },
+          didParseCell: d => {
+            if (d.section !== "body" || d.column.index !== 3) return;
+            const v = String(d.cell.raw || "").toLowerCase();
+            if (v === "high") { d.cell.styles.textColor = RED; d.cell.styles.fontStyle = "bold"; }
+            else if (v === "medium") { d.cell.styles.textColor = [185, 119, 11]; d.cell.styles.fontStyle = "bold"; }
+          }
+        });
+        y = doc.lastAutoTable.finalY + 16;
+      }
+      if (meta.withdrawn && meta.withdrawn.length) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(95, 95, 102);
+        doc.text(meta.withdrawn.length + " flag(s) withdrawn as ticked in error: " +
+          pdfSafe(meta.withdrawn.map(w => w.assetId + " (" + w.reason + ")").join("; ")), 40, y, { maxWidth: W - 80 });
+        y += 20;
+      }
+    }
+
+    // ---- One grid table per section ----
     (sections || []).forEach(s => {
       if (y > H - 90) { doc.addPage(); y = 56; }
       doc.setFont("helvetica", "bold"); doc.setFontSize(10.5); doc.setTextColor.apply(doc, RED);
@@ -271,7 +389,17 @@ window.REDFM = (function () {
         styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak", lineColor: [225, 225, 228], lineWidth: 0.5 },
         headStyles: { fillColor: RED, textColor: 255, fontSize: 8 },
         columnStyles: { 0: { fontStyle: "bold", cellWidth: 130, textColor: [40, 40, 46] } },
-        alternateRowStyles: { fillColor: [248, 248, 250] }
+        alternateRowStyles: { fillColor: [248, 248, 250] },
+        // A flagged cell is unmissable whether you read the summary or scroll the sheet
+        didParseCell: d => {
+          if (d.section !== "body") return;
+          const v = String(d.cell.raw == null ? "" : d.cell.raw).trim().toUpperCase();
+          if (v === "FAULT" || v === "ISSUE") {
+            d.cell.styles.fillColor = [253, 236, 238];
+            d.cell.styles.textColor = RED;
+            d.cell.styles.fontStyle = "bold";
+          }
+        }
       });
       y = doc.lastAutoTable.finalY + 16;
     });
@@ -294,7 +422,7 @@ window.REDFM = (function () {
   // photos: array of image data-URLs (jpeg/png)
   function buildFaultPdf(meta, photos) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const doc = safeText(new jsPDF({ unit: "pt", format: "a4" }));
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
     drawLogo(doc, 40, 28, 150);
@@ -341,6 +469,7 @@ window.REDFM = (function () {
     init, signIn, signOut, getAccount,
     getCatalogue, saveVisit, addItem, addItemsBatch,
     getServiceVisits, getFaults, getFaultsWithId, getReadings, getCatalogueAll,
-    updateFault, buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
+    updateFault, updateVisit, getVisitIdByRef, assetId,
+    buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
   };
 })();
