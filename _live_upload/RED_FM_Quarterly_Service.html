@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Quarterly service checks</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:12px 14px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:24px;}.logo b{color:var(--red);}
+  .htitle{font-size:12px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:15px;}
+  .wrap{padding:0 12px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea{width:100%;font-size:16px;padding:10px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  .btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;}
+  .cbtn{flex:1;min-width:50px;font-size:18px;font-weight:800;padding:10px 0;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .cbtn.on{background:var(--red);color:#fff;border-color:var(--red);}.cbtn .n{display:block;font-size:10px;font-weight:600;opacity:.85;}
+  .modes{display:flex;gap:8px;margin-top:10px;}
+  .mbtn{flex:1;font-size:14px;font-weight:700;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .mbtn.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--red);margin:18px 4px 4px;}
+  .scroller{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:8px;}
+  table{border-collapse:collapse;}th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;white-space:nowrap;}
+  th{background:#fafafa;font-size:12px;color:var(--grey);font-weight:700;padding:8px 10px;text-align:center;}
+  .rowlab{position:sticky;left:0;background:#fff;z-index:2;font-size:13px;font-weight:600;padding:9px 11px;text-align:left;min-width:215px;max-width:215px;white-space:normal;border-right:2px solid var(--line);}
+  thead .rowlab{background:#fafafa;}
+  td input{border:0;border-radius:0;text-align:center;font-size:16px;padding:11px 6px;min-width:80px;}
+  td input:focus{box-shadow:inset 0 0 0 2px var(--red);}
+  .chk{width:100%;min-width:80px;height:44px;border:0;background:#fff;font-size:20px;cursor:pointer;position:relative;}
+  .chk.ok{color:var(--ok);background:#eef7f0;}.chk.no{color:var(--red);background:#fdecee;}
+  td input.done{background:#eef7f0;color:#1a7f37;font-weight:700;cursor:pointer;}
+  .chk.done{box-shadow:inset 0 0 0 2px var(--ok);cursor:pointer;}
+  .donecell{position:relative;}
+  td .dtag,.chk .dtag{position:absolute;bottom:1px;right:3px;font-size:8px;line-height:1;color:#1a7f37;font-weight:700;pointer-events:none;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px;z-index:20;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}.hint{font-size:12px;color:var(--grey);margin:8px 4px 0;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
+  @media print{.bar,.toast,.btns,.modes{display:none!important}header{position:static}.scroller{overflow:visible}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Quarterly service checks</strong>Border Holdings — Avonmouth · pick chamber, then readings or checks</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="card"><div class="hgrid">
+    <div><label>Date of this visit</label><input id="hDate" type="date"></div>
+    <div><label>Engineer <span style="color:var(--red)">*</span></label><input id="hEng" placeholder="Name"></div>
+  </div></div>
+
+  <div class="btns" id="cbar"></div>
+  <div class="modes" id="modes">
+    <button class="mbtn on" data-m="readings">Readings</button>
+    <button class="mbtn" data-m="checks">Checks</button>
+  </div>
+  <div class="hint">Quarterly is spread over the weekly visits — fill the compressors/units you did today, the rest carry to the next visit. Tap a check cell to cycle ✓ / ✗. Cells already done this quarter show <span style="color:#1a7f37;font-weight:700">green</span> with the date — tap one to change it (you'll be asked to confirm).</div>
+  <div id="prog" class="hint" style="font-weight:700;color:#1a7f37"></div>
+
+  <div id="body"></div>
+
+  <h2 id="cmtlab">Comments</h2>
+  <div class="card"><textarea id="hComm" rows="3" placeholder="e.g. condenser fins corroded — new condenser needed; cooler mounts high vibration"></textarea></div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=12"></script>
+<script src="redfm-draft.js?v=2"></script>
+<script src="redfm-faultflow.js?v=1"></script>
+<script>
+const COOL_AB=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff","Expansion valve superheat & % open"];
+const COOL_STD=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff"];
+const COMPR_AB=["Suction gauge @ compressor","Suction temp @ compressor","Suction superheat","Discharge gauge","Discharge temp","Disch superheat","Oil level","Oil temp on oil cooler","Oil temp off oil cooler","Oil cooler temp diff","Oil cooler fans running","Compr capacity %","Compr amps","HP liquid line temp (cond→rec)","Liq sub-cooling","Receiver level","Sub-cooling liquid temp","Sub cooling","Econ suction temp"];
+const COMPR_CD=["Suction gauge @ compressor","Suction temp @ compressor","Suction superheat","Discharge gauge","Discharge temp","Disch superheat","Oil sump temp","Oil level","Compr capacity","Compr amps","Condenser fan amps","HP liquid line temp (cond→rec)","Liq sub-cooling","Receiver level","Ambient temp","% condenser fans running"];
+const COMPR_E=["Suction gauge @ compressor","Suction temp @ compressor","Suction superheat","Discharge gauge","Discharge temp","Disch superheat","Oil sump temp","Oil level","Compr capacity","Compr amps","Oil-recovery separator oil level","HP liquid line temp (cond→rec)","Liq sub-cooling","Receiver level","Ambient temp","% condenser fans running"];
+const VIB_AB=["Non-drive end LH","Non-drive end RH","Non-drive end Axle","Body drive end","Compressor load"];
+const VIB_STD=["Non-drive end Hor","Non-drive end Axle","Drive end Hor"];
+const CHK_COOL_AB=["Correct defrost operation","Ice build-up around unit","Defrost water drain operation","Cooler fans & air flow","Cooler defrost heat amps (if defrosting)","Cooler fan amps","Drain heater & fan heater amps"];
+const CHK_COOL_STD=["Correct defrost operation","Ice build-up around unit","Defrost water drain operation","Cooler fans & air flow"];
+const CHK_COND=["Condenser fins clean","Brush clean debris on fins","Condenser fans","Condenser fan controls","Receiver pressure relief valves"];
+const CHK_COMPR_AB=["Excessive noise & vibration","Operation of oil recovery","Anti-vibration / mountings"];
+const CHK_COMPR_STD=["Excessive noise & vibration","Operation of oil recovery","Anti-vibration / mountings","Visual inspection to compr starter"];
+const CHK_SYS_FG=["System refrigerant charge levels","System refrigerant drier cores","Refrigerant moisture indicator","Pipe work insulation","Inspect cooler expansion valves"];
+const CHK_SYS_CP=["System refrigerant charge levels","System refrigerant drier cores","Refrigerant moisture indicator","Pipe work insulation","Inspect cooler expansion valves","Visual inspection to all control panels"];
+
+const ECOMP=["E1 Compr No1","E1 Compr No2","E2 Compr No1","E2 Compr No2"];
+const CHAMBERS={
+ "A":{readings:[{name:"Cooler readings",cols:["A1","A2","A3","A4"],rows:COOL_AB},{name:"Compressor readings",cols:["No1","No2","No3"],rows:COMPR_AB},{name:"Vibration",cols:["No1","No2","No3"],rows:VIB_AB}],
+      checks:[{name:"Coolers",cols:["A1","A2","A3","A4"],rows:CHK_COOL_AB},{name:"Condenser",cols:["A"],rows:CHK_COND},{name:"Compressor",cols:["No1","No2","No3"],rows:CHK_COMPR_AB},{name:"System",cols:["A"],rows:CHK_SYS_FG}]},
+ "B":{readings:[{name:"Cooler readings",cols:["B1","B2","B3","B4"],rows:COOL_AB},{name:"Compressor readings",cols:["No1","No2"],rows:COMPR_AB},{name:"Vibration",cols:["No1","No2"],rows:VIB_AB}],
+      checks:[{name:"Coolers",cols:["B1","B2","B3","B4"],rows:CHK_COOL_AB},{name:"Condenser",cols:["B"],rows:CHK_COND},{name:"Compressor",cols:["No1","No2"],rows:CHK_COMPR_AB},{name:"System",cols:["B"],rows:CHK_SYS_FG}]},
+ "C":{readings:[{name:"Cooler readings",cols:["No1","No2","No3","No4"],rows:COOL_STD},{name:"Compressor readings",cols:["No1","No2","No3","No4"],rows:COMPR_CD},{name:"Vibration",cols:["No1","No2","No3","No4"],rows:VIB_STD}],
+      checks:[{name:"Coolers",cols:["No1","No2","No3","No4"],rows:CHK_COOL_STD},{name:"Condenser",cols:["No1","No2","No3","No4"],rows:CHK_COND},{name:"Compressor",cols:["No1","No2","No3","No4"],rows:CHK_COMPR_STD},{name:"System",cols:["No1","No2","No3","No4"],rows:CHK_SYS_CP}]},
+ "D":{readings:[{name:"Cooler readings",cols:["D1","D2"],rows:COOL_STD},{name:"Compressor readings",cols:["No1","No2","No3","No4"],rows:COMPR_CD},{name:"Vibration",cols:["No1","No2","No3","No4"],rows:VIB_STD}],
+      checks:[{name:"Coolers",cols:["No1","No2"],rows:CHK_COOL_STD},{name:"Condenser",cols:["No1","No2","No3","No4"],rows:CHK_COND},{name:"Compressor",cols:["No1","No2","No3","No4"],rows:CHK_COMPR_STD},{name:"System",cols:["No1","No2","No3","No4"],rows:CHK_SYS_CP}]},
+ "E":{readings:[{name:"Cooler readings",cols:["E1","E2"],rows:COOL_STD},{name:"Compressor readings",cols:ECOMP,rows:COMPR_E},{name:"Vibration",cols:["No1","No2","No3","No4"],rows:VIB_STD}],
+      checks:[{name:"Coolers",cols:["E1","E2"],rows:CHK_COOL_STD},{name:"Condenser",cols:["E1","E2"],rows:CHK_COND},{name:"Compressor",cols:ECOMP,rows:CHK_COMPR_STD},{name:"System",cols:["E1","E2"],rows:CHK_SYS_CP}]}
+};
+
+const $=id=>document.getElementById(id);
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
+const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
+$('hDate').value=new Date().toISOString().slice(0,10);
+let chamber="A",mode="readings";const state={};let doneMap={},periodLabel='';
+const cbar=$('cbar');
+Object.keys(CHAMBERS).forEach(c=>{const b=document.createElement('button');b.className='cbtn'+(c===chamber?' on':'');
+  b.innerHTML=`${c}<span class="n">chamber</span>`;b.onclick=()=>{chamber=c;draw();};cbar.appendChild(b);});
+$('modes').querySelectorAll('.mbtn').forEach(b=>b.onclick=()=>{mode=b.dataset.m;draw();});
+
+function key(si,ri,ci){return `${chamber}|${mode}|${si}|${ri}|${ci}`;}
+function draw(){
+  [...cbar.children].forEach((b,i)=>b.className='cbtn'+(Object.keys(CHAMBERS)[i]===chamber?' on':''));
+  $('modes').querySelectorAll('.mbtn').forEach(b=>b.className='mbtn'+(b.dataset.m===mode?' on':''));
+  const isChk=mode==='checks';
+  const root=$('body');root.innerHTML='';
+  CHAMBERS[chamber][mode].forEach((sec,si)=>{
+    const h=document.createElement('h2');h.textContent=`${chamber} · ${sec.name}`;root.appendChild(h);
+    const sc=document.createElement('div');sc.className='scroller';
+    let html='<table><thead><tr><th class="rowlab">'+(isChk?'Check':'Reading')+'</th>';
+    sec.cols.forEach(c=>html+=`<th>${c}</th>`);html+='</tr></thead><tbody>';
+    sec.rows.forEach((row,ri)=>{html+=`<tr><td class="rowlab">${row}</td>`;
+      const rk=slug(mode+' '+sec.name+' '+row);
+      sec.cols.forEach((c,ci)=>{const id=key(si,ri,ci);const v=state[id];
+        const dn=(v==null||v==='')?doneMap[rk+'||'+(chamber+' '+c).trim()]:null;
+        if(isChk){
+          if(dn){const t=dn.value==='OK'?'✓':dn.value==='ISSUE'?'✗':'•';const cls=dn.value==='OK'?'ok':dn.value==='ISSUE'?'no':'';
+            html+=`<td><button class="chk done ${cls}" data-id="${id}" data-dn="1" title="Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to change">${t}<span class="dtag">${ddmm(dn.date)}</span></button></td>`;}
+          else html+=`<td><button class="chk${v?(' '+v):''}" data-id="${id}">${v==='ok'?'✓':v==='no'?'✗':''}</button></td>`;
+        }else{
+          if(dn)html+=`<td class="donecell"><input data-id="${id}" data-dn="1" class="done" value="${(''+dn.value).replace(/"/g,'&quot;')}" readonly title="Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to change"><span class="dtag">${ddmm(dn.date)}</span></td>`;
+          else html+=`<td><input data-id="${id}" value="${v||''}" inputmode="text"></td>`;
+        }});
+      html+='</tr>';});
+    html+='</tbody></table>';sc.innerHTML=html;root.appendChild(sc);
+  });
+  // done cells (green): tap = confirm-to-change guard
+  root.querySelectorAll('[data-dn="1"]').forEach(el=>el.onclick=()=>guardChange(el.dataset.id));
+  // checks not yet done: normal ✓/✗ cycle
+  root.querySelectorAll('.chk:not([data-dn])').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const cur=state[id]||'';
+    const nx=cur===''?'ok':cur==='ok'?'no':'';if(nx)state[id]=nx;else delete state[id];
+    b.className='chk'+(nx?(' '+nx):'');b.textContent=nx==='ok'?'✓':nx==='no'?'✗':'';});
+  // readings not yet done: normal entry
+  root.querySelectorAll('input[data-id]:not([data-dn])').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];});
+  updateProgress();
+}
+draw();
+
+// --- progressive completion: show what's already done THIS quarter (resets each quarter) ---
+function curQuarter(){const n=new Date();const q=Math.floor(n.getMonth()/3);
+  return {s:new Date(n.getFullYear(),q*3,1),e:new Date(n.getFullYear(),q*3+3,1),label:'Q'+(q+1)+' '+n.getFullYear()};}
+function inQ(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
+function updateProgress(){const el=$('prog');if(!el)return;
+  el.textContent=Object.keys(doneMap).length?(periodLabel+' — '+Object.keys(doneMap).length+' results already recorded this quarter (green). Tap one to change it.'):'';}
+function guardChange(id){const a=id.split('|');const ch=a[0],md=a[1],sec=CHAMBERS[ch][md][+a[2]],row=sec.rows[+a[3]],col=sec.cols[+a[4]];
+  const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+col).trim()];if(!dn)return;
+  if(!confirm('This result was recorded on '+dn.date+(dn.eng?(' by '+dn.eng):'')+'.\n\nReplace it with a new reading? The new value will be dated today and will supersede the old one.'))return;
+  state[id]=md==='checks'?(dn.value==='OK'?'ok':dn.value==='ISSUE'?'no':''):(''+dn.value);
+  draw();const el=document.querySelector('input[data-id="'+id+'"]');if(el){el.focus();try{el.select();}catch(_){}}}
+async function loadDone(){
+  try{
+    const res=await fetch('https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json?t='+Date.now());
+    if(!res.ok)return;const snap=await res.json();
+    const {s,e,label}=curQuarter();periodLabel=label;
+    const vmap={};(snap.visits||[]).forEach(v=>{if(/^Quarterly/.test(v.ServiceType||'')&&inQ(v.VisitDate,s,e))vmap[v.Title]={date:String(v.VisitDate).slice(0,10),eng:v.Engineer||''};});
+    (snap.readings||[]).forEach(rd=>{const vi=vmap[rd.VisitRef];if(!vi||rd.Value==null||rd.Value==='')return;
+      const k=rd.ReadingKey+'||'+rd.Asset;const cur=doneMap[k];if(!cur||vi.date>cur.date)doneMap[k]={value:rd.Value,date:vi.date,eng:vi.eng};});
+    draw();
+  }catch(e){/* no snapshot yet — form behaves as a blank quarterly sheet */}
+}
+loadDone();
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
+
+// Connect to SharePoint if the shared data layer is present + configured
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  const out=[];const flagged=[];let issues=0;
+  Object.keys(CHAMBERS).forEach(ch=>['readings','checks'].forEach(md=>{
+    CHAMBERS[ch][md].forEach((sec,si)=>sec.rows.forEach((row,ri)=>sec.cols.forEach((c,ci)=>{
+      const v=state[`${ch}|${md}|${si}|${ri}|${ci}`];if(v==null||v==='')return;
+      if(v==='no'){issues++;flagged.push({
+        assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(ch,sec.name,c):(ch+' '+c).trim(),
+        group:ch,section:ch+' — '+sec.name,item:row,col:c});}
+      out.push({chamber:ch,mode:md,section:sec.name,row:row,col:c,value:v==='ok'?'OK':v==='no'?'ISSUE':v});
+    })));}));
+  if(out.length===0){toast('Nothing recorded yet');return;}
+  const r={sheet:"Quarterly service checks",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
+    visitDate:$('hDate').value,engineer:$('hEng').value.trim(),comments:$('hComm').value.trim(),
+    entries:out,issues,submittedAt:new Date().toISOString(),ref:'QS-'+Date.now().toString(36).toUpperCase()};
+
+  // Each dashboard regime (A&B / C / D&E / E) must be its OWN ServiceVisit, else only the first shows.
+  const qType=c=>c==='C'?'Quarterly C':c==='D'?'Quarterly D&E':c==='E'?'Quarterly E':'Quarterly A&B';
+  const suffix=t=>t==='Quarterly C'?'C':t==='Quarterly D&E'?'DE':t==='Quarterly E'?'E':'AB';
+  // group everything entered by regime so each becomes a separate visit + report
+  const groups={};out.forEach(e=>{const t=qType(e.chamber);(groups[t]=groups[t]||[]).push(e);});
+  const chambers=[...new Set(out.map(e=>e.chamber))].join(', ');
+  const cell=(ch,md,sec,row,c,ci,si,ri)=>{  // cumulative: value + the day it was taken
+    const sv=state[`${ch}|${md}|${si}|${ri}|${ci}`];
+    if(sv!=null&&sv!==''){const v=sv==='ok'?'OK':sv==='no'?'FAULT':sv;return v+' ('+ddmm(r.visitDate)+')';}
+    const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+c).trim()];
+    if(dn){const v=dn.value==='ISSUE'?'FAULT':dn.value;return v+' ('+ddmm(dn.date)+')';}
+    return '';
+  };
+
+  // Build the report PDFs. Called AFTER any flagged faults have been documented so the faults
+  // summary block (item 8) and the derived issue count (item 9) are populated. Each regime keeps
+  // its OWN branded cumulative report: the first is returned for the caller to file, any further
+  // regimes are filed here (the fault flow only ever files the one report it is handed back).
+  const filed=[];  // regimes saved by this submission — {t,gref,gChambers}
+  // Each regime report carries only ITS OWN faults — a chamber A fault must never turn up on
+  // the Quarterly C report. Match on the fault's plant/group (the chamber we flagged it under)
+  // and fall back to its asset code / line, both of which start with the chamber letter.
+  const ownedBy=(gChambers,f)=>{
+    const p=String((f&&(f.plant||f.group))||'').trim();
+    if(p&&gChambers.indexOf(p)>=0)return true;
+    const a=String((f&&f.assetId)||'').trim().toUpperCase();
+    const l=String((f&&f.line)||'').trim().toUpperCase();
+    return gChambers.some(ch=>{const u=ch.toUpperCase();return a===u||a.indexOf(u)===0||l.indexOf(u+' — ')===0;});
+  };
+  async function buildReport(faults,withdrawn){
+    const fa=faults||[],wd=withdrawn||[];
+    // anything that matches no regime at all goes on the FIRST report — never dropped from every one
+    const orphanF=fa.filter(f=>!filed.some(j=>ownedBy(j.gChambers,f)));
+    const orphanW=wd.filter(w=>!filed.some(j=>ownedBy(j.gChambers,w)));
+    let first=null;
+    for(const j of filed){
+      const t=j.t,gref=j.gref,gChambers=j.gChambers;
+      try{
+        const isFirst=!first;
+        const jFaults=fa.filter(f=>ownedBy(gChambers,f)).concat(isFirst?orphanF:[]);
+        const jWithdrawn=wd.filter(w=>ownedBy(gChambers,w)).concat(isFirst?orphanW:[]);
+        const grid=[];
+        gChambers.forEach(ch=>['readings','checks'].forEach(md=>{
+          CHAMBERS[ch][md].forEach((sec,si)=>{
+            const rows=[];
+            sec.rows.forEach((row,ri)=>{
+              const vals=sec.cols.map((c,ci)=>cell(ch,md,sec,row,c,ci,si,ri));
+              if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
+            });
+            if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
+          });
+        }));
+        const blob=REDFM.buildReportPdf({title:t+' report — '+(periodLabel||'this quarter'),
+          subtitle:'Border Holdings, Avonmouth · cumulative — dates show when each result was taken',
+          ref:gref,date:r.visitDate,engineer:r.engineer,plant:gChambers.join(', '),
+          faults:jFaults,withdrawn:jWithdrawn,
+          extra:[['Period',periodLabel||'—'],['As at',r.visitDate]]},grid);
+        const fname='Quarterly_'+suffix(t)+'_'+(periodLabel||'period').replace(/[^A-Za-z0-9]+/g,'')+'_ason_'+r.visitDate+'_'+gref+'.pdf';
+        if(!first)first={blob:blob,filename:fname};
+        else await REDFM.uploadReportPdf(fname,blob);
+      }catch(pe){/* this regime's PDF skipped; data still saved */}
+    }
+    return first||{blob:null,filename:null};
+  }
+
+  // Save to SharePoint (ServiceVisit header + one Readings row per value), then file a branded PDF
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  let startFaultFlow=null;
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      let totalReadings=0;const savedTypes=[];const heldVisitIds=[];let heldVisit=null,heldRef=r.ref;
+      for(const t of Object.keys(groups)){
+        const g=groups[t];
+        const gref=r.ref+'-'+suffix(t);
+        const gChambers=[...new Set(g.map(e=>e.chamber))];
+        const gIssues=g.filter(e=>e.value==='ISSUE').length;
+        const holding=gIssues>0&&window.REDFMFaultFlow;
+        const visitFields={Title:gref,ServiceType:t,PlantSection:gChambers.join(', '),
+          Engineer:r.engineer,VisitDate:r.visitDate,
+          Status:holding?"Awaiting fault detail":"Partially completed",
+          FaultsFlagged:gIssues,FaultsDocumented:0,
+          FaultFound:gIssues>0?"Yes":"No",Notes:r.comments};
+        const readingRows=g.map((e,i)=>({Title:gref+'-'+(i+1),
+          ReadingKey:slug(e.mode+' '+e.section+' '+e.row),
+          Asset:(e.chamber+' '+e.col).trim(),Value:String(e.value),Unit:'',
+          OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
+        const visit=await REDFM.saveVisit(visitFields,readingRows);
+        if(holding){if(!heldVisit){heldVisit=visit;heldRef=gref;}if(visit&&visit.id)heldVisitIds.push(visit.id);}
+        totalReadings+=readingRows.length;savedTypes.push(t);
+        // this regime's branded cumulative PDF is built once every flagged fault is documented
+        filed.push({t:t,gref:gref,gChambers:gChambers});
+      }
+      try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
+      saveMsg='Saved to SharePoint ✓ — '+totalReadings+' readings across '+savedTypes.length+' report(s): '+savedTypes.join(', ');
+
+      if(issues>0&&window.REDFMFaultFlow){
+        // Item 1 + 2 — the readings are in, but the flagged regimes stay at 'Awaiting fault
+        // detail' and NO report is filed until every flagged item has a fault record behind it.
+        saveMsg+=' · '+issues+' flagged item(s) still to document — report not filed yet';
+        startFaultFlow=()=>REDFMFaultFlow.start({
+          visitId:heldVisit&&heldVisit.id,visitIds:heldVisitIds,
+          completeStatus:"Partially completed",   // quarterly submits in parts — never force 'Fully completed'
+          visitRef:heldRef,visitDate:r.visitDate,engineer:r.engineer,
+          plant:chambers,items:flagged,
+          buildReport:(faults,withdrawn)=>buildReport(faults,withdrawn)
+        });
+      }else{
+        // Nothing flagged — file each regime's report immediately, as before
+        try{
+          const rep=await buildReport([],[]);
+          if(rep&&rep.blob)await REDFM.uploadReportPdf(rep.filename,rep.blob);
+        }catch(pe){/* PDF skipped; data still saved */}
+      }
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,textarea,.chk,.cbtn,.mbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
+  $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${out.length} values · ${issues} issue(s) flagged</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div class="muted" style="margin-top:4px">Remaining compressors/units carry to the next visit.</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" id="pr">Print / Save PDF</button>
+      <button class="btn btn-ghost" id="dl">Download record (.json)</button></div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('pr').onclick=()=>window.print();
+  $('dl').onclick=()=>{const b=new Blob([JSON.stringify(r,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`Quarterly_${r.visitDate}_${r.ref}.json`;a.click();};
+  toast('Submitted ✓');
+
+  // Item 1 — flagged items must now be documented. The report is saved but held.
+  if(startFaultFlow){
+    $('sumHead').textContent=`⚠ Submitted — ${issues} flagged item(s) to document`;
+    setTimeout(startFaultFlow,400);
+  }
+});
+REDFMDraft.init({key:'quarterly',state:state,draw:draw});
+// If a previous visit was abandoned mid-way through documenting its faults, say so.
+try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Building compliance upload</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amber:#b9770b;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:680px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;}label:first-child{margin-top:0;}
+  label .req{color:var(--red);}
+  input,select,textarea{width:100%;font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+  textarea{min-height:80px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .btn{font-size:16px;font-weight:700;padding:15px 18px;border-radius:12px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:680px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .note{background:#eef4ff;border:1px solid #d5e2fb;color:#1c3a66;border-radius:10px;padding:11px 13px;font-size:13px;margin-top:12px;}
+  .file{border:1.5px dashed var(--line);border-radius:10px;background:#fafafa;padding:14px;text-align:center;color:var(--grey);font-size:14px;cursor:pointer;display:block;}
+  .file b{color:var(--red);}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Building compliance</strong>Border Holdings — Avonmouth · electrical &amp; fire certificates</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="note">For electrical &amp; fire compliance managed by RED FM — <b>separate from Coolstream</b>. Pick the item, set the date it was done, and attach the certificate. The dashboard works out the next-due date and flags it if it falls overdue.</div>
+
+    <label>Compliance item <span class="req">*</span></label>
+    <select id="cItem">
+      <option value="">Select…</option>
+      <option>Fixed wiring test (EICR)</option>
+      <option>Emergency lighting</option>
+      <option>Fire alarm service</option>
+    </select>
+    <div class="muted" id="freqNote" style="margin-top:6px"></div>
+
+    <div class="row">
+      <div><label>Date completed <span class="req">*</span></label><input id="cDate" type="date"></div>
+      <div><label>Provider <span class="req">*</span></label><input id="cProvider" placeholder="Contractor"></div>
+    </div>
+
+    <label>Certificate reference</label>
+    <input id="cRef" placeholder="e.g. 40920153 (optional)">
+
+    <label>Notes</label>
+    <textarea id="cNotes" placeholder="Anything worth recording (optional)"></textarea>
+
+    <label>Certificate (PDF)</label>
+    <label class="file" for="cFile" id="fileLabel"><b>＋ Attach certificate</b><br><span class="muted">PDF · goes into the report library for Border to download</span></label>
+    <input id="cFile" type="file" accept="application/pdf" hidden>
+  </div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Save to dashboard</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=12"></script>
+<script src="redfm-draft.js?v=2"></script>
+<script>
+const $=id=>document.getElementById(id);
+$('cDate').value=new Date().toISOString().slice(0,10);
+
+// item -> ServiceType key, default provider, filename prefix, frequency note
+const ITEMS={
+  "Fixed wiring test (EICR)":{type:"Fixed wiring",     provider:"Logical Heating Ltd",prefix:"FixedWiring_EICR", note:"Yearly (done each January). Next due auto-set 12 months on."},
+  "Emergency lighting":      {type:"Emergency lighting",provider:"Logical Heating Ltd",prefix:"EmergencyLighting",note:"Yearly (done each January). Next due auto-set 12 months on."},
+  "Fire alarm service":      {type:"Fire alarm",        provider:"Lightning Fire",     prefix:"FireAlarm",       note:"Six-monthly (January & July). Next due auto-set 6 months on."}
+};
+let chosen=null,file=null;
+$('cItem').addEventListener('change',()=>{
+  chosen=ITEMS[$('cItem').value]||null;
+  $('freqNote').textContent=chosen?chosen.note:'';
+  if(chosen && !$('cProvider').value.trim())$('cProvider').value=chosen.provider;
+});
+$('cFile').addEventListener('change',e=>{
+  file=e.target.files[0]||null;
+  $('fileLabel').innerHTML=file?('<b>✓ '+file.name+'</b><br><span class="muted">tap to change</span>'):'<b>＋ Attach certificate</b><br><span class="muted">PDF · goes into the report library for Border to download</span>';
+});
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1900);}
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,60);
+
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  if(!chosen){toast('Pick a compliance item');return;}
+  if(!$('cDate').value){toast('Set the date');return;}
+  if(!$('cProvider').value.trim()){toast('Enter the provider');return;}
+  // Item 10 — no compliance item can be recorded without its certificate.
+  if(!file){toast('Attach the certificate PDF — the record cannot be saved without it');return;}
+  const provider=$('cProvider').value.trim();
+  const ref=($('cRef').value.trim()||(chosen.type.replace(/[^A-Za-z]/g,'').slice(0,4).toUpperCase()+'-'+$('cDate').value));
+  const title=chosen.prefix.split('_')[0]+'-'+ref;
+
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      // Item 10 — recorded as 'Awaiting document' and only promoted to complete
+      // once the certificate has actually landed in the report library.
+      const visit=await REDFM.addItem("ServiceVisits",{Title:title,ServiceType:chosen.type,VisitDate:$('cDate').value,
+        Engineer:provider,PlantSection:"Whole site",Status:"Awaiting document",FaultFound:"No",
+        Notes:(($('cRef').value.trim()?("Cert ref "+$('cRef').value.trim()+". "):"")+($('cNotes').value.trim()||"")).trim()});
+      saveMsg='Saved to the dashboard ✓';
+      try{REDFMDraft.clear();}catch(e){}
+      try{
+        const fname=chosen.prefix+'_'+slug(provider)+'_'+ref+'_'+$('cDate').value+'.pdf';
+        await REDFM.uploadFile("Reports",fname,file,'application/pdf');
+        saveMsg+=' · certificate filed to the report library';
+        try{if(visit&&visit.id)await REDFM.updateVisit(visit.id,{Status:"Fully completed"});}catch(se){}
+      }catch(pe){saveMsg+=' — CERTIFICATE DID NOT UPLOAD ('+(pe.message||pe)+'). This item stays incomplete until it does.';}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,select,textarea').forEach(e=>{e.disabled=true;e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent='✓ '+$('cItem').value+' saved';
+  $('sumBody').innerHTML='<div>'+provider+' · '+$('cDate').value+(file?' · certificate attached':'')+'</div><div class="muted" style="margin-top:4px">'+saveMsg+'</div>'+
+    '<div style="margin-top:10px"><a class="btn btn-ghost" href="index.html" style="text-decoration:none;display:inline-block">Back to hub</a></div>';
+  $('summary').scrollIntoView({behavior:'smooth'});
+  toast('Saved ✓');
+});
+
+REDFMDraft.init({key:'compliance',extra:{
+  save:function(){return {item:$('cItem').value,provider:$('cProvider').value};},
+  restore:function(o){if(o.item){$('cItem').value=o.item;$('cItem').dispatchEvent(new Event('change'));}if(o.provider)$('cProvider').value=o.provider;}
+}});
+</script>
+</body>
+</html>
