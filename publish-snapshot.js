@@ -39,6 +39,13 @@ async function listAll(sid, title) {
   return out;
 }
 
+// Same reader, but for the lists added by the Contract Performance Notice: one that does not
+// exist yet (or is empty) must publish as [] rather than failing the whole run.
+async function listAllSafe(sid, title) {
+  try { return await listAll(sid, title); }
+  catch (e) { console.error("list " + title + " unavailable: " + e.message); return []; }
+}
+
 // Group a report file into a library heading by its filename prefix.
 function classify(name) {
   const n = name.toLowerCase();
@@ -102,9 +109,13 @@ async function syncLib(sid, title) {
   const [visits, readings, faults, cat] = await Promise.all([
     listAll(sid, "ServiceVisits"), listAll(sid, "Readings"),
     listAll(sid, "FaultRegister"), listAll(sid, "ReadingCatalogue")]);
-  const snap = { generatedAt: new Date().toISOString(), visits, readings, faults, cat };
+  // RDM alarms (notice 5.3), parameter changes (clause 8.8) and the forward works register
+  const [rdmalarms, parameterchanges, forwardworks] = await Promise.all([
+    listAllSafe(sid, "RDMAlarms"), listAllSafe(sid, "ParameterChanges"),
+    listAllSafe(sid, "ForwardWorks")]);
+  const snap = { generatedAt: new Date().toISOString(), visits, readings, faults, cat, rdmalarms, parameterchanges, forwardworks };
   fs.writeFileSync("data-snapshot.json", JSON.stringify(snap));
-  console.log(`snapshot: ${visits.length} visits, ${readings.length} readings, ${faults.length} faults, ${cat.length} catalogue rows`);
+  console.log(`snapshot: ${visits.length} visits, ${readings.length} readings, ${faults.length} faults, ${cat.length} catalogue rows, ${rdmalarms.length} RDM alarms, ${parameterchanges.length} parameter changes, ${forwardworks.length} forward works`);
 
   // 2) the public reports library
   fs.mkdirSync("reports", { recursive: true });

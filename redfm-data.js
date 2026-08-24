@@ -497,7 +497,7 @@ window.REDFM = (function () {
   return {
     init, signIn, signOut, getAccount,
     getCatalogue, saveVisit, addItem, addItemsBatch,
-    getServiceVisits, getFaults, getFaultsWithId, getReadings, getCatalogueAll,
+    getServiceVisits, getFaults, getFaultsWithId, getReadings, getCatalogueAll, listItems,
     updateFault, updateVisit, getVisitIdByRef, assetId,
     buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
   };

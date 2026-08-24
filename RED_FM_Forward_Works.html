@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Forward works register</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amber:#b9770b;--blue:#1c3a66;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:680px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;}label:first-child{margin-top:0;}
+  label .req{color:var(--red);}
+  input,select,textarea{width:100%;font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+  textarea{min-height:90px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .modes{display:flex;gap:8px;margin-top:12px;}
+  .modebtn{flex:1;font-size:15px;font-weight:700;padding:13px 0;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .modebtn.on{background:#fdecee;color:var(--red);border-color:var(--red);}
+  .btn{font-size:16px;font-weight:700;padding:15px 18px;border-radius:12px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:680px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .note{background:#eef4ff;border:1px solid #d5e2fb;color:#1c3a66;border-radius:10px;padding:11px 13px;font-size:13px;}
+  .gh{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:22px 4px 2px;display:flex;align-items:center;gap:9px;}
+  .gh .cnt{background:#fdecee;color:var(--red);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px;}
+  .entry{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 15px;margin-top:10px;}
+  .etop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .eref{font-weight:800;font-size:14px;letter-spacing:.4px;}
+  .easset{font-size:13px;font-weight:700;color:var(--grey);}
+  .edesc{margin-top:7px;font-size:15px;line-height:1.4;}
+  .meta{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px 8px;}
+  .m{font-size:12px;font-weight:600;color:var(--grey);background:#f2f2f5;border-radius:8px;padding:4px 9px;}
+  .m b{color:var(--ink);font-weight:700;}
+  .pill{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.3px;background:#eef0f2;color:var(--grey);margin-left:auto;}
+  .pill.s-quoted{background:#fdf3e3;color:var(--amber);}
+  .pill.s-approved{background:#eef4ff;color:var(--blue);}
+  .pill.s-done{background:#eef7f0;color:var(--ok);}
+  .pill.s-declined{background:#eef0f2;color:var(--grey);text-decoration:line-through;}
+  .entry.declined .edesc,.entry.declined .eref{text-decoration:line-through;color:var(--grey);}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
+  @media print{.bar,.toast,.modes{display:none!important}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Forward works register</strong>Border Holdings — Avonmouth · deferred, seasonal &amp; recommended works</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="modes" id="modes">
+    <button class="modebtn on" data-m="view" id="mView">View the register</button>
+    <button class="modebtn" data-m="add" id="mAdd">Add an entry</button>
+  </div>
+
+  <!-- ─── VIEW THE REGISTER ─────────────────────────────────────────────── -->
+  <div id="viewPane">
+    <div class="card">
+      <div class="note">Deferred, seasonal and recommended work, each with the window we recommend it is done in — so it comes round on a plan instead of sitting on the live fault list. Budget figures are <b>indicative planning figures</b>, not quotations.</div>
+      <div class="muted" id="regMeta" style="margin-top:10px">Loading the register…</div>
+    </div>
+    <div id="reg"></div>
+  </div>
+
+  <!-- ─── ADD AN ENTRY ──────────────────────────────────────────────────── -->
+  <div id="addPane" style="display:none">
+    <div class="card">
+      <div class="note">Anything you have seen that is likely to cause a failure goes on here as a recommendation — whether or not Border have asked for it. It is then quoted and tracked, and it stops clogging the live fault list.</div>
+
+      <label style="margin-top:14px">Asset / plant</label>
+      <input id="fAsset" placeholder="e.g. E2, C1, A&amp;B Plant Room">
+
+      <label>Description of the work <span class="req">*</span></label>
+      <textarea id="fDesc" placeholder="What needs doing, where, and why"></textarea>
+
+      <label>Category <span class="req">*</span></label>
+      <select id="fCat"><option value="">Select…</option>
+        <option>Deferred remedial</option>
+        <option>Seasonal</option>
+        <option>Recommendation</option>
+        <option>Improvement</option>
+      </select>
+
+      <label>Recommended window</label>
+      <input id="fWindow" placeholder="e.g. Oct–Nov 2026, before next summer">
+
+      <div class="row">
+        <div><label>Indicative budget (£)</label><input id="fCost" type="number" inputmode="decimal" min="0" step="1" placeholder="e.g. 1200"></div>
+        <div><label>Target date</label><input id="fTarget" type="date"></div>
+      </div>
+      <div class="muted" style="margin-top:6px">Budget is an <b>indicative planning figure only</b> — it is not a quotation and it is shown to Border as such.</div>
+
+      <label>Raised by <span class="req">*</span></label>
+      <input id="fBy" placeholder="Your name">
+
+      <label>Notes</label>
+      <textarea id="fNotes" placeholder="Anything else worth recording (optional)"></textarea>
+      <div class="muted" style="margin-top:6px">Saved as <b>Recommended</b> and dated today. It moves to Quoted / Approved / Completed on the register as it progresses.</div>
+    </div>
+
+    <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+  </div>
+</div>
+
+<div class="bar" id="bar" style="display:none"><div class="inner"><button class="btn btn-red" id="finish">Add to forward works</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=15"></script>
+<script src="redfm-draft.js?v=2"></script>
+<script>
+const $=id=>document.getElementById(id);
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
+const CATS=['Deferred remedial','Seasonal','Recommendation','Improvement'];
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ── mode toggle ────────────────────────────────────────────────────────────
+let mode='view';
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('.modebtn').forEach(b=>b.className='modebtn'+(b.dataset.m===m?' on':''));
+  $('viewPane').style.display=m==='view'?'block':'none';
+  $('addPane').style.display=m==='add'?'block':'none';
+  $('bar').style.display=(m==='add'&&!submitted)?'block':'none';
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.modebtn').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+
+// ── view: read the published snapshot (no login) ───────────────────────────
+let snapRows=null;
+function statusClass(s){
+  const v=String(s||'').toLowerCase();
+  if(v==='quoted')return 's-quoted';
+  if(v==='approved'||v==='scheduled')return 's-approved';
+  if(v==='completed'||v==='complete'||v==='done')return 's-done';
+  if(v==='declined')return 's-declined';
+  return '';                       // Recommended (and anything unknown) — grey
+}
+function money(v){
+  if(v==null||v==='')return '';
+  const n=Number(v);if(!isFinite(n))return String(v);
+  return '£'+n.toLocaleString('en-GB',{maximumFractionDigits:0});
+}
+function d10(v){return v?String(v).slice(0,10):'';}
+function pending(msg){$('regMeta').innerHTML=msg;$('reg').innerHTML='';}
+
+function renderRegister(rows){
+  if(!rows.length){pending('Nothing on the forward works register yet. Add the first entry with <b>Add an entry</b> above.');return;}
+  const groups={};rows.forEach(r=>{const c=r.Category||'Uncategorised';(groups[c]=groups[c]||[]).push(r);});
+  const order=CATS.filter(c=>groups[c]).concat(Object.keys(groups).filter(c=>CATS.indexOf(c)<0).sort());
+  let html='';
+  order.forEach(cat=>{
+    const list=groups[cat].slice().sort((a,b)=>(d10(b.RaisedDate)||'').localeCompare(d10(a.RaisedDate)||''));
+    html+='<div class="gh">'+esc(cat)+'<span class="cnt">'+list.length+'</span></div>';
+    list.forEach(r=>{
+      const cls=statusClass(r.WorkStatus);
+      const meta=[];
+      if(r.RecommendedWindow)meta.push('<span class="m">Window <b>'+esc(r.RecommendedWindow)+'</b></span>');
+      if(r.BudgetCost!=null&&r.BudgetCost!=='')meta.push('<span class="m">Indicative budget <b>'+esc(money(r.BudgetCost))+'</b></span>');
+      if(r.TargetDate)meta.push('<span class="m">Target <b>'+esc(d10(r.TargetDate))+'</b></span>');
+      if(r.RaisedDate)meta.push('<span class="m">Raised <b>'+esc(d10(r.RaisedDate))+'</b></span>');
+      if(r.QuoteRef)meta.push('<span class="m">Quote <b>'+esc(r.QuoteRef)+'</b></span>');
+      html+='<div class="entry'+(cls==='s-declined'?' declined':'')+'" data-ref="'+esc(r.Title||'')+'">'
+        +'<div class="etop"><span class="eref">'+esc(r.Title||'—')+'</span>'
+        +(r.AssetId?'<span class="easset">'+esc(r.AssetId)+'</span>':'')
+        +'<span class="pill '+cls+'">'+esc(r.WorkStatus||'Recommended')+'</span></div>'
+        +'<div class="edesc">'+esc(r.WorkDescription||'')+'</div>'
+        +(meta.length?'<div class="meta">'+meta.join('')+'</div>':'')
+        +(r.Notes?'<div class="muted" style="margin-top:8px">'+esc(r.Notes)+'</div>':'')
+        +'</div>';
+    });
+  });
+  $('reg').innerHTML=html;
+  $('regMeta').innerHTML=rows.length+' entr'+(rows.length===1?'y':'ies')+' on the register · published snapshot, refreshed hourly';
+}
+
+async function loadRegister(){
+  try{
+    const res=await fetch(SNAP+'?t='+Date.now());
+    if(!res.ok){pending('The register publishes hourly — nothing here yet.');return;}
+    const snap=await res.json();
+    if(!Array.isArray(snap.forwardworks)){
+      pending('The register publishes hourly — nothing here yet. Entries added today appear here after the next publish.');
+      return;
+    }
+    snapRows=snap.forwardworks;
+    renderRegister(snapRows);
+  }catch(e){
+    pending('The register publishes hourly — nothing here yet. (Could not reach the published snapshot from this device.)');
+  }
+}
+loadRegister();
+
+// ── SharePoint ─────────────────────────────────────────────────────────────
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+// Simple shared sequential ref (FW-1001, FW-1002 …) — same max-trailing-number
+// pattern as the fault register; falls back to the timestamp ref if the list
+// can't be read. Reads the live list where the data layer exposes it, otherwise
+// works the number out from the published snapshot.
+async function nextRef(prefix,listName,fallbackRows){
+  try{
+    let existing=null;
+    if(window.REDFM&&typeof REDFM.listItems==='function')existing=await REDFM.listItems(listName);
+    else if(Array.isArray(fallbackRows))existing=fallbackRows;
+    if(!existing)throw new Error('list unavailable');
+    let max=1000;
+    existing.forEach(it=>{const m=/-(\d{3,})$/.exec((it&&it.Title)||'');if(m){const n=parseInt(m[1],10);if(!isNaN(n)&&n>max)max=n;}});
+    return prefix+(max+1);
+  }catch(e){
+    return prefix+Date.now().toString(36).toUpperCase();
+  }
+}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  const desc=$('fDesc').value.trim();
+  if(!desc){toast('Add a description of the work');return;}
+  if(desc.length<10){toast('Describe the work in a bit more detail (at least 10 characters)');return;}
+  if(!$('fCat').value){toast('Pick a category');return;}
+  if(!$('fBy').value.trim()){toast('Enter who raised it');return;}
+
+  const today=new Date().toISOString().slice(0,10);
+  const r={ref:'FW-'+Date.now().toString(36).toUpperCase(),
+    asset:$('fAsset').value.trim(),description:desc,category:$('fCat').value,
+    window:$('fWindow').value.trim(),cost:$('fCost').value.trim(),
+    target:$('fTarget').value,raisedBy:$('fBy').value.trim(),notes:$('fNotes').value.trim(),
+    raisedDate:today,status:'Recommended'};
+
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      r.ref=await nextRef('FW-','ForwardWorks',snapRows);
+      await REDFM.addItem("ForwardWorks",{Title:r.ref,AssetId:r.asset,WorkDescription:r.description,
+        Category:r.category,RecommendedWindow:r.window,BudgetCost:(r.cost===''?null:Number(r.cost)),
+        WorkStatus:'Recommended',QuoteRef:'',RaisedDate:r.raisedDate,RaisedBy:r.raisedBy,
+        TargetDate:(r.target||null),Notes:r.notes});
+      saveMsg='Added to the forward works register ✓';
+      try{REDFMDraft.clear();}catch(e){}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  $('addPane').querySelectorAll('input,select,textarea').forEach(e=>{e.disabled=true;e.style.opacity=.9;});
+  $('bar').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent='✓ Added to forward works — ref '+r.ref;
+  $('sumBody').innerHTML='<div>'+esc(r.category)+(r.asset?' · '+esc(r.asset):'')+(r.window?' · '+esc(r.window):'')+' · Recommended · '+esc(r.raisedBy)+'</div>'
+    +'<div class="muted" style="margin-top:4px">'+esc(saveMsg)+'</div>'
+    +'<div class="muted" style="margin-top:4px">It appears on the register view after the next hourly publish.</div>'
+    +'<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
+    +'<button class="btn btn-ghost" id="again">Add another</button>'
+    +'<a class="btn btn-ghost" href="index.html" style="text-decoration:none;display:inline-block">Back to hub</a></div>';
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('again').onclick=()=>location.reload();
+  toast('Added to forward works ✓');
+});
+
+REDFMDraft.init({key:'forwardworks',extra:{
+  save:function(){return {mode:mode};},
+  restore:function(o){if(o.mode==='add')setMode('add');}
+}});
+</script>
+</body>
+</html>

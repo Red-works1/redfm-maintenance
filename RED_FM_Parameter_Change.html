@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Parameter change log</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amber:#b9770b;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:680px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;}label:first-child{margin-top:0;}
+  label .req{color:var(--red);}
+  input,select,textarea{width:100%;font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+  textarea{min-height:90px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .btn{font-size:16px;font-weight:700;padding:15px 18px;border-radius:12px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:680px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .note{background:#eef4ff;border:1px solid #d5e2fb;color:#1c3a66;border-radius:10px;padding:11px 13px;font-size:13px;}
+  .warn{background:#fdf3e3;border:1px solid #f0dcb4;color:#7a4f06;border-radius:10px;padding:11px 13px;font-size:13px;margin-top:10px;}
+  .gh{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 4px 2px;display:flex;align-items:center;gap:9px;color:var(--red);}
+  .gh .cnt{background:#fdecee;color:var(--red);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px;}
+  .odue{background:#fff;border:1px solid #f3c3c8;border-left:4px solid var(--red);border-radius:12px;padding:14px 15px;margin-top:10px;}
+  .otop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .oref{font-weight:800;font-size:14px;letter-spacing:.4px;}
+  .oasset{font-size:13px;font-weight:700;color:var(--grey);}
+  .odays{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.3px;background:#fdecee;color:var(--red);padding:3px 10px;border-radius:20px;}
+  .oparam{margin-top:7px;font-size:15px;line-height:1.4;}
+  .meta{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px 8px;}
+  .m{font-size:12px;font-weight:600;color:var(--grey);background:#f2f2f5;border-radius:8px;padding:4px 9px;}
+  .m b{color:var(--ink);font-weight:700;}
+  .clear{background:#eef7f0;border:1px solid #cbe6d3;color:var(--ok);border-radius:10px;padding:11px 13px;font-size:13px;font-weight:600;margin-top:10px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
+  @media print{.bar,.toast{display:none!important}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<div class="htitle"><strong>Parameter change log</strong>Border Holdings — Avonmouth · record the change as you make it</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="note">Every change to a control parameter — suction pressure set points, defrost timing, alarm thresholds, alarm inhibits — is recorded here <b>at the time it is made</b>. One record per change. If it is temporary, it needs the date it goes back to normal.</div>
+
+    <div class="row" style="margin-top:14px">
+      <div><label>Date of change <span class="req">*</span></label><input id="pDate" type="date"></div>
+      <div><label>Asset / plant</label><input id="pAsset" placeholder="e.g. C2, B4, E1"></div>
+    </div>
+
+    <label>Parameter changed <span class="req">*</span></label>
+    <input id="pParam" placeholder="e.g. C2 suction pressure set point">
+
+    <label>Change type <span class="req">*</span></label>
+    <select id="pType"><option value="">Select…</option>
+      <option>Set point</option>
+      <option>Defrost timing</option>
+      <option>Alarm threshold</option>
+      <option>Alarm inhibit</option>
+      <option>Other</option>
+    </select>
+
+    <div class="row">
+      <div><label>Value before <span class="req">*</span></label><input id="pBefore" placeholder="e.g. -8.0 barg"></div>
+      <div><label>Value after <span class="req">*</span></label><input id="pAfter" placeholder="e.g. -6.5 barg"></div>
+    </div>
+
+    <label>Reason for the change <span class="req">*</span></label>
+    <textarea id="pReason" placeholder="Why the change was needed"></textarea>
+
+    <label>Individual making the change <span class="req">*</span></label>
+    <input id="pWho" placeholder="Your name">
+
+    <label>Intended duration <span class="req">*</span></label>
+    <input id="pDur" placeholder="e.g. until parts arrive, 7 days, Permanent">
+
+    <label>Date to be returned to normal <span class="req" id="revStar">*</span></label>
+    <input id="pRevert" type="date">
+    <div class="muted" id="revNote" style="margin-top:6px">Required unless the intended duration is <b>Permanent</b>. A temporary change with no reversion date is how an alarm inhibit gets left on.</div>
+
+    <label>Visit ref</label>
+    <input id="pVisit" placeholder="e.g. WK-1042 (optional)">
+  </div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+
+  <div class="gh" id="odueHead">Overdue reversions</div>
+  <div id="odue"><div class="muted" style="margin:10px 4px">Checking the published log…</div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Log parameter change</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=15"></script>
+<script src="redfm-draft.js?v=2"></script>
+<script>
+const $=id=>document.getElementById(id);
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
+const today=new Date().toISOString().slice(0,10);
+$('pDate').value=today;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const d10=v=>v?String(v).slice(0,10):'';
+const isPermanent=v=>String(v||'').trim().toLowerCase()==='permanent';
+
+// The reversion date is only optional for a permanent change.
+function syncRevert(){
+  const perm=isPermanent($('pDur').value);
+  $('revStar').style.display=perm?'none':'inline';
+  $('revNote').innerHTML=perm
+    ? 'Permanent change — no reversion date needed.'
+    : 'Required unless the intended duration is <b>Permanent</b>. A temporary change with no reversion date is how an alarm inhibit gets left on.';
+}
+$('pDur').addEventListener('input',syncRevert);
+syncRevert();
+
+// ── overdue reversions, from the published snapshot (no login) ─────────────
+let snapRows=null;
+function pending(msg){$('odue').innerHTML='<div class="muted" style="margin:10px 4px">'+msg+'</div>';}
+function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+
+function renderOverdue(rows){
+  const late=rows.filter(r=>{const rb=d10(r.RevertBy);return rb&&rb<today&&!d10(r.RevertedOn);})
+    .sort((a,b)=>d10(a.RevertBy).localeCompare(d10(b.RevertBy)));
+  const head=$('odueHead');
+  head.innerHTML='Overdue reversions'+(late.length?'<span class="cnt">'+late.length+'</span>':'');
+  if(!late.length){
+    $('odue').innerHTML='<div class="clear">✓ No overdue reversions — every temporary change has been put back or is still inside its window.</div>';
+    return;
+  }
+  let html='';
+  late.forEach(r=>{
+    const days=daysBetween(d10(r.RevertBy),today);
+    const meta=[];
+    if(r.ValueBefore!=null&&r.ValueBefore!=='')meta.push('<span class="m">Before <b>'+esc(r.ValueBefore)+'</b></span>');
+    if(r.ValueAfter!=null&&r.ValueAfter!=='')meta.push('<span class="m">Still at <b>'+esc(r.ValueAfter)+'</b></span>');
+    if(r.IntendedDuration)meta.push('<span class="m">Duration <b>'+esc(r.IntendedDuration)+'</b></span>');
+    if(r.RevertBy)meta.push('<span class="m">Due back <b>'+esc(d10(r.RevertBy))+'</b></span>');
+    if(r.Individual)meta.push('<span class="m">Changed by <b>'+esc(r.Individual)+'</b></span>');
+    if(r.ChangeDate)meta.push('<span class="m">Changed <b>'+esc(d10(r.ChangeDate))+'</b></span>');
+    html+='<div class="odue" data-ref="'+esc(r.Title||'')+'">'
+      +'<div class="otop"><span class="oref">'+esc(r.Title||'—')+'</span>'
+      +(r.AssetId?'<span class="oasset">'+esc(r.AssetId)+'</span>':'')
+      +'<span class="odays">'+days+' day'+(days===1?'':'s')+' overdue</span></div>'
+      +'<div class="oparam">'+esc(r.Parameter||'')+(r.ChangeType?' <span class="muted">('+esc(r.ChangeType)+')</span>':'')+'</div>'
+      +(meta.length?'<div class="meta">'+meta.join('')+'</div>':'')
+      +'</div>';
+  });
+  $('odue').innerHTML=html;
+}
+
+async function loadChanges(){
+  try{
+    const res=await fetch(SNAP+'?t='+Date.now());
+    if(!res.ok){pending('The log publishes hourly — nothing here yet.');return;}
+    const snap=await res.json();
+    if(!Array.isArray(snap.parameterchanges)){
+      pending('The log publishes hourly — nothing here yet. Changes logged today appear here after the next publish.');
+      return;
+    }
+    snapRows=snap.parameterchanges;
+    renderOverdue(snapRows);
+  }catch(e){
+    pending('The log publishes hourly — nothing here yet. (Could not reach the published snapshot from this device.)');
+  }
+}
+loadChanges();
+
+// ── SharePoint ─────────────────────────────────────────────────────────────
+let redfmReady=!!window.REDFM, signedIn=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+// Simple shared sequential ref (PC-1001, PC-1002 …) — same max-trailing-number
+// pattern as the fault register; falls back to the timestamp ref if the list
+// can't be read. Reads the live list where the data layer exposes it, otherwise
+// works the number out from the published snapshot.
+async function nextRef(prefix,listName,fallbackRows){
+  try{
+    let existing=null;
+    if(window.REDFM&&typeof REDFM.listItems==='function')existing=await REDFM.listItems(listName);
+    else if(Array.isArray(fallbackRows))existing=fallbackRows;
+    if(!existing)throw new Error('list unavailable');
+    let max=1000;
+    existing.forEach(it=>{const m=/-(\d{3,})$/.exec((it&&it.Title)||'');if(m){const n=parseInt(m[1],10);if(!isNaN(n)&&n>max)max=n;}});
+    return prefix+(max+1);
+  }catch(e){
+    return prefix+Date.now().toString(36).toUpperCase();
+  }
+}
+
+let submitted=false;
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  if(!$('pDate').value){toast('Set the date of the change');return;}
+  if(!$('pParam').value.trim()){toast('Name the parameter that was changed');return;}
+  if(!$('pType').value){toast('Pick the change type');return;}
+  if(!$('pBefore').value.trim()){toast('Enter the value before the change');return;}
+  if(!$('pAfter').value.trim()){toast('Enter the value after the change');return;}
+  const reason=$('pReason').value.trim();
+  if(!reason){toast('Enter the reason for the change');return;}
+  if(reason.length<10){toast('Give a bit more reason for the change (at least 10 characters)');return;}
+  if(!$('pWho').value.trim()){toast('Enter who made the change');return;}
+  const dur=$('pDur').value.trim();
+  if(!dur){toast('Enter the intended duration');return;}
+  // A temporary change with no reversion date is how an inhibit gets left on.
+  if(!isPermanent(dur)&&!$('pRevert').value){
+    toast('Set the date it goes back to normal — only a Permanent change can be left without one');return;}
+  if($('pRevert').value&&$('pRevert').value<$('pDate').value){
+    toast('The reversion date is before the date of the change');return;}
+
+  const r={ref:'PC-'+Date.now().toString(36).toUpperCase(),
+    date:$('pDate').value,asset:$('pAsset').value.trim(),param:$('pParam').value.trim(),
+    type:$('pType').value,before:$('pBefore').value.trim(),after:$('pAfter').value.trim(),
+    reason:reason,who:$('pWho').value.trim(),duration:dur,revert:$('pRevert').value,
+    visit:$('pVisit').value.trim()};
+
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      r.ref=await nextRef('PC-','ParameterChanges',snapRows);
+      await REDFM.addItem("ParameterChanges",{Title:r.ref,ChangeDate:r.date,AssetId:r.asset,
+        Parameter:r.param,ChangeType:r.type,ValueBefore:r.before,ValueAfter:r.after,Reason:r.reason,
+        Individual:r.who,IntendedDuration:r.duration,RevertBy:(r.revert||null),VisitRef:r.visit});
+      saveMsg='Logged on the Portal ✓';
+      try{REDFMDraft.clear();}catch(e){}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,select,textarea').forEach(e=>{e.disabled=true;e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent='✓ Parameter change logged — ref '+r.ref;
+  $('sumBody').innerHTML='<div>'+esc(r.param)+' · '+esc(r.before)+' → '+esc(r.after)+(r.asset?' · '+esc(r.asset):'')+' · '+esc(r.who)+'</div>'
+    +'<div style="margin-top:4px">'+esc(r.duration)+(r.revert?' · back to normal by '+esc(r.revert):' · no reversion date (permanent)')+'</div>'
+    +'<div class="muted" style="margin-top:4px">'+esc(saveMsg)+'</div>'
+    +'<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
+    +'<button class="btn btn-ghost" id="again">Log another change</button>'
+    +'<a class="btn btn-ghost" href="index.html" style="text-decoration:none;display:inline-block">Back to hub</a></div>';
+  $('summary').scrollIntoView({behavior:'smooth'});
+  $('again').onclick=()=>location.reload();
+  toast('Parameter change logged ✓');
+});
+
+REDFMDraft.init({key:'paramchange',extra:{
+  save:function(){return {dur:$('pDur').value};},
+  restore:function(o){if(o.dur!=null){$('pDur').value=o.dur;syncRevert();}}
+}});
+</script>
+</body>
+</html>

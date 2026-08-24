@@ -90,9 +90,9 @@ window.REDFMFaultFlow = (function () {
       ".ff-meta{font-size:12.5px;color:#6b6b72;margin-top:4px;line-height:1.5;}",
       ".ff-body label{display:block;font-size:13px;font-weight:700;color:#15151a;margin:14px 0 6px;}",
       ".ff-body label span{color:#E01322;}",
-      ".ff-body textarea,.ff-body input[type=text]{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 12px;border:1.5px solid #e3e3e8;border-radius:10px;background:#fff;color:#15151a;}",
+      ".ff-body textarea,.ff-body select,.ff-body input[type=text],.ff-body input[type=date]{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 12px;border:1.5px solid #e3e3e8;border-radius:10px;background:#fff;color:#15151a;}",
       ".ff-body textarea{min-height:76px;resize:vertical;}",
-      ".ff-body textarea:focus,.ff-body input:focus{outline:none;border-color:#E01322;}",
+      ".ff-body textarea:focus,.ff-body select:focus,.ff-body input:focus{outline:none;border-color:#E01322;}",
       ".ff-sev{display:flex;gap:8px;}",
       ".ff-sev button{flex:1;font:inherit;font-size:15px;font-weight:700;padding:12px 0;border-radius:10px;border:1.5px solid #e3e3e8;background:#fff;color:#6b6b72;cursor:pointer;}",
       '.ff-sev button.on[data-v="Low"]{background:#eef7f0;color:#1a7f37;border-color:#1a7f37;}',
@@ -184,6 +184,9 @@ window.REDFMFaultFlow = (function () {
      and both must be non-empty — matching on asset alone would wrongly merge two
      genuinely different faults on the same chamber. */
   var RESOLVED_STAGES = ["Closed", "Reported and fixed"];
+  // Notice 5.2 — the only reasons a fault may remain open.
+  var OPEN_REASONS = ["Awaiting quotation", "Awaiting client approval", "Awaiting parts",
+                      "Awaiting access", "Seasonal window"];
   function isOpenFault(f) {
     var st = (f && f.Stage) || "";
     return st !== "Call out" && RESOLVED_STAGES.indexOf(st) < 0;
@@ -238,7 +241,9 @@ window.REDFMFaultFlow = (function () {
     return { ref: rec.ref, repeated: false, count: 1 };
   }
 
-  var REVIEW_AFTER_DAYS = 7;
+  // Notice 5.2: "Every open fault must be actioned on every visit." Not a 7-day rule —
+  // anything open and not already answered on THIS visit comes back.
+  var REVIEW_AFTER_DAYS = 0;
   function daysBetween(fromISO, toISO) {
     if (!fromISO || !toISO) return null;
     var a = new Date(String(fromISO).slice(0, 10)), b = new Date(String(toISO).slice(0, 10));
@@ -260,7 +265,8 @@ window.REDFMFaultFlow = (function () {
       var reviewed = f.LastReviewed ? String(f.LastReviewed).slice(0, 10) : null;
       if (reviewed === String(today).slice(0, 10)) return false;
       var ago = daysBetween(reviewed, today);
-      return reviewed == null || ago >= REVIEW_AFTER_DAYS;
+      return reviewed == null || ago >= REVIEW_AFTER_DAYS;   // 0 = every visit
+
     }).map(function (f) {
       var raised = f.FaultDate ? String(f.FaultDate).slice(0, 10) : null;
       var reviewed = f.LastReviewed ? String(f.LastReviewed).slice(0, 10) : null;
@@ -384,7 +390,10 @@ window.REDFMFaultFlow = (function () {
             }
           } catch (e) { msg = "Report PDF could not be filed (" + (e.message || e) + ") — the data is saved."; }
         }
+        // Notice 5.1: a report with an undescribed fault "will not be treated as submitted"
+        // within the 48 hours. The clock therefore stops HERE, not at first save.
         await patchVisit(q.visitIds && q.visitIds.length ? q.visitIds : q.visitId, {
+          SubmittedAt: new Date().toISOString(),
           Status: q.completeStatus || "Fully completed",
           FaultsFlagged: q.items.length,
           FaultsDocumented: faults.length
@@ -520,9 +529,15 @@ window.REDFMFaultFlow = (function () {
         // --- still open: why ---
         var openBox = el("div");
         openBox.style.display = "none";
+        // Notice 5.2 permits exactly five reasons — free text is not compliant.
         openBox.appendChild(el("label", null, "Why is it still open? <span>*</span>"));
+        var oreason = el("select");
+        oreason.innerHTML = '<option value="">Select a reason…</option>' +
+          OPEN_REASONS.map(function (r) { return '<option>' + r + "</option>"; }).join("");
+        openBox.appendChild(oreason);
+        openBox.appendChild(el("label", null, "Detail <span>*</span>"));
         var onote = el("textarea");
-        onote.placeholder = "Awaiting parts, awaiting Border instruction, quoted and not yet approved, access needed…";
+        onote.placeholder = "What is being waited on, from whom, and what has been chased.";
         openBox.appendChild(onote);
         body.appendChild(openBox);
 
@@ -545,7 +560,8 @@ window.REDFMFaultFlow = (function () {
             if (fnote.value.trim().length < 4) missing.push("what was done");
             if (!photos.length) missing.push("an evidence photo");
           } else {
-            if (onote.value.trim().length < 10) missing.push("a reason it is still open");
+            if (!oreason.value) missing.push("which of the permitted reasons applies");
+            if (onote.value.trim().length < 10) missing.push("detail on why it is still open");
           }
           go.disabled = missing.length > 0;
           if (!missing.length) { hint.className = "ff-hint ok"; hint.textContent = "Ready to save."; }
@@ -556,6 +572,7 @@ window.REDFMFaultFlow = (function () {
           }
         }
         fnote.oninput = validate; onote.oninput = validate; fdate.onchange = validate;
+        oreason.onchange = validate;
         validate();
 
         go.onclick = async function () {
@@ -571,7 +588,9 @@ window.REDFMFaultFlow = (function () {
             };
           } else {
             fields = {
-              ClosureNote: (f.closureNote ? f.closureNote + "\n" : "") + stamp + "STILL OPEN: " + onote.value.trim(),
+              OpenReason: oreason.value,
+              ClosureNote: (f.closureNote ? f.closureNote + "\n" : "") + stamp + "STILL OPEN (" +
+                oreason.value + "): " + onote.value.trim(),
               LastReviewed: q.visitDate
             };
           }
@@ -596,7 +615,8 @@ window.REDFMFaultFlow = (function () {
           }
           f.done = true;
           f.outcome = outcome;
-          f.note = (outcome === "fixed" ? fnote.value.trim() : onote.value.trim());
+          f.note = (outcome === "fixed" ? fnote.value.trim()
+            : oreason.value + " — " + onote.value.trim());
           f.fixedDate = outcome === "fixed" ? fdate.value : "";
           (q.reviewed = q.reviewed || []).push({
             ref: f.ref, assetId: f.assetId, line: f.line, outcome: outcome,

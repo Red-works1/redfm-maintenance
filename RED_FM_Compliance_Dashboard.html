@@ -74,6 +74,16 @@
   #incompletebox tr.inc-r .age{color:var(--red);}
   #latebox tr.late-r td{background:#fdecee;}
   #latebox .hrs{font-weight:800;color:var(--red);}
+  #rdmbox tr.rdm-a td{background:#fdf3e3;}
+  #rdmbox tr.rdm-r td{background:#fdecee;}
+  #rdmbox .hrs{font-weight:800;color:var(--red);}
+  #rdmbox .banner,#pcbox .banner{margin:14px 18px;}
+  #pcbox tr.pc-r td{background:#fdecee;}
+  #fwbox .cohead{border-top:1px solid var(--line);padding:14px 18px 0;font-size:15px;font-weight:800;}
+  #fwbox .cohead:first-child{border-top:0;}
+  #fwbox .cohead span{color:var(--grey);font-weight:600;font-size:13px;}
+  .arrow{color:var(--grey);}
+  .srcnote{padding:11px 18px;font-size:12px;color:var(--grey);border-top:1px solid var(--line);}
   #faulttable tr.rep-a td{background:#fdf3e3;}
   #faulttable tr.rep-r td{background:#fdecee;}
   #faulttable .flags{font-weight:800;color:var(--amber);}
@@ -114,6 +124,13 @@
     #faulttable td.wide{display:block;text-align:left;}
     #faulttable td.wide:before{display:block;margin-bottom:4px;}
     #faulttable td.closcell{max-width:none;}
+    #rdmbox table,#rdmbox tbody,#rdmbox tr,#rdmbox td,#pcbox table,#pcbox tbody,#pcbox tr,#pcbox td,#fwbox table,#fwbox tbody,#fwbox tr,#fwbox td{display:block;width:auto;}
+    #rdmbox thead,#pcbox thead,#fwbox thead{display:none;}
+    #rdmbox tr,#pcbox tr,#fwbox tr{border:1px solid var(--line);border-radius:12px;margin:0 14px 14px;padding:2px 0;background:#fff;}
+    #rdmbox td,#pcbox td,#fwbox td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
+    #rdmbox td:before,#pcbox td:before,#fwbox td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
+    #rdmbox td.wide,#pcbox td.wide,#fwbox td.wide{display:block;text-align:left;}
+    #rdmbox td.wide:before,#pcbox td.wide:before,#fwbox td.wide:before{display:block;margin-bottom:4px;}
     .modalback{padding:12px 8px;}
     .modalbody table,.modalbody tbody,.modalbody tr,.modalbody td{display:block;width:auto;}
     .modalbody thead{display:none;}
@@ -155,9 +172,21 @@
 
     <div class="sechead">
       <h2>Late submissions (clause 4.1)</h2>
-      <div class="legend"><span class="r">● report filed more than 48 hours after the visit</span></div>
+      <div class="legend"><span class="r">● report completed more than 48 hours after the visit</span><span>measured to the report being completed (notice 5.1), or to the record being created where no completion stamp exists</span></div>
     </div>
     <div class="card" id="latebox"></div>
+
+    <div class="sechead">
+      <h2>RDM alarms (notice 5.3)</h2>
+      <div class="legend"><span class="a">● acknowledged, no action</span><span class="r">● active more than 24 hours — written notification due within one business day (4.4(c))</span></div>
+    </div>
+    <div class="card" id="rdmbox"></div>
+
+    <div class="sechead">
+      <h2>Parameter changes &amp; reversions (clause 8.8)</h2>
+      <div class="legend"><span class="r">● revert-by date passed and not reverted</span></div>
+    </div>
+    <div class="card" id="pcbox"></div>
 
     <div class="sechead">
       <h2>Refrigeration maintenance — regime progress</h2>
@@ -178,6 +207,12 @@
       <div id="faulttable"></div>
       <div id="calloutbox"></div>
     </div>
+
+    <div class="sechead">
+      <h2><a href="RED_FM_Forward_Works.html" style="color:var(--ink);text-decoration:none;border-bottom:2px solid var(--red);">Forward works</a></h2>
+      <div class="legend"><span>Indicative budget figures</span><a href="RED_FM_Forward_Works.html" style="color:var(--red);font-weight:700;text-decoration:none;">Full register →</a></div>
+    </div>
+    <div class="card" id="fwbox"></div>
   </div>
 
   <div class="state" id="loadstate">Sign in to load the live Border Holdings compliance picture from SharePoint.</div>
@@ -188,7 +223,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=14"></script>
+<script src="redfm-data.js?v=15"></script>
 <script>
 const $=id=>document.getElementById(id);
 const now=new Date();
@@ -240,10 +275,20 @@ function normaliseAsset(s){
 function assetKey(s){return normaliseAsset(s).toLowerCase();}
 function outOfRange(r){const v=r&&r.OutOfRange;return v===true||v===1||/^(true|yes|y|1)$/i.test(String(v==null?'':v));}
 // item 5 — closure evidence Border is allowed to see: fix dates, evidence notes and still-open reasons
+// where a fault is still open, OpenReason is why it is still open — Border is contractually
+// entitled to see that alongside the closure evidence, so it rides in the same cell
+function openReasonText(f){
+  const st=(f&&f.Stage)||'Reported';
+  if(RESOLVED_STAGES.indexOf(st)!==-1)return '';        // closed / fixed — the closure evidence stands alone
+  const r=f&&f.OpenReason;
+  return r?String(r).trim():'';
+}
 function closureText(f){
   const p=[];
   if(f&&f.ClosedDate)p.push('Closed '+dmy(f.ClosedDate)+(f.ClosedBy?' by '+f.ClosedBy:''));
   if(f&&f.ClosureNote)p.push(String(f.ClosureNote).trim());
+  const o=openReasonText(f);
+  if(o)p.push('Still open: '+o);
   return p.join('\n');
 }
 function closureCell(f){
@@ -270,19 +315,34 @@ const INCOMPLETE_STATUSES=[INCOMPLETE_FAULT_STATUS,INCOMPLETE_DOC_STATUS];
 function countsAsComplete(v){return INCOMPLETE_STATUSES.indexOf(((v&&v.Status)||""))<0;}
 function incompleteVisits(visits){return (visits||[]).filter(v=>INCOMPLETE_STATUSES.indexOf(v.Status||"")!==-1).slice().sort((a,b)=>new Date(a.VisitDate||0)-new Date(b.VisitDate||0));}
 
-// ---- Item 11 — clause 4.1: the report must be submitted within 48 hours of the visit ----
-// hours = the SharePoint Created stamp on the visit record minus VisitDate. Older records
-// without a Created stamp cannot be judged, so they are simply not listed.
+// ---- Item 11 — clause 4.1 / notice 5.1: the report must be submitted within 48 hours ----
+// The clock stops when the report is COMPLETE, not when it was first saved: notice 5.1 says a
+// report containing an undescribed fault "will not be treated as submitted within the 48-hour
+// period". SubmittedAt is stamped when the report is finished, so it is used wherever it exists;
+// older records, and visits that never had faults to describe, fall back to the SharePoint
+// Created stamp. A visit with neither cannot be judged, so it is simply not listed.
 const LATE_HOURS=48;
+const SUBMITTED_LABEL="Report completed";
+const CREATED_LABEL="Record created";
+function submittedStamp(v){
+  const tries=[[v&&v.SubmittedAt,SUBMITTED_LABEL],[v&&v.Created,CREATED_LABEL]];
+  for(let i=0;i<tries.length;i++){
+    if(!tries[i][0])continue;
+    const d=new Date(tries[i][0]);
+    if(!isNaN(d))return {d:d,src:tries[i][1]};
+  }
+  return null;
+}
 function submissionHours(v){
-  if(!v||!v.VisitDate||!v.Created)return null;
-  const vd=new Date(v.VisitDate),cr=new Date(v.Created);
-  if(isNaN(vd)||isNaN(cr))return null;
-  return (cr-vd)/3600000;
+  if(!v||!v.VisitDate)return null;
+  const vd=new Date(v.VisitDate),st=submittedStamp(v);
+  if(isNaN(vd)||!st)return null;
+  return (st.d-vd)/3600000;
 }
 function lateVisits(visits){
   const {s,e}=periodRange("month");   // current period only
-  return (visits||[]).filter(v=>inRange(v.VisitDate,s,e)).map(v=>({v,h:submissionHours(v)}))
+  return (visits||[]).filter(v=>inRange(v.VisitDate,s,e))
+    .map(v=>{const st=submittedStamp(v);return {v,h:submissionHours(v),src:st?st.src:''};})
     .filter(x=>x.h!=null&&x.h>LATE_HOURS).sort((a,b)=>b.h-a.h);
 }
 
@@ -413,13 +473,14 @@ function renderIncomplete(visits){
 
 function renderLate(visits){
   const late=lateVisits(visits);
-  if(!late.length){$('latebox').innerHTML='<div class="empty ok">\u2713 All reports submitted within 48 hours.</div>';return;}
+  if(!late.length){$('latebox').innerHTML='<div class="empty ok">\u2713 All reports completed and submitted within 48 hours of the visit.</div>';return;}
   const rows=late.map(x=>`<tr class="late-r"><td data-label="Ref"><b>${esc(x.v.Title||'')}</b></td>
       <td data-label="Date">${dmy(x.v.VisitDate)}</td>
       <td data-label="Service">${esc(x.v.ServiceType||'')}</td>
       <td data-label="Engineer">${esc(x.v.Engineer||'')}</td>
-      <td data-label="Hours taken"><span class="hrs">${Math.round(x.h)} hours</span></td></tr>`).join('');
-  $('latebox').innerHTML=`<table><thead><tr><th>Ref</th><th>Date</th><th>Service</th><th>Engineer</th><th>Hours taken</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <td data-label="Hours taken"><span class="hrs">${Math.round(x.h)} hours</span></td>
+      <td data-label="Measured to">${esc(x.src)}</td></tr>`).join('');
+  $('latebox').innerHTML=`<div class="tblscroll"><table><thead><tr><th>Ref</th><th>Date</th><th>Service</th><th>Engineer</th><th>Hours taken</th><th>Measured to</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ---- Item 14 — per-asset history modal (every fault and every reading for one asset) ----
@@ -467,6 +528,150 @@ function openNoteModal(k){
     '<div class="modalnote"><span class="clos">'+(esc(closureText(f))||'\u2014')+'</span></div>');
 }
 
+
+// ---- Contract Performance Notice: RDM alarms (5.3), parameter changes (8.8), forward works ----
+// These three lists arrive as an array, or as null when the source could not be read. null is
+// "not known" and must never render as a green all-clear.
+let NEWSRC='';                       // set by load(): where the three lists came from, if worth saying
+function srcNote(){return NEWSRC?'<div class="srcnote">'+esc(NEWSRC)+'</div>':'';}
+
+// ---- Notice 5.3 — RDM alarms recorded on the weekly report -----------------------
+const RDM_LONG_HOURS=24;             // clause 4.4(c): written notification within one business day
+const RDM_ACK="Acknowledged - no action";
+const RDM_NOT_RECORDED="not recorded";
+function alarmHours(a){
+  if(a&&a.ActiveSince){const d=new Date(a.ActiveSince);if(!isNaN(d))return Math.max(0,(now-d)/3600000);}
+  const n=Number(a&&a.HoursActive);  // the engineer's own figure where ActiveSince was not captured
+  return isFinite(n)&&n>0?n:null;
+}
+function hoursText(h){
+  if(h==null)return '—';
+  return h<48?Math.round(h)+' hours':Math.round(h/24)+' days';
+}
+// a weekly report with no RDM answer at all — or one that says the alarms were not recorded —
+// has not recorded RDM alarms, which is a breach of 5.3
+function rdmAnswered(v){
+  const s=String((v&&v.RdmAlarmsRecorded)||'').trim();
+  return s!==''&&s.toLowerCase()!==RDM_NOT_RECORDED;
+}
+function weeklyVisitsInPeriod(visits){
+  const {s,e}=periodRange("month");
+  return (visits||[]).filter(v=>v.ServiceType==="Weekly"&&inRange(v.VisitDate,s,e));
+}
+function periodAlarms(alarms){
+  const {s,e}=periodRange("month");
+  return (alarms||[]).filter(a=>inRange(a.AlarmDate,s,e)).slice()
+    .sort((a,b)=>new Date(b.AlarmDate||0)-new Date(a.AlarmDate||0));
+}
+function renderRdm(visits,alarms){
+  const wk=weeklyVisitsInPeriod(visits);
+  const missing=wk.filter(v=>!rdmAnswered(v));
+  const banner=missing.length?`<div class="banner">⚠ RDM alarms recorded on ${wk.length-missing.length} of ${wk.length} weekly report${wk.length===1?'':'s'} this period · ${missing.length} with no RDM answer — notice 5.3 requires the weekly report to record RDM alarms · ${esc(missing.map(v=>v.Title||dmy(v.VisitDate)||'(no ref)').join(', '))}</div>`:'';
+  if(alarms==null){$('rdmbox').innerHTML=banner+'<div class="empty">RDM alarm records are not available in this view.</div>';return;}
+  const list=periodAlarms(alarms);
+  const okTail=wk.length?` · all ${wk.length} weekly report${wk.length===1?'':'s'} recorded an RDM answer`:'';
+  if(!list.length){
+    $('rdmbox').innerHTML=banner+(missing.length
+      ?'<div class="empty">No RDM alarms recorded this period.</div>'
+      :`<div class="empty ok">✓ No RDM alarms this period${okTail}.</div>`)+srcNote();
+    return;
+  }
+  const rows=list.map(a=>{
+    const h=alarmHours(a),lng=h!=null&&h>RDM_LONG_HOURS;
+    const ack=String(a.Outcome||'').trim()===RDM_ACK;
+    const cls=lng?'rdm-r':(ack?'rdm-a':'');
+    return `<tr${cls?' class="'+cls+'"':''}><td data-label="Date">${dmy(a.AlarmDate)||'—'}</td>
+      <td data-label="Asset">${a.AssetId?`<a href="#" class="assetlink" data-asset="${esc(a.AssetId)}">${esc(a.AssetId)}</a>`:'—'}</td>
+      <td class="wide" data-label="Alarm">${esc(a.AlarmText||'')||'—'}</td>
+      <td data-label="Outcome">${esc(a.Outcome||'')||'—'}</td>
+      <td class="wide" data-label="Action taken">${esc(a.ActionTaken||'')||'—'}</td>
+      <td data-label="Raised by">${esc(a.RaisedBy||'')||'—'}</td>
+      <td data-label="Active for"><span class="${lng?'hrs':''}">${hoursText(h)}</span></td></tr>`;}).join('');
+  const line=missing.length?'':`<div class="empty">✓ All ${wk.length} weekly report${wk.length===1?'':'s'} this period recorded an RDM answer.</div>`;
+  $('rdmbox').innerHTML=banner+line+
+    `<div class="tblscroll"><table><thead><tr><th>Date</th><th>Asset</th><th>Alarm</th><th>Outcome</th><th>Action taken</th><th>Raised by</th><th>Active for</th></tr></thead><tbody>${rows}</tbody></table></div>`+srcNote();
+}
+
+// ---- Clause 8.8 — parameter changes, and reversions that never happened ----------
+function startOfToday(){return new Date(now.getFullYear(),now.getMonth(),now.getDate());}
+function overdueDays(p){
+  if(!p||!p.RevertBy||p.RevertedOn)return null;
+  const d=new Date(p.RevertBy);if(isNaN(d))return null;
+  const days=Math.floor((startOfToday()-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/86400000);
+  return days>0?days:null;
+}
+function paramRows(changes){
+  const {s,e}=periodRange("month");
+  // this period's changes, plus any earlier change whose reversion is now overdue — a temporary
+  // alarm inhibit left in place is exactly what this control exists to catch, and it does not
+  // stop mattering when the month rolls over
+  const rows=(changes||[]).filter(p=>inRange(p.ChangeDate,s,e)||overdueDays(p)!=null)
+    .map(p=>({p,od:overdueDays(p)}));
+  rows.sort((a,b)=>(b.od||0)-(a.od||0)||new Date(b.p.ChangeDate||0)-new Date(a.p.ChangeDate||0));
+  return rows;                        // overdue reversions first, worst first
+}
+function renderParams(changes){
+  if(changes==null){$('pcbox').innerHTML='<div class="empty">Parameter change records are not available in this view.</div>';return;}
+  const rows=paramRows(changes),od=rows.filter(x=>x.od!=null);
+  const banner=od.length?`<div class="banner">⚠ ${od.length} parameter change${od.length===1?'':'s'} past the revert-by date and not reverted — clause 8.8 · ${esc(od.map(x=>[x.p.AssetId||'',x.p.Parameter||''].filter(Boolean).join(' ')||x.p.Title||'(no ref)').join(', '))}</div>`:'';
+  if(!rows.length){$('pcbox').innerHTML='<div class="empty ok">✓ No parameter changes recorded this period.</div>'+srcNote();return;}
+  const body=rows.map(x=>{const p=x.p;
+    const rev=x.od!=null?`<span class="sev High">${x.od} day${x.od===1?'':'s'} overdue</span>`
+      :(p.RevertedOn?`<span class="sev Low">reverted ${dmy(p.RevertedOn)}</span>`:'');
+    return `<tr${x.od!=null?' class="pc-r"':''}><td data-label="Date">${dmy(p.ChangeDate)||'—'}</td>
+      <td data-label="Asset">${p.AssetId?`<a href="#" class="assetlink" data-asset="${esc(p.AssetId)}">${esc(p.AssetId)}</a>`:'—'}</td>
+      <td data-label="Parameter">${esc(p.Parameter||'')||'—'}</td>
+      <td data-label="Type">${esc(p.ChangeType||'')||'—'}</td>
+      <td class="wide" data-label="Before → after">${esc(p.ValueBefore||'')||'—'} <span class="arrow">→</span> <b>${esc(p.ValueAfter||'')||'—'}</b></td>
+      <td data-label="Individual">${esc(p.Individual||'')||'—'}</td>
+      <td data-label="Intended duration">${esc(p.IntendedDuration||'')||'—'}</td>
+      <td data-label="Revert by">${dmy(p.RevertBy)||'—'} ${rev}</td></tr>`;}).join('');
+  $('pcbox').innerHTML=banner+
+    `<div class="tblscroll"><table><thead><tr><th>Date</th><th>Asset</th><th>Parameter</th><th>Type</th><th>Before → after</th><th>Individual</th><th>Intended duration</th><th>Revert by</th></tr></thead><tbody>${body}</tbody></table></div>`+srcNote();
+}
+
+// ---- Forward works — summary only; the register itself is on its own page --------
+const FW_STATUSES=["Recommended","Quoted","Approved","Scheduled","Completed","Declined"];
+const FW_CATEGORIES=["Deferred remedial","Seasonal","Recommendation","Improvement"];
+const FW_CLOSED=["Completed","Declined"];      // everything else is still outstanding
+const FW_OLDEST=3;
+function fwStatus(w){const s=String((w&&w.WorkStatus)||'').trim();return FW_STATUSES.indexOf(s)!==-1?s:FW_STATUSES[0];}
+// BudgetCost is an indicative budget figure the client may see; it may arrive as a number or as text
+function fwBudget(w){const n=Number(String((w&&w.BudgetCost)==null?'':w.BudgetCost).replace(/[^0-9.\-]/g,''));return isFinite(n)?n:0;}
+function money(n){return '£'+Math.round(n).toLocaleString('en-GB');}
+function renderForward(works){
+  if(works==null){$('fwbox').innerHTML='<div class="empty">Forward works records are not available in this view.</div>';return;}
+  if(!works.length){$('fwbox').innerHTML='<div class="empty">No forward works recorded.</div>'+srcNote();return;}
+  const byStatus={};FW_STATUSES.forEach(s=>byStatus[s]=0);
+  const byCat={};FW_CATEGORIES.forEach(c=>byCat[c]=0);let otherCat=0;
+  works.forEach(w=>{byStatus[fwStatus(w)]++;
+    const c=String(w.Category||'').trim();
+    if(byCat[c]!=null)byCat[c]++;else otherCat++;});
+  const outstanding=works.filter(w=>FW_CLOSED.indexOf(fwStatus(w))===-1);
+  const budget=outstanding.reduce((a,w)=>a+fwBudget(w),0);
+  const oldest=works.filter(w=>fwStatus(w)==="Recommended").slice()
+    .sort((a,b)=>new Date(a.RaisedDate||0)-new Date(b.RaisedDate||0)).slice(0,FW_OLDEST);
+  const scls={"Recommended":"us","Completed":"fixed"};
+  const stat=`<div class="cohead">By status <span>· ${works.length} item${works.length===1?'':'s'} on the register</span></div>`+
+    '<div class="pipe">'+FW_STATUSES.map(s=>`<div class="stage ${scls[s]||''}"><div class="c">${byStatus[s]}</div><div class="s">${s}</div></div>`).join('')+'</div>';
+  const cats=FW_CATEGORIES.map(c=>`<div class="stage"><div class="c">${byCat[c]}</div><div class="s">${c}</div></div>`).join('')+
+    (otherCat?`<div class="stage"><div class="c">${otherCat}</div><div class="s">Other</div></div>`:'');
+  const cat=`<div class="cohead">By category</div><div class="pipe">${cats}</div>`;
+  const bud=`<div class="cohead">Indicative budget <span>· items not completed or declined</span></div>`+
+    `<div class="pipe"><div class="stage co"><div class="c">${money(budget)}</div><div class="s">indicative budget total</div></div>`+
+    `<div class="stage"><div class="c">${outstanding.length}</div><div class="s">items outstanding</div></div></div>`;
+  const old=oldest.length?`<div class="cohead">Oldest still at Recommended <span>· ${oldest.length} shown</span></div>`+
+    `<div class="tblscroll"><table><thead><tr><th>Ref</th><th>Asset</th><th>Work</th><th>Category</th><th>Raised</th><th>Waiting</th></tr></thead><tbody>`+
+    oldest.map(w=>`<tr><td data-label="Ref"><b>${esc(w.Title||'')||'—'}</b></td>
+      <td data-label="Asset">${w.AssetId?`<a href="#" class="assetlink" data-asset="${esc(w.AssetId)}">${esc(w.AssetId)}</a>`:'—'}</td>
+      <td class="wide" data-label="Work">${esc(w.WorkDescription||'')||'—'}</td>
+      <td data-label="Category">${esc(w.Category||'')||'—'}</td>
+      <td data-label="Raised">${dmy(w.RaisedDate)||'—'}</td>
+      <td data-label="Waiting">${w.RaisedDate?ageDays(w.RaisedDate)+' days':'—'}</td></tr>`).join('')+
+    '</tbody></table></div>':'';
+  $('fwbox').innerHTML=stat+cat+bud+old+srcNote();
+}
+
 function render(){
   const C=compute();
   $('metrics').innerHTML=`
@@ -476,6 +681,9 @@ function render(){
     <div class="metric red"><div class="l">Open faults</div><div class="v">${C.open.length}</div><div class="s">${C.closed} closed</div></div>`;
   renderIncomplete(DATA.visits);
   renderLate(DATA.visits);
+  renderRdm(DATA.visits,DATA.rdmalarms);
+  renderParams(DATA.parameterchanges);
+  renderForward(DATA.forwardworks);
 
   $('regimes').innerHTML=C.regs.map(r=>`
     <div class="reg">
@@ -518,9 +726,9 @@ function render(){
         <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
         <td data-label="Open (days)"><span class="${acls}">${age==null?'':age}</span></td>
         <td data-label="Flags">${rc>=2?`<span class="flags">\u00d7${rc}</span>`:''}</td>
-        <td class="wide closcell" data-label="Closure evidence">${closureCell(f)}</td>
+        <td class="wide closcell" data-label="Closure evidence / why open">${closureCell(f)}</td>
         <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Asset</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Open (days)</th><th>Flags</th><th>Closure evidence</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Asset</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Open (days)</th><th>Flags</th><th>Closure evidence / why open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
@@ -532,13 +740,37 @@ function render(){
   $('period').innerHTML=`Live · generated <b>${now.toLocaleDateString('en-GB')}</b><br><a class="hubbtn" href="index.html">⌂ Hub</a>`;
 }
 
+// RDMAlarms / ParameterChanges / ForwardWorks. redfm-data.js exposes no generic list reader,
+// so use one if it is ever added there and otherwise fall back to the hourly published snapshot,
+// which is written from the same three SharePoint lists. Anything unreadable stays null so the
+// cards say "not available" rather than showing a false all-clear.
+const SNAP_URL='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
+const NEW_LISTS=["RDMAlarms","ParameterChanges","ForwardWorks"];
+function pickList(o,k){return o&&Array.isArray(o[k])?o[k]:null;}
+async function loadNewLists(){
+  if(window.REDFM&&typeof REDFM.listItems==='function'){
+    try{
+      const r=await Promise.all(NEW_LISTS.map(n=>REDFM.listItems(n)));
+      NEWSRC='';
+      return {rdmalarms:r[0]||[],parameterchanges:r[1]||[],forwardworks:r[2]||[]};
+    }catch(e){}
+  }
+  try{
+    const j=await (await fetch(SNAP_URL+'?t='+Date.now())).json();
+    NEWSRC='RDM alarms, parameter changes and forward works are shown from the published snapshot'+
+      (j.generatedAt?' of '+new Date(j.generatedAt).toLocaleString('en-GB'):'')+' — not live.';
+    return {rdmalarms:pickList(j,'rdmalarms'),parameterchanges:pickList(j,'parameterchanges'),forwardworks:pickList(j,'forwardworks')};
+  }catch(e){NEWSRC='';return {rdmalarms:null,parameterchanges:null,forwardworks:null};}
+}
+
 async function load(){
   $('status').textContent='Loading live data…';
   try{
-    const [visits,readings,faults,cat]=await Promise.all([
-      REDFM.getServiceVisits(),REDFM.getReadings(),REDFM.getFaultsWithId(),REDFM.getCatalogueAll()]);
+    const [visits,readings,faults,cat,extra]=await Promise.all([
+      REDFM.getServiceVisits(),REDFM.getReadings(),REDFM.getFaultsWithId(),REDFM.getCatalogueAll(),loadNewLists()]);
     const catCount={};cat.forEach(c=>{catCount[c.ServiceType]=(catCount[c.ServiceType]||0)+1;});
-    DATA={visits,readings,faults,catCount};
+    DATA={visits,readings,faults,catCount,
+      rdmalarms:extra.rdmalarms,parameterchanges:extra.parameterchanges,forwardworks:extra.forwardworks};
     $('loadstate').style.display='none';$('board').style.display='block';
     $('signin').style.display='none';$('genpdf').disabled=false;
     $('status').textContent='Live · '+visits.length+' visits · '+faults.length+' faults loaded';

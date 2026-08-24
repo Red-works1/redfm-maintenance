@@ -15,8 +15,8 @@
   .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
   .hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}@media(max-width:620px){.hgrid{grid-template-columns:1fr 1fr;}}
   label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
-  input,textarea{width:100%;font-size:16px;padding:10px;border:1.5px solid var(--line);border-radius:9px;}
-  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  input,textarea,select{width:100%;font-size:16px;padding:10px;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--red);}
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
   .vbtn{flex:1;min-width:80px;font-size:15px;font-weight:800;padding:11px 0;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
   .vbtn.on{background:var(--red);color:#fff;border-color:var(--red);}.vbtn .n{display:block;font-size:10px;font-weight:600;opacity:.85;}
@@ -31,6 +31,19 @@
   td input.prefill{background:#eef3fb;color:#175c9e;font-style:italic;}
   .chk{width:100%;min-width:84px;height:44px;border:0;background:#fff;font-size:20px;cursor:pointer;}
   .chk.ok{color:var(--ok);background:#eef7f0;}.chk.no{color:var(--red);background:#fdecee;}
+  /* clause 8.7 — every recorded value can be flagged as a fault, whether or not the row has a check box */
+  td .cw{display:flex;align-items:stretch;}
+  td .cw input{flex:1 1 auto;}
+  .flag{flex:0 0 46px;width:46px;height:44px;border:0;border-left:1px solid var(--line);background:#fff;color:#c9c9d0;font-size:19px;line-height:1;padding:0;cursor:pointer;}
+  .flag.on{background:var(--red);color:#fff;}
+  td.flagged .cw input{background:#fdecee;color:var(--red);font-weight:800;}
+  td.bad .cw input{box-shadow:inset 0 0 0 2px #b9770b;background:#fff8ea;}
+  .cmsg{display:none;white-space:normal;font-size:11px;line-height:1.35;padding:5px 7px;max-width:150px;font-weight:600;}
+  .cmsg.on{display:block;background:#fdecee;color:#8c1018;}.cmsg.bad{display:block;background:#fff3cd;color:#7a4e05;}
+  .rbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .rrow{border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-top:10px;background:#fafafb;}
+  .rrow .rhead{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--grey);}
+  .rdel{margin-left:auto;flex:0 0 auto;width:auto;min-height:38px;padding:8px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--red);font-size:13px;font-weight:700;cursor:pointer;}
   .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
   .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
   .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px;z-index:20;}.bar .btn{width:100%;}
@@ -55,6 +68,36 @@
   <div class="hint">Record cells take text or numbers (FULL, Clear, 100%, −18.6). Tap a check cell to cycle ✓ → ✗. Previous meter readings auto-fill from last week (shown in blue) — overwrite only if a meter was reset/replaced.</div>
   <div id="body"></div>
 
+  <!-- Notice 5.5 — a meter reading that cannot be true is re-taken, not submitted. -->
+  <div class="card" id="meterEscape" style="display:none;border-color:#e6c574;background:#fff8ea">
+    <strong style="font-size:14px;color:#7a4e05">Meter reading needs re-taking</strong>
+    <div class="muted" id="meterEscMsg" style="margin-top:6px;color:#7a4e05"></div>
+    <label style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:14px;font-weight:700;color:var(--ink)">
+      <input type="checkbox" id="mReset" style="width:24px;height:24px;flex:0 0 24px;margin:0"> The meter was reset or replaced
+    </label>
+    <div style="margin-top:8px"><label for="mResetWhy">Reason (required — added to the report comments)</label>
+      <input id="mResetWhy" placeholder="e.g. main incoming meter replaced 21/08, new unit started at 0"></div>
+  </div>
+
+  <!-- Notice 5.3, clause 4.4(b)+(d) — every alarm active at the time of the visit is listed here. -->
+  <h2>RDM alarms</h2>
+  <div class="card" id="rdmCard">
+    <div class="muted">Every alarm active on the RDM at the time of this visit must be listed. An answer is required before the sheet can be submitted.</div>
+    <div class="rbtns" id="rdmChoiceBar">
+      <button class="vbtn" type="button" data-v="none">No alarms<span class="n">active at time of visit</span></button>
+      <button class="vbtn" type="button" data-v="list">Alarms active<span class="n">listed below</span></button>
+    </div>
+    <div id="rdmAlarmWrap" style="display:none">
+      <div id="rdmRows"></div>
+      <button class="btn btn-ghost rdmbtn" type="button" id="rdmAdd" style="margin-top:10px;width:100%">+ Add alarm</button>
+    </div>
+    <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+      <label>Alarm inhibits (optional — every inhibit is recorded, dated and attributed)</label>
+      <div id="inhRows"></div>
+      <button class="btn btn-ghost rdmbtn" type="button" id="inhAdd" style="margin-top:10px;width:100%">+ Add inhibit</button>
+    </div>
+  </div>
+
   <h2>Comments</h2>
   <div class="card"><textarea id="hComm" rows="3" placeholder="If a compressor is off on temperature, check the oil heater…"></textarea></div>
 
@@ -67,9 +110,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=14"></script>
+<script src="redfm-data.js?v=15"></script>
 <script src="redfm-draft.js?v=2"></script>
-<script src="redfm-faultflow.js?v=2"></script>
+<script src="redfm-faultflow.js?v=3"></script>
 <script>
 const T=(a)=>a.map(x=>Array.isArray(x)?x:[x,'txt']);
 const CHAMBER=T([["Cold store set point (controller)"],["Cold store temp air-on"],["Coolers air off"],["Cooling on/off"]]);
@@ -111,9 +154,24 @@ const VARIANTS={
  ]}
 };
 
+// Notice 5.4 / clause 8.7 — fallback cold-store set points, used ONLY when the engineer has
+// not recorded the controller set point on the sheet for that chamber. Keyed by chamber column.
+// Left null deliberately: Ryan to fill in the commissioned figure for each chamber.
+const SETPOINTS={
+  "A1":null,"A2":null,"A3":null,"A4":null,"No1 B2":null,"No2 B2":null,"No3 B1":null,"No4 B1":null,
+  "C1":null,"C2":null,"C3":null,"C4":null,"D1":null,"D2":null,
+  "E1":null,"E2":null
+};
+const SP_TOL=1.5;
+
 const $=id=>document.getElementById(id);
 $('hDate').value=new Date().toISOString().slice(0,10);
 let variant=Object.keys(VARIANTS)[0];const state={};let prevMap={};
+// clause 8.7 — a value cell can be flagged as a fault in its own right.
+// flags[id] = 'manual' (engineer tapped the flag) | 'auto' (set by the 1.5C rule, clears itself).
+const flags={},flagMsg={};let meterBad={},meterBadList=[];
+// Notice 5.3 — RDM alarm section. '' until answered; submission is blocked while it is ''.
+let rdmChoice='';const rdmAlarms=[],rdmInhibits=[];
 const vbar=$('vbar');
 Object.keys(VARIANTS).forEach(v=>{const b=document.createElement('button');b.className='vbtn'+(v===variant?' on':'');
   b.innerHTML=`${v}<span class="n">${VARIANTS[v].label}</span>`;b.onclick=()=>{variant=v;draw();};vbar.appendChild(b);});
@@ -130,15 +188,19 @@ function draw(){
     sec.rows.forEach((row,ri)=>{const[label,type]=row;html+=`<tr><td class="rowlab">${label}</td>`;
       sec.cols.forEach((c,ci)=>{const id=key(si,ri,ci);const v=state[id];
         if(type==='chk')html+=`<td><button class="chk${v?(' '+v):''}" data-id="${id}">${v==='ok'?'✓':v==='no'?'✗':''}</button></td>`;
-        else html+=`<td><input data-id="${id}" value="${v||''}"></td>`;});
+        else html+=`<td class="cell" data-cell="${id}"><div class="cw"><input data-id="${id}" value="${v||''}"><button type="button" class="flag" data-flag="${id}" title="Flag this reading as a fault" aria-label="Flag this reading as a fault">&#9873;</button></div><div class="cmsg" data-msg="${id}"></div></td>`;});
       html+='</tr>';});
     html+='</tbody></table>';sc.innerHTML=html;root.appendChild(sc);
   });
   root.querySelectorAll('.chk').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const cur=state[id]||'';
     const nx=cur===''?'ok':cur==='ok'?'no':'';if(nx)state[id]=nx;else delete state[id];
     b.className='chk'+(nx?(' '+nx):'');b.textContent=nx==='ok'?'✓':nx==='no'?'✗':'';});
-  root.querySelectorAll('input[data-id]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];inp.classList.remove('prefill');});
+  root.querySelectorAll('input[data-id]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];inp.classList.remove('prefill');evalRules();});
+  root.querySelectorAll('.flag').forEach(b=>b.onclick=()=>{const id=b.dataset.flag;
+    if(flags[id]==='auto'){toast(flagMsg[id]||'Set automatically \u2014 cannot be cleared');return;}
+    if(flags[id])delete flags[id];else flags[id]='manual';paintCell(id);});
   applyPrev();
+  evalRules();
 }
 draw();
 
@@ -170,6 +232,119 @@ function applyPrev(){
 }
 loadPrev();
 
+/* ---------------------------------------------------------------------------
+   Clause 8.7 / notice 5.4 / notice 5.5 — value-cell fault flags, the 1.5C
+   cold-store rule, and meter-reading validation at the point of entry.
+   evalRules() runs after every keystroke and again at submit.
+--------------------------------------------------------------------------- */
+function num(x){if(x==null)return null;
+  const t=String(x).replace(/[\u2212\u2013\u2014]/g,'-').replace(/[^0-9.+-]/g,'');
+  if(!/\d/.test(t))return null;const n=parseFloat(t);return isFinite(n)?n:null;}
+
+// Notice 5.4 — air-on more than 1.5C above the recorded (or fallback) set point IS a fault.
+function evalSetpoints(){
+  Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>{
+    const spRi=sec.rows.findIndex(r=>/cold store set point/i.test(r[0]));
+    const aoRi=sec.rows.findIndex(r=>/cold store temp air-on/i.test(r[0]));
+    if(spRi<0||aoRi<0)return;
+    sec.cols.forEach((c,ci)=>{
+      const aoId=`${v}|${si}|${aoRi}|${ci}`;
+      const ao=num(state[aoId]);
+      let sp=num(state[`${v}|${si}|${spRi}|${ci}`]);
+      let src='set point';
+      if(sp==null&&SETPOINTS[c]!=null){sp=SETPOINTS[c];src='design set point '+sp+'\u00b0C';}
+      const dev=(ao!=null&&sp!=null)?(ao-sp):null;
+      if(dev!=null&&dev>SP_TOL){
+        if(flags[aoId]!=='manual')flags[aoId]='auto';
+        flagMsg[aoId]=dev.toFixed(1)+'\u00b0C over '+src+' \u2014 must be recorded as a fault';
+      }else{
+        if(flags[aoId]==='auto')delete flags[aoId];
+        delete flagMsg[aoId];
+      }
+    });
+  }));
+}
+
+// Notice 5.5 — a reading below its predecessor, or an order of magnitude out, is re-taken.
+function evalMeters(){
+  meterBad={};meterBadList=[];
+  Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>{
+    const eRi=sec.rows.findIndex(r=>/^electric kwhr meter reading/i.test(r[0]));if(eRi<0)return;
+    const pRi=sec.rows.findIndex(r=>/^previous/i.test(r[0]));
+    sec.cols.forEach((c,ci)=>{
+      const id=`${v}|${si}|${eRi}|${ci}`;const now=num(state[id]);if(now==null)return;
+      let prev=pRi>=0?num(state[`${v}|${si}|${pRi}|${ci}`]):null;
+      if(prev==null&&Object.keys(prevMap).length){
+        const hit=prevMap[slug(sec.name+' '+sec.rows[eRi][0])+'||'+(v+' '+c).trim()];
+        if(hit)prev=num(hit.value);
+      }
+      if(prev==null)return;
+      let msg='';
+      if(now<prev)msg='Lower than the previous reading ('+prev+') \u2014 re-take before submitting';
+      else if(prev>0&&now>prev*10)msg='More than 10\u00d7 the previous reading ('+prev+') \u2014 re-take before submitting';
+      if(msg){meterBad[id]=msg;meterBadList.push(v+' \u2014 '+sec.name+' \u2014 '+c+': '+msg);}
+    });
+  }));
+}
+
+function paintCell(id){
+  const td=document.querySelector('td[data-cell="'+id+'"]');if(!td)return;
+  const f=flags[id],inv=meterBad[id],b=td.querySelector('.flag'),m=td.querySelector('.cmsg');
+  td.classList.toggle('flagged',!!f);td.classList.toggle('bad',!!inv);
+  if(b)b.className='flag'+(f?' on':'');
+  if(m){const parts=[];if(f)parts.push(flagMsg[id]||'Flagged as a fault');if(inv)parts.push(inv);
+    m.className='cmsg'+(parts.length?(inv?' bad':' on'):'');m.textContent=parts.join(' \u2014 ');}
+}
+function evalRules(){
+  evalSetpoints();evalMeters();
+  document.querySelectorAll('td[data-cell]').forEach(td=>paintCell(td.dataset.cell));
+  const box=$('meterEscape');
+  if(box){box.style.display=meterBadList.length?'block':'none';
+    $('meterEscMsg').textContent=meterBadList.join(' \u00b7 ');}
+}
+
+/* ---------------------------------------------------------------------------
+   Notice 5.3 / clause 4.4(b)+(d) — RDM alarm + inhibit section.
+--------------------------------------------------------------------------- */
+function mkField(lab,el){const d=document.createElement('div');d.style.marginTop='8px';
+  const l=document.createElement('label');l.textContent=lab;d.appendChild(l);d.appendChild(el);return d;}
+function mkInput(ph,val,on,type){const i=document.createElement('input');if(type)i.type=type;
+  i.placeholder=ph||'';i.value=val||'';i.oninput=()=>on(i.value);return i;}
+function mkSelect(opts,val,on){const sl=document.createElement('select');
+  opts.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;sl.appendChild(op);});
+  sl.value=val||opts[0];sl.onchange=()=>on(sl.value);return sl;}
+function mkRow(title,idx,onDel){const d=document.createElement('div');d.className='rrow';
+  const h=document.createElement('div');h.className='rhead';h.textContent=title+' '+(idx+1);
+  const x=document.createElement('button');x.type='button';x.className='rdel';x.textContent='Remove';
+  x.onclick=onDel;h.appendChild(x);d.appendChild(h);return d;}
+function renderRdm(){
+  [...$('rdmChoiceBar').children].forEach(b=>b.className='vbtn'+(b.dataset.v===rdmChoice?' on':''));
+  $('rdmAlarmWrap').style.display=rdmChoice==='list'?'block':'none';
+  const wrap=$('rdmRows');wrap.innerHTML='';
+  rdmAlarms.forEach((a,i)=>{const d=mkRow('Alarm',i,()=>{rdmAlarms.splice(i,1);renderRdm();});
+    d.appendChild(mkField('Alarm text (required)',mkInput('e.g. C2 high temperature alarm',a.text,v=>a.text=v)));
+    d.appendChild(mkField('Asset / chamber',mkInput('e.g. C2',a.asset,v=>a.asset=v)));
+    d.appendChild(mkField('Active since',mkInput('',a.since,v=>a.since=v,'date')));
+    d.appendChild(mkField('Outcome',mkSelect(['Actioned','Acknowledged - no action','Ongoing'],a.outcome,v=>a.outcome=v)));
+    d.appendChild(mkField('Action taken / reason for acknowledgement (required)',mkInput('What was done, or why no action',a.action,v=>a.action=v)));
+    wrap.appendChild(d);});
+  const iw=$('inhRows');iw.innerHTML='';
+  rdmInhibits.forEach((n,i)=>{const d=mkRow('Inhibit',i,()=>{rdmInhibits.splice(i,1);renderRdm();});
+    d.appendChild(mkField('Parameter / alarm inhibited (required)',mkInput('e.g. C2 high temp alarm',n.param,v=>n.param=v)));
+    d.appendChild(mkField('Asset / chamber',mkInput('e.g. C2',n.asset,v=>n.asset=v)));
+    d.appendChild(mkField('Applied or removed',mkSelect(['Applied','Removed'],n.change,v=>n.change=v)));
+    d.appendChild(mkField('Reason (required)',mkInput('Why the inhibit was applied / removed',n.reason,v=>n.reason=v)));
+    d.appendChild(mkField('Individual (required)',mkInput('Who applied / removed it',n.individual,v=>n.individual=v)));
+    d.appendChild(mkField('Intended duration',mkInput('e.g. until 29/08 defrost repair',n.duration,v=>n.duration=v)));
+    iw.appendChild(d);});
+}
+[...$('rdmChoiceBar').children].forEach(b=>b.onclick=()=>{rdmChoice=b.dataset.v;
+  if(rdmChoice==='list'&&!rdmAlarms.length)rdmAlarms.push(newAlarm());renderRdm();});
+function newAlarm(){return {text:'',asset:'',since:'',outcome:'Actioned',action:''};}
+$('rdmAdd').onclick=()=>{rdmAlarms.push(newAlarm());renderRdm();};
+$('inhAdd').onclick=()=>{rdmInhibits.push({param:'',asset:'',change:'Applied',reason:'',individual:'',duration:''});renderRdm();};
+renderRdm();
+
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 
@@ -181,17 +356,44 @@ let submitted=false;
 $('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  evalRules();
+
+  // Notice 5.5 — an impossible meter reading is never submitted silently. The only way
+  // past is the "meter was reset or replaced" declaration, which needs a typed reason.
+  const meterEsc=$('mReset').checked&&$('mResetWhy').value.trim().length>=5;
+  const badIds=Object.keys(meterBad);
+  if(badIds.length&&!meterEsc){
+    $('meterEscape').style.display='block';
+    toast($('mReset').checked?'Type why the meter was reset/replaced':'Re-take the highlighted meter reading');
+    const td=document.querySelector('td[data-cell="'+badIds[0]+'"]');
+    (td||$('meterEscape')).scrollIntoView({behavior:'smooth',block:'center'});return;}
+
+  // Notice 5.3 — silence is not an answer: the RDM alarm question must be answered.
+  if(!rdmChoice){toast('Answer the RDM alarm question');$('rdmCard').scrollIntoView({behavior:'smooth',block:'center'});return;}
+  if(rdmChoice==='list'){
+    if(!rdmAlarms.length){toast('Add the active alarm(s), or choose “No alarms”');$('rdmCard').scrollIntoView({behavior:'smooth',block:'center'});return;}
+    if(!rdmAlarms.every(a=>a.text.trim()&&a.action.trim().length>=5)){
+      toast('Each alarm needs its text and what was done (5+ chars)');$('rdmCard').scrollIntoView({behavior:'smooth',block:'center'});return;}
+  }else{rdmAlarms.length=0;}
+  if(rdmInhibits.some(n=>!(n.param.trim()&&n.reason.trim()&&n.individual.trim()))){
+    toast('Each inhibit needs a parameter, a reason and the individual');$('rdmCard').scrollIntoView({behavior:'smooth',block:'center'});return;}
+
   const out=[];const flagged=[];let issues=0;
   Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>sec.rows.forEach((row,ri)=>sec.cols.forEach((c,ci)=>{
-    const val=state[`${v}|${si}|${ri}|${ci}`];if(val==null||val==='')return;
-    if(val==='no'){issues++;flagged.push({
+    const id=`${v}|${si}|${ri}|${ci}`;const val=state[id];if(val==null||val==='')return;
+    // clause 8.7 — a flagged VALUE keeps its number and still raises a fault record.
+    const vFlag=row[1]!=='chk'&&!!flags[id];
+    if(val==='no'||vFlag){issues++;flagged.push({
       assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(v,sec.name,c):(v+' '+c).trim(),
       group:v,section:v+' — '+sec.name,item:row[0],col:c});}
-    out.push({group:v,section:sec.name,item:row[0],col:c,value:val==='ok'?'OK':val==='no'?'ISSUE':val});}))));
+    out.push({group:v,section:sec.name,item:row[0],col:c,flag:vFlag,value:val==='ok'?'OK':val==='no'?'ISSUE':val});}))));
   if(out.length===0){toast('Nothing recorded yet');return;}
+  let comments=$('hComm').value.trim();
+  if(meterEsc)comments=(comments?comments+'\n':'')+'Meter reset/replaced: '+$('mResetWhy').value.trim();
   const r={sheet:"Weekly checks",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
     week:$('hWeek').value,date:$('hDate').value,engineer:$('hEng').value.trim(),ambient:$('hAmb').value,
-    comments:$('hComm').value.trim(),entries:out,issues,submittedAt:new Date().toISOString(),ref:'WK-'+Date.now().toString(36).toUpperCase()};
+    comments:comments,entries:out,issues,submittedAt:new Date().toISOString(),ref:'WK-'+Date.now().toString(36).toUpperCase(),
+    rdm:{answer:rdmChoice,alarms:rdmAlarms.slice(),inhibits:rdmInhibits.slice()}};
 
   // Build the report PDF. Called AFTER any flagged faults have been documented so the
   // faults summary block (item 8) and the derived issue count (item 9) are populated.
@@ -205,9 +407,24 @@ $('finish').addEventListener('click',async()=>{
         const vals=sec.cols.map((c,ci)=>{const val=state[`${v}|${si}|${ri}|${ci}`];
           return val==='ok'?'OK':val==='no'?'FAULT':(val==null?'':val);});
         if(vals.some(x=>x!==''&&x!=null))rows.push([row[0],...vals]);
+        // The PDF grid highlighter matches a cell EXACTLY on "FAULT"/"ISSUE", so a flagged
+        // value keeps its number on its own row and gets a marker row directly beneath it.
+        if(row[1]!=='chk'){
+          const fl=sec.cols.map((c,ci)=>flags[`${v}|${si}|${ri}|${ci}`]&&state[`${v}|${si}|${ri}|${ci}`]?'FAULT':'');
+          if(fl.some(x=>x))rows.push([row[0]+' — flagged',...fl]);
+        }
       });
       if(rows.length)grid.push({name:v+' — '+sec.name,cols:sec.cols,rows});
     }));
+    // Notice 5.3 — the alarm register travels with the report, not just the list.
+    grid.push({name:'RDM alarms at time of visit',
+      cols:['Asset / chamber','Active since','Outcome','Action taken / reason'],
+      rows:(rdmChoice==='list'&&rdmAlarms.length)
+        ? rdmAlarms.map(a=>[a.text,a.asset,a.since,a.outcome,a.action])
+        : [['No alarms active at time of visit','','','','']]});
+    if(rdmInhibits.length)grid.push({name:'Alarm inhibits',
+      cols:['Asset / chamber','Applied / removed','Reason','Individual','Intended duration'],
+      rows:rdmInhibits.map(n=>[n.param,n.asset,n.change,n.reason,n.individual,n.duration])});
     const blob=REDFM.buildReportPdf({title:'Weekly checks',
       subtitle:'Border Holdings, Avonmouth',
       ref:r.ref,date:r.date,engineer:r.engineer,plant:groups,
@@ -229,12 +446,30 @@ $('finish').addEventListener('click',async()=>{
         Engineer:r.engineer,VisitDate:r.date,
         Status:holding?"Awaiting fault detail":"Fully completed",
         FaultsFlagged:issues,FaultsDocumented:0,
-        FaultFound:issues>0?"Yes":"No",Notes:r.comments};
+        FaultFound:issues>0?"Yes":"No",Notes:r.comments,
+        RdmAlarmsRecorded:rdmChoice==='list'?"Yes - alarms listed":"Yes - none active"};
       const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),ReadingKey:slug(e.section+' '+e.item),
-        Asset:(e.group+' '+e.col).trim(),Value:String(e.value),Unit:'',OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
+        Asset:(e.group+' '+e.col).trim(),Value:String(e.value),Unit:'',OutOfRange:(e.value==='ISSUE'||e.flag)?'Yes':'No'}));
       const visit=await REDFM.saveVisit(visitFields,readingRows);
       try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
+
+      // Notice 5.3 / clause 4.4(b)+(d). Wrapped like the PDF filing: a failure is reported
+      // in saveMsg but must never block the visit save or the fault flow.
+      try{
+        for(let i=0;i<rdmAlarms.length;i++){const a=rdmAlarms[i];
+          await REDFM.addItem("RDMAlarms",{Title:r.ref+'-A'+(i+1),VisitRef:r.ref,AlarmDate:r.date,
+            AssetId:(a.asset||'').trim(),AlarmText:a.text.trim(),Outcome:a.outcome,
+            ActionTaken:a.action.trim(),RaisedBy:r.engineer,ActiveSince:a.since||null});}
+        for(let i=0;i<rdmInhibits.length;i++){const n=rdmInhibits[i];const ap=n.change==='Applied';
+          await REDFM.addItem("ParameterChanges",{Title:r.ref+'-I'+(i+1),ChangeDate:r.date,
+            AssetId:(n.asset||'').trim(),Parameter:n.param.trim(),ChangeType:"Alarm inhibit",
+            ValueBefore:ap?'Active':'Inhibited',ValueAfter:ap?'Inhibited':'Active',
+            Reason:n.reason.trim(),Individual:n.individual.trim(),
+            IntendedDuration:(n.duration||'').trim(),VisitRef:r.ref});}
+        if(rdmAlarms.length||rdmInhibits.length)
+          saveMsg+=' · '+rdmAlarms.length+' RDM alarm(s), '+rdmInhibits.length+' inhibit(s) logged';
+      }catch(ae){saveMsg+=' (RDM alarm section not filed: '+(ae.message||ae)+')';}
 
       if(holding){
         // Item 1 + 2 — the readings are in, but the visit stays at 'Awaiting fault detail'
@@ -257,7 +492,7 @@ $('finish').addEventListener('click',async()=>{
   }
 
   submitted=true;
-  document.querySelectorAll('input,textarea,.chk,.vbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  document.querySelectorAll('input,textarea,select,.chk,.vbtn,.flag,.rdmbtn,.rdel').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
   $('finish').style.display='none';$('summary').style.display='block';
   $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
   $('sumBody').innerHTML=`<div>${r.week||'Week'} · ${r.date} · ${r.engineer} · ${out.length} values · ${issues} issue(s) flagged</div>
@@ -277,7 +512,20 @@ $('finish').addEventListener('click',async()=>{
     setTimeout(startFaultFlow,400);
   }
 });
-REDFMDraft.init({key:'weekly',state:state,draw:draw});
+REDFMDraft.init({key:'weekly',state:state,draw:draw,extra:{
+  save:function(){var e={};
+    if(Object.keys(flags).length)e.flags=JSON.parse(JSON.stringify(flags));
+    if(rdmChoice)e.rdmChoice=rdmChoice;
+    if(rdmAlarms.length)e.alarms=JSON.parse(JSON.stringify(rdmAlarms));
+    if(rdmInhibits.length)e.inhibits=JSON.parse(JSON.stringify(rdmInhibits));
+    return e;},
+  restore:function(o){
+    Object.keys(flags).forEach(function(k){delete flags[k];});Object.assign(flags,o.flags||{});
+    rdmChoice=o.rdmChoice||'';
+    rdmAlarms.length=0;(o.alarms||[]).forEach(function(a){rdmAlarms.push(a);});
+    rdmInhibits.length=0;(o.inhibits||[]).forEach(function(n){rdmInhibits.push(n);});
+    renderRdm();}
+}});
 // If a previous visit was abandoned mid-way through documenting its faults, say so.
 try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
 </script>
