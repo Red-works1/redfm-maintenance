@@ -37,6 +37,17 @@
   .chk.done{box-shadow:inset 0 0 0 2px var(--ok);cursor:pointer;}
   .donecell{position:relative;}
   td .dtag,.chk .dtag{position:absolute;bottom:1px;right:3px;font-size:8px;line-height:1;color:#1a7f37;font-weight:700;pointer-events:none;}
+  /* clause 8.7 — every recorded parameter can be flagged as a fault, whether or not the row has a fault status */
+  td .cw{display:flex;align-items:stretch;}
+  td .cw .iw{position:relative;display:flex;flex:1 1 auto;min-width:0;}
+  td .cw input{flex:1 1 auto;}
+  .flag{flex:0 0 46px;width:46px;height:44px;border:0;border-left:1px solid var(--line);background:#fff;color:#c9c9d0;font-size:19px;line-height:1;padding:0;cursor:pointer;}
+  .flag.on{background:var(--red);color:#fff;}
+  td.flagged .cw input{background:#fdecee;color:var(--red);font-weight:800;}
+  td.flagged .dtag{color:#8c1018;}
+  .cmsg{display:none;white-space:normal;font-size:11px;line-height:1.35;padding:5px 7px;max-width:150px;font-weight:600;}
+  .cmsg.on{display:block;background:#fdecee;color:#8c1018;}
+  .cmsg.warn{display:block;background:#fff3cd;color:#7a4e05;}
   .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
   .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
   .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px;z-index:20;}.bar .btn{width:100%;}
@@ -60,7 +71,7 @@
     <button class="mbtn on" data-m="readings">Readings</button>
     <button class="mbtn" data-m="checks">Checks</button>
   </div>
-  <div class="hint">Quarterly is spread over the weekly visits — fill the compressors/units you did today, the rest carry to the next visit. Tap a check cell to cycle ✓ / ✗. Cells already done this quarter show <span style="color:#1a7f37;font-weight:700">green</span> with the date — tap one to change it (you'll be asked to confirm).</div>
+  <div class="hint">Quarterly is spread over the weekly visits — fill the compressors/units you did today, the rest carry to the next visit. Tap a check cell to cycle ✓ / ✗. Cells already done this quarter show <span style="color:#1a7f37;font-weight:700">green</span> with the date — tap one to change it (you'll be asked to confirm). Any reading outside its normal condition can be raised as a fault with the <span style="color:var(--red);font-weight:700">&#9873;</span> button beside it — the recorded value is kept.</div>
   <div id="prog" class="hint" style="font-weight:700;color:#1a7f37"></div>
 
   <div id="body"></div>
@@ -77,9 +88,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=15"></script>
+<script src="redfm-data.js?v=16"></script>
 <script src="redfm-draft.js?v=2"></script>
-<script src="redfm-faultflow.js?v=3"></script>
+<script src="redfm-faultflow.js?v=4"></script>
 <script>
 const COOL_AB=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff","Expansion valve superheat & % open"];
 const COOL_STD=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff"];
@@ -115,6 +126,10 @@ const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').sl
 const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
 $('hDate').value=new Date().toISOString().slice(0,10);
 let chamber="A",mode="readings";const state={};let doneMap={},periodLabel='';
+// clause 8.7 — a recorded reading can be raised as a fault in its own right, whether or not the
+// form gives that row a fault status. flags[id]='manual' (the engineer tapped the flag), keyed
+// on exactly the same cell id as state.
+const flags={};
 const cbar=$('cbar');
 Object.keys(CHAMBERS).forEach(c=>{const b=document.createElement('button');b.className='cbtn'+(c===chamber?' on':'');
   b.innerHTML=`${c}<span class="n">chamber</span>`;b.onclick=()=>{chamber=c;draw();};cbar.appendChild(b);});
@@ -140,8 +155,10 @@ function draw(){
             html+=`<td><button class="chk done ${cls}" data-id="${id}" data-dn="1" title="Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to change">${t}<span class="dtag">${ddmm(dn.date)}</span></button></td>`;}
           else html+=`<td><button class="chk${v?(' '+v):''}" data-id="${id}">${v==='ok'?'✓':v==='no'?'✗':''}</button></td>`;
         }else{
-          if(dn)html+=`<td class="donecell"><input data-id="${id}" data-dn="1" class="done" value="${(''+dn.value).replace(/"/g,'&quot;')}" readonly title="Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to change"><span class="dtag">${ddmm(dn.date)}</span></td>`;
-          else html+=`<td><input data-id="${id}" value="${v||''}" inputmode="text"></td>`;
+          // clause 8.7 — every reading cell carries its own fault flag beside the value
+          const inner=dn?`<input data-id="${id}" data-dn="1" class="done" value="${(''+dn.value).replace(/"/g,'&quot;')}" readonly title="Recorded ${dn.date}${dn.eng?(' by '+dn.eng):''} — tap to change"><span class="dtag">${ddmm(dn.date)}</span>`
+                        :`<input data-id="${id}" value="${v||''}" inputmode="text">`;
+          html+=`<td class="${dn?'donecell ':''}cell" data-cell="${id}"><div class="cw"><span class="iw">${inner}</span><button type="button" class="flag" data-flag="${id}" title="Flag this reading as a fault" aria-label="Flag this reading as a fault">&#9873;</button></div><div class="cmsg" data-msg="${id}"></div></td>`;
         }});
       html+='</tr>';});
     html+='</tbody></table>';sc.innerHTML=html;root.appendChild(sc);
@@ -153,7 +170,12 @@ function draw(){
     const nx=cur===''?'ok':cur==='ok'?'no':'';if(nx)state[id]=nx;else delete state[id];
     b.className='chk'+(nx?(' '+nx):'');b.textContent=nx==='ok'?'✓':nx==='no'?'✗':'';});
   // readings not yet done: normal entry
-  root.querySelectorAll('input[data-id]:not([data-dn])').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];});
+  root.querySelectorAll('input[data-id]:not([data-dn])').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];paintCell(id);});
+  // clause 8.7 — flag toggle. On a green "done" cell this records today's finding against the
+  // value already recorded; it never writes to state, so the recorded value is left untouched.
+  root.querySelectorAll('.flag').forEach(b=>b.onclick=()=>{const id=b.dataset.flag;
+    if(flags[id])delete flags[id];else flags[id]='manual';paintCell(id);updateProgress();});
+  root.querySelectorAll('td[data-cell]').forEach(td=>paintCell(td.dataset.cell));
   updateProgress();
 }
 draw();
@@ -162,8 +184,25 @@ draw();
 function curQuarter(){const n=new Date();const q=Math.floor(n.getMonth()/3);
   return {s:new Date(n.getFullYear(),q*3,1),e:new Date(n.getFullYear(),q*3+3,1),label:'Q'+(q+1)+' '+n.getFullYear()};}
 function inQ(ds,s,e){if(!ds)return false;const d=new Date(ds);return d>=s&&d<e;}
-function updateProgress(){const el=$('prog');if(!el)return;
-  el.textContent=Object.keys(doneMap).length?(periodLabel+' — '+Object.keys(doneMap).length+' results already recorded this quarter (green). Tap one to change it.'):'';}
+function updateProgress(){const el=$('prog');if(!el)return;const p=[];
+  if(Object.keys(doneMap).length)p.push(periodLabel+' — '+Object.keys(doneMap).length+' results already recorded this quarter (green). Tap one to change it.');
+  const nf=Object.keys(flags).filter(id=>cellVal(id)!=='').length;
+  if(nf)p.push(nf+' reading(s) flagged as a fault.');
+  el.textContent=p.join(' ');}
+// clause 8.7 — the value a flag attaches to: what was entered today, else the value already
+// recorded this quarter (the green "done" cell). Read only — never written back to state.
+function cellVal(id){const v=state[id];if(v!=null&&v!=='')return v;
+  const a=String(id).split('|'),ch=a[0],md=a[1];
+  const sec=CHAMBERS[ch]&&CHAMBERS[ch][md]&&CHAMBERS[ch][md][+a[2]];if(!sec)return '';
+  const row=sec.rows[+a[3]],col=sec.cols[+a[4]];if(row==null||col==null)return '';
+  const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+col).trim()];
+  return dn?(''+dn.value):'';}
+function paintCell(id){const td=document.querySelector('td[data-cell="'+id+'"]');if(!td)return;
+  const f=!!flags[id],has=cellVal(id)!=='',b=td.querySelector('.flag'),m=td.querySelector('.cmsg');
+  td.classList.toggle('flagged',f);
+  if(b)b.className='flag'+(f?' on':'');
+  if(m){m.className='cmsg'+(f?(has?' on':' warn'):'');
+    m.textContent=f?(has?(td.classList.contains('donecell')?'Flagged as a fault — the value recorded earlier this quarter is kept':'Flagged as a fault'):'Record the reading — an empty cell cannot be submitted as a fault'):'';}}
 function guardChange(id){const a=id.split('|');const ch=a[0],md=a[1],sec=CHAMBERS[ch][md][+a[2]],row=sec.rows[+a[3]],col=sec.cols[+a[4]];
   const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+col).trim()];if(!dn)return;
   if(!confirm('This result was recorded on '+dn.date+(dn.eng?(' by '+dn.eng):'')+'.\n\nReplace it with a new reading? The new value will be dated today and will supersede the old one.'))return;
@@ -195,11 +234,21 @@ $('finish').addEventListener('click',async()=>{
   const out=[];const flagged=[];let issues=0;
   Object.keys(CHAMBERS).forEach(ch=>['readings','checks'].forEach(md=>{
     CHAMBERS[ch][md].forEach((sec,si)=>sec.rows.forEach((row,ri)=>sec.cols.forEach((c,ci)=>{
-      const v=state[`${ch}|${md}|${si}|${ri}|${ci}`];if(v==null||v==='')return;
-      if(v==='no'){issues++;flagged.push({
+      const id=`${ch}|${md}|${si}|${ri}|${ci}`;
+      // clause 8.7 — a flagged READING keeps its value and still raises a fault record.
+      const vFlag=md==='readings'&&!!flags[id];
+      let v=state[id],carried=false;
+      // A flag on a green "done" cell re-states the value already recorded this quarter — it is
+      // never overwritten, so the flag travels with that value rather than replacing it.
+      if((v==null||v==='')&&vFlag){const dn=doneMap[slug(md+' '+sec.name+' '+row)+'||'+(ch+' '+c).trim()];
+        if(dn){v=''+dn.value;carried=true;}}
+      if(v==null||v==='')return;
+      if(v==='no'||vFlag){issues++;flagged.push({
         assetId:(window.REDFM&&REDFM.assetId)?REDFM.assetId(ch,sec.name,c):(ch+' '+c).trim(),
         group:ch,section:ch+' — '+sec.name,item:row,col:c});}
-      out.push({chamber:ch,mode:md,section:sec.name,row:row,col:c,value:v==='ok'?'OK':v==='no'?'ISSUE':v});
+      const en={chamber:ch,mode:md,section:sec.name,row:row,col:c,flag:vFlag,value:v==='ok'?'OK':v==='no'?'ISSUE':v};
+      if(carried)en.carried=true;
+      out.push(en);
     })));}));
   if(out.length===0){toast('Nothing recorded yet');return;}
   const r={sheet:"Quarterly service checks",site:"Border Holdings — Avonmouth",deliveredBy:"Coolstream",
@@ -254,6 +303,12 @@ $('finish').addEventListener('click',async()=>{
             sec.rows.forEach((row,ri)=>{
               const vals=sec.cols.map((c,ci)=>cell(ch,md,sec,row,c,ci,si,ri));
               if(vals.some(x=>x!==''&&x!=null))rows.push([row,...vals]);
+              // The PDF grid highlighter matches a cell EXACTLY on "FAULT"/"ISSUE", so a flagged
+              // reading keeps its value + date on its own row and gets a marker row beneath it.
+              if(md==='readings'){
+                const fl=sec.cols.map((c,ci)=>(flags[`${ch}|${md}|${si}|${ri}|${ci}`]&&vals[ci]!=='')?'FAULT':'');
+                if(fl.some(x=>x))rows.push([row+' — flagged',...fl]);
+              }
             });
             if(rows.length)grid.push({name:`${ch} — ${sec.name}${md==='checks'?' (checks)':''}`,cols:sec.cols,rows});
           });
@@ -283,7 +338,7 @@ $('finish').addEventListener('click',async()=>{
         const g=groups[t];
         const gref=r.ref+'-'+suffix(t);
         const gChambers=[...new Set(g.map(e=>e.chamber))];
-        const gIssues=g.filter(e=>e.value==='ISSUE').length;
+        const gIssues=g.filter(e=>e.value==='ISSUE'||e.flag).length;
         const holding=gIssues>0&&window.REDFMFaultFlow;
         const visitFields={Title:gref,ServiceType:t,PlantSection:gChambers.join(', '),
           Engineer:r.engineer,VisitDate:r.visitDate,
@@ -293,7 +348,7 @@ $('finish').addEventListener('click',async()=>{
         const readingRows=g.map((e,i)=>({Title:gref+'-'+(i+1),
           ReadingKey:slug(e.mode+' '+e.section+' '+e.row),
           Asset:(e.chamber+' '+e.col).trim(),Value:String(e.value),Unit:'',
-          OutOfRange:e.value==='ISSUE'?'Yes':'No'}));
+          OutOfRange:(e.value==='ISSUE'||e.flag)?'Yes':'No'}));
         const visit=await REDFM.saveVisit(visitFields,readingRows);
         if(holding){if(!heldVisit){heldVisit=visit;heldRef=gref;}if(visit&&visit.id)heldVisitIds.push(visit.id);}
         totalReadings+=readingRows.length;savedTypes.push(t);
@@ -325,7 +380,7 @@ $('finish').addEventListener('click',async()=>{
   }
 
   submitted=true;
-  document.querySelectorAll('input,textarea,.chk,.cbtn,.mbtn').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
+  document.querySelectorAll('input,textarea,.chk,.cbtn,.mbtn,.flag').forEach(e=>{e.disabled=true;e.style.pointerEvents='none';e.style.opacity=.9;});
   $('finish').style.display='none';$('summary').style.display='block';
   $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
   $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${out.length} values · ${issues} issue(s) flagged</div>
@@ -346,7 +401,13 @@ $('finish').addEventListener('click',async()=>{
     setTimeout(startFaultFlow,400);
   }
 });
-REDFMDraft.init({key:'quarterly',state:state,draw:draw});
+REDFMDraft.init({key:'quarterly',state:state,draw:draw,extra:{
+  save:function(){var e={};
+    if(Object.keys(flags).length)e.flags=JSON.parse(JSON.stringify(flags));
+    return e;},
+  restore:function(o){
+    Object.keys(flags).forEach(function(k){delete flags[k];});Object.assign(flags,o.flags||{});}
+}});
 // If a previous visit was abandoned mid-way through documenting its faults, say so.
 try{if(window.REDFMFaultFlow)REDFMFaultFlow.checkPending();}catch(e){}
 </script>

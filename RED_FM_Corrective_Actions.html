@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED FM — Corrective actions (CAN-001)</title>
+<style>
+  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;--amber:#c2860c;--blue:#175c9e;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:18px;}
+  .brand{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1040px;margin:0 auto;flex-wrap:wrap;}
+  .lhs{display:flex;align-items:center;gap:14px;}
+  .logo{font-weight:800;letter-spacing:1.5px;font-size:32px;}.logo b{color:var(--red);}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.25;}.htitle strong{display:block;color:var(--ink);font-size:17px;}
+  .period{text-align:right;font-size:12px;color:var(--grey);line-height:1.5;}
+  .hubbtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap;margin-top:6px;}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px 60px;}
+
+  /* ── notice strip ─────────────────────────────────────────────── */
+  .notice{background:#fff;border:1px solid var(--line);border-left:5px solid var(--red);border-radius:14px;padding:16px 18px;margin-top:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .nref{font-size:19px;font-weight:800;letter-spacing:.3px;}
+  .nsub{font-size:13px;color:var(--grey);margin-top:4px;line-height:1.5;}
+  .nsub b{color:var(--ink);}
+  .internal{display:inline-block;background:#fdecee;color:var(--red);font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-left:8px;vertical-align:middle;}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px;}
+  .kchip{display:flex;flex-direction:column;gap:2px;border:1.5px solid var(--line);border-radius:11px;padding:9px 13px;background:#fff;min-width:150px;}
+  .kchip .kl{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--grey);}
+  .kchip .kv{font-size:15px;font-weight:800;}
+  .kchip .kv small{font-weight:700;color:var(--grey);font-size:12px;}
+  .kchip.amber{border-color:var(--amber);background:#fdf3e3;}.kchip.amber .kv,.kchip.amber .kv small{color:var(--amber);}
+  .kchip.red{border-color:var(--red);background:#fdecee;}.kchip.red .kv,.kchip.red .kv small{color:var(--red);}
+  .datebanner{background:#fdf3e3;border:1px solid #f0dcb4;color:var(--amber);border-radius:10px;padding:10px 13px;margin-top:12px;font-size:13px;font-weight:700;}
+
+  /* ── toolbar / states ─────────────────────────────────────────── */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;}
+  .btn{font-size:14px;font-weight:700;padding:11px 16px;border-radius:10px;border:0;cursor:pointer;font-family:inherit;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .btn-sm{font-size:13px;padding:8px 12px;}
+  .btn[disabled]{opacity:.5;cursor:default;}
+  .note{font-size:13px;color:var(--grey);}
+  .state{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px;text-align:center;margin-top:18px;color:var(--grey);}
+  .state b{color:var(--ink);}
+  .state .btn{margin-top:14px;}
+
+  /* ── metrics ──────────────────────────────────────────────────── */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px;}
+  @media(max-width:720px){.metrics{grid-template-columns:1fr 1fr;}}
+  .metric{background:#fff;border:1px solid var(--line);border-left:5px solid var(--grey);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .metric.red{border-left-color:var(--red);}.metric.green{border-left-color:var(--ok);}.metric.amber{border-left-color:var(--amber);}.metric.blue{border-left-color:var(--blue);}
+  .metric .l{font-size:11px;letter-spacing:.7px;font-weight:700;color:var(--grey);text-transform:uppercase;}
+  .metric .v{font-size:44px;font-weight:800;line-height:1.05;margin:6px 0 4px;}
+  .metric.red .v{color:var(--red);}.metric.green .v{color:var(--ok);}.metric.amber .v{color:var(--amber);}.metric.blue .v{color:var(--blue);}
+  .metric .s{font-size:12px;color:var(--grey);line-height:1.4;}
+  .metric.wide{grid-column:span 2;}
+  @media(max-width:720px){.metric.wide{grid-column:span 2;}}
+  .breachbox{background:#fff;border:1px solid var(--line);border-left:5px solid var(--red);border-radius:14px;padding:18px 20px;margin-top:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  .breachbox .big{font-size:56px;font-weight:800;line-height:1;color:var(--red);}
+  .breachbox.clear{border-left-color:var(--ok);}.breachbox.clear .big{color:var(--ok);}
+  .breachbox .bl{font-size:13px;color:var(--grey);line-height:1.5;max-width:640px;}
+  .breachbox .bl strong{display:block;color:var(--ink);font-size:16px;margin-bottom:3px;}
+  .statuscounts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .sc{background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 13px;font-size:13px;font-weight:700;color:var(--grey);}
+  .sc b{color:var(--ink);font-size:16px;margin-right:6px;}
+
+  /* ── table ────────────────────────────────────────────────────── */
+  .sechead{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin:30px 4px 10px;flex-wrap:wrap;}
+  .sechead h2{font-size:19px;font-weight:800;margin:0;}
+  .legend{font-size:12px;color:var(--grey);display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .legend .g{color:var(--ok);font-weight:700;}.legend .a{color:var(--amber);font-weight:700;}.legend .r{color:var(--red);font-weight:700;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .cohead{border-top:1px solid var(--line);padding:14px 18px 10px;font-size:15px;font-weight:800;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .cohead:first-child{border-top:0;}
+  .cohead span.sub{color:var(--grey);font-weight:600;font-size:13px;}
+  .cohead .cnt{background:#eef0f2;color:var(--grey);font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;}
+  .cohead .cnt.r{background:#fdecee;color:var(--red);}
+  .tblscroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
+  #capanel th{white-space:normal;line-height:1.3;}
+  #capanel table{table-layout:fixed;min-width:940px;}
+  td.ref{font-weight:800;}
+  td.ref .rid{white-space:nowrap;}
+  td.sum{color:var(--grey);}
+  td .dnum{white-space:nowrap;}
+  tr.r-breach td{background:#fdecee;}
+  tr.r-soon td{background:#fdf3e3;}
+  tr.r-ok td{background:#eef7f0;}
+  .st{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+  .st.s-out{background:#eef0f2;color:var(--grey);}
+  .st.s-resp{background:#eaf2fb;color:var(--blue);}
+  .st.s-acc{background:#eef7f0;color:var(--ok);}
+  .st.s-slip{background:#fdf3e3;color:var(--amber);}
+  .st.s-breach{background:#fdecee;color:var(--red);}
+  .flag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.3px;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;background:#fdecee;color:var(--red);}
+  .flag.a{background:#fdf3e3;color:var(--amber);}
+  .flag.crit{background:#fdecee;color:var(--red);}
+  .dsub{display:block;font-size:11px;font-weight:700;color:var(--grey);margin-top:3px;}
+  .dsub.r{color:var(--red);}.dsub.a{color:var(--amber);}
+  .updbtn{background:#fff;border:1.5px solid var(--line);border-radius:9px;font-size:12px;font-weight:700;padding:7px 10px;cursor:pointer;color:var(--ink);white-space:nowrap;font-family:inherit;}
+  .updbtn:hover{border-color:var(--red);color:var(--red);}
+  tr.editrow{display:none;}
+  tr.editrow.open{display:table-row;}
+  tr.editrow td{background:#fafafa;}
+  .edit label{display:block;font-size:12px;font-weight:700;margin:12px 0 5px;color:var(--ink);}
+  .edit label:first-child{margin-top:0;}
+  .edit input,.edit select,.edit textarea{width:100%;font-size:14px;padding:10px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font-family:inherit;color:var(--ink);}
+  .edit textarea{min-height:64px;resize:vertical;}
+  .edit input:focus,.edit select:focus,.edit textarea:focus{outline:none;border-color:var(--red);}
+  .erow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:640px){.erow{grid-template-columns:1fr;}}
+  .esave{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .esave .msg{font-size:12px;color:var(--grey);font-weight:700;}
+  .roflag{background:#fdf3e3;border:1px solid #f0dcb4;color:var(--amber);border-radius:10px;padding:10px 13px;font-size:13px;font-weight:700;margin:14px 18px;}
+
+  /* ── add form ─────────────────────────────────────────────────── */
+  #addpane{margin-top:16px;padding:18px;}
+  #addpane h3{margin:0 0 4px;font-size:17px;font-weight:800;}
+  #addpane label{display:block;font-size:13px;font-weight:700;margin:14px 0 6px;}
+  #addpane input,#addpane select,#addpane textarea{width:100%;font-size:16px;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-family:inherit;color:var(--ink);}
+  #addpane textarea{min-height:90px;resize:vertical;}
+  #addpane input:focus,#addpane select:focus,#addpane textarea:focus{outline:none;border-color:var(--red);}
+  .arow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:640px){.arow{grid-template-columns:1fr;}}
+  .req{color:var(--red);}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;pointer-events:none;}
+  .toast.show{opacity:1;}
+  footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
+
+  /* ── print view ───────────────────────────────────────────────── */
+  #printview{display:none;}
+  #printview h1{font-size:20px;margin:0 0 2px;}
+  #printview .pmeta{font-size:12px;color:#333;line-height:1.6;margin-bottom:12px;}
+  #printview .pmeta b{color:#000;}
+  #printview h2{font-size:14px;margin:18px 0 6px;padding-bottom:4px;border-bottom:2px solid var(--red);text-transform:uppercase;letter-spacing:.6px;}
+  #printview table{width:100%;border-collapse:collapse;font-size:11px;}
+  #printview th,#printview td{border:1px solid #bbb;padding:5px 7px;text-align:left;vertical-align:top;}
+  #printview th{background:#f0f0f2;font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
+  #printview .psum{border:1px solid #999;padding:9px 11px;font-size:12px;margin-bottom:6px;}
+  #printview .psum b{font-size:15px;}
+  #printview .pnone{font-size:11px;color:#444;font-style:italic;padding:4px 0;}
+  #printview .pfoot{margin-top:18px;font-size:10px;color:#444;border-top:1px solid #bbb;padding-top:6px;}
+
+  @media print{
+    body{background:#fff;}
+    header{border-bottom:3px solid var(--red);padding:0 0 8px;}
+    .logo{font-size:22px;}.htitle{display:none;}.period,.hubbtn{display:none;}
+    .toolbar,.notice,.metrics,.breachbox,.statuscounts,.sechead,#capanel,#addpane,#loadstate,.toast,.datebanner{display:none!important;}
+    #printview{display:block!important;}
+    #printview table{break-inside:auto;}
+    #printview tr{break-inside:avoid;}
+    footer{margin-top:10px;font-size:9px;}
+    @page{margin:12mm;}
+  }
+
+  /* ── mobile stacking ──────────────────────────────────────────── */
+  @media(max-width:640px){
+    .brand{gap:8px;}.logo{font-size:26px;}.period{text-align:left;}
+    #capanel table,#capanel tbody,#capanel tr,#capanel td{display:block;width:auto;}
+    #capanel thead{display:none;}
+    #capanel tr.datarow{border:1px solid var(--line);border-radius:12px;margin:0 14px 12px;padding:2px 0;background:#fff;}
+    #capanel tr.datarow td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;background:transparent!important;}
+    #capanel tr.datarow td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
+    #capanel tr.datarow td.ref{flex-wrap:wrap;}
+    #capanel tr.datarow td.wide{display:block;text-align:left;}
+    #capanel tr.datarow td.wide:before{display:block;margin-bottom:4px;}
+    #capanel tr.datarow.r-breach{border-color:var(--red);background:#fdecee;}
+    #capanel tr.datarow.r-soon{border-color:var(--amber);background:#fdf3e3;}
+    #capanel tr.datarow.r-ok{background:#eef7f0;}
+    #capanel table{min-width:0;}
+    #capanel tr.editrow{display:none;margin:0 14px 12px;}
+    #capanel tr.editrow.open{display:block;}
+    #capanel tr.editrow td{display:block;text-align:left;background:#fafafa;border:1px solid var(--line);border-radius:12px;padding:14px;}
+    #capanel tr.editrow td:before{display:none;}
+    .esave .btn{width:100%;}
+  }
+</style>
+</head>
+<body>
+<header><div class="brand">
+  <div class="lhs"><div class="logo">RED<b>FM</b></div>
+  <div class="htitle"><strong>Corrective action tracker — Coolstream UK Ltd</strong>Contract Performance Notice REDFM/CS/CAN-001 · clause 9.3</div></div>
+  <div class="period" id="period">RED FM internal tracking<br><a class="hubbtn" href="index.html">⌂ Hub</a></div>
+</div></header>
+
+<div class="wrap">
+
+  <div class="notice">
+    <div class="nref">Notice REDFM/CS/CAN-001 <span class="internal">RED FM internal</span></div>
+    <div class="nsub">Issued <b>24 August 2026</b> to <b>Coolstream UK Ltd</b> under <b>clause 9.3</b> · 19 corrective actions, CA-01 to CA-19.<br>
+      Section 4: an action passing its due date <b>without prior written notification</b> is recorded as an outstanding breach. Any action that cannot be met must be notified in writing <b>before</b> the due date, with a reason and a proposed revised date. Failure to remedy engages <b>clause 15.2(a)</b>.</div>
+    <div class="chips" id="chips"></div>
+    <div id="datebanner"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-red" id="signin">Sign in to load the tracker</button>
+    <button class="btn btn-ghost" id="btnadd">Add an action</button>
+    <button class="btn btn-ghost" id="btnprint" disabled>Print / export summary</button>
+    <span class="note" id="status"></span>
+  </div>
+
+  <!-- ── ADD AN ACTION ─────────────────────────────────────────── -->
+  <div class="card" id="addpane" style="display:none">
+    <h3>Add a corrective action</h3>
+    <div class="note">For anything on the notice that is not already in the list, or a further action agreed with Coolstream after issue.</div>
+    <div class="arow">
+      <div><label>Reference <span class="req">*</span></label><input id="aRef" placeholder="e.g. CA-20"></div>
+      <div><label>Due date <span class="req">*</span></label><input id="aDue" type="date"></div>
+    </div>
+    <label>Action required <span class="req">*</span></label>
+    <textarea id="aAction" placeholder="What Coolstream must do, as worded in the notice"></textarea>
+    <div class="arow">
+      <div><label>Notice reference</label><input id="aNotice" value="REDFM/CS/CAN-001"></div>
+      <div><label>Clause</label><input id="aClause" value="9.3"></div>
+    </div>
+    <div class="arow">
+      <div><label>Severity</label><select id="aSev"><option>Standard</option><option>Critical</option></select></div>
+      <div><label>Responsible party</label><input id="aParty" value="Coolstream UK Ltd"></div>
+    </div>
+    <label>RED FM notes (internal)</label>
+    <textarea id="aNotes" placeholder="Optional — internal context, who is chasing it"></textarea>
+    <div class="esave"><button class="btn btn-red" id="aSave">Add to the tracker</button><span class="msg" id="aMsg"></span></div>
+  </div>
+
+  <!-- ── BOARD ─────────────────────────────────────────────────── -->
+  <div id="board" style="display:none">
+    <div id="breachbox"></div>
+    <div class="statuscounts" id="statuscounts"></div>
+    <div class="metrics" id="metrics"></div>
+
+    <div class="sechead">
+      <h2>Corrective actions by due date</h2>
+      <div class="legend">
+        <span><span class="r">Red</span> outstanding breach</span>
+        <span><span class="a">Amber</span> due within 3 days</span>
+        <span><span class="g">Green</span> accepted</span>
+      </div>
+    </div>
+    <div class="card" id="capanel"></div>
+  </div>
+
+  <div class="state" id="loadstate">Sign in to load the corrective action tracker from SharePoint.</div>
+
+  <!-- ── PRINT / EXPORT ────────────────────────────────────────── -->
+  <div id="printview"></div>
+</div>
+
+<footer>RED FM internal tracking of Contract Performance Notice REDFM/CS/CAN-001. Not issued to Coolstream UK Ltd or to the End Client. Breach status shown here is derived from the recorded due dates and statuses — the notice itself remains the contractual record. RED FM (Red Electrical Bristol Ltd) · Border Holdings, Avonmouth.</footer>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=16"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+
+const LIST='CorrectiveActions';
+const NOTICE={ref:'REDFM/CS/CAN-001',issued:'2026-08-24',clause:'9.3',party:'Coolstream UK Ltd'};
+const KEYDATES=[
+  {label:'Compliance review',date:'2026-09-11'},
+  {label:'Compliance review',date:'2026-09-25'},
+  {label:'End Client audit',date:'2026-09-29'}
+];
+// Due dates as staged in the notice. Used only as a fallback where a row has no
+// DueDate of its own, and shown as "from notice" when it is.
+const SCHEDULE={
+  'CA-01':'2026-08-28','CA-02':'2026-08-28','CA-03':'2026-08-28','CA-04':'2026-08-28','CA-05':'2026-08-28',
+  'CA-06':'2026-09-04','CA-07':'2026-09-04','CA-08':'2026-09-04','CA-09':'2026-09-04','CA-10':'2026-09-04',
+  'CA-13':'2026-09-04','CA-14':'2026-09-04','CA-16':'2026-09-04','CA-17':'2026-09-04',
+  'CA-11':'2026-09-11','CA-12':'2026-09-11','CA-15':'2026-09-11','CA-18':'2026-09-11',
+  'CA-19':'2026-09-25'
+};
+const DEADLINE_NOTE={'2026-08-28':'by 17:00'};
+const STATUSES=['Outstanding','Response received','Accepted','Slippage notified','Outstanding breach'];
+const COLGROUP='<colgroup><col style="width:8%"><col style="width:24%"><col style="width:5%">'+
+  '<col style="width:10%"><col style="width:12%"><col style="width:9%"><col style="width:22%"><col style="width:10%"></colgroup>';
+const STCLASS={'Outstanding':'s-out','Response received':'s-resp','Accepted':'s-acc','Slippage notified':'s-slip','Outstanding breach':'s-breach'};
+
+/* ── dates ──────────────────────────────────────────────────────── */
+// SharePoint returns date columns as ISO instants; a UK date-only column can come
+// back as the previous day at 23:00Z. Convert through the browser's local calendar
+// so the date the user typed is the date we compare.
+function d10(v){
+  if(v==null||v==='')return '';
+  const s=String(v);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  const dt=new Date(s); if(isNaN(dt.getTime()))return s.slice(0,10);
+  const p=n=>String(n).padStart(2,'0');
+  return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());
+}
+function dnum(iso){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d10(iso)||'');return m?Date.UTC(+m[1],+m[2]-1,+m[3])/86400000:null;}
+function daysUntil(iso,today){const a=dnum(iso),b=dnum(today);return (a==null||b==null)?null:(a-b);}
+function fmtLong(iso){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d10(iso)||'');if(!m)return '—';
+  return new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});}
+function fmtShort(iso){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d10(iso)||'');if(!m)return '—';
+  return new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});}
+function fmtDMY(iso){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d10(iso)||'');if(!m)return '—';
+  return new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'});}
+// Today, with an optional ?today=YYYY-MM-DD preview used for checking a future
+// review date (and by the browser tests). Any override is banner-flagged.
+const TODAY_OVERRIDE=(function(){try{const q=new URLSearchParams(location.search).get('today');
+  return (q&&/^\d{4}-\d{2}-\d{2}$/.test(q))?q:null;}catch(e){return null;}})();
+function todayISO(){if(TODAY_OVERRIDE)return TODAY_OVERRIDE;const n=new Date();const p=x=>String(x).padStart(2,'0');
+  return n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());}
+const TODAY=todayISO();
+
+/* ── derived state ──────────────────────────────────────────────── */
+function refOf(r){return String(r.Reference||r.Title||'').trim();}
+function statusOf(r){const s=String(r.ActionStatus||'').trim();return s||'Outstanding';}
+function itemIdOf(r){return r._id||r.id||r.ID||null;}
+// The breach test is computed here from the dates every time the page renders —
+// never taken from ActionStatus alone, so a stale field cannot hide a breach.
+function derive(r,today){
+  const status=statusOf(r);
+  const orig=d10(r.DueDate)||SCHEDULE[refOf(r)]||'';
+  const fromNotice=!d10(r.DueDate)&&!!SCHEDULE[refOf(r)];
+  const revised=d10(r.RevisedDueDate);
+  const eff=revised||orig;
+  const days=eff?daysUntil(eff,today):null;
+  const overdue=(days!=null&&days<0);
+  const derivedBreach=(status==='Outstanding'&&overdue);
+  const recordedBreach=(status==='Outstanding breach');
+  const breach=derivedBreach||recordedBreach;
+  const accepted=(status==='Accepted');
+  const dueSoon=(status==='Outstanding'&&days!=null&&days>=0&&days<=3);
+  const revisedLapsed=(status==='Slippage notified'&&overdue);
+  return {status,orig,revised,eff,days,overdue,derivedBreach,recordedBreach,breach,accepted,dueSoon,revisedLapsed,fromNotice};
+}
+function summarise(rows,today){
+  const byStatus={};STATUSES.forEach(s=>byStatus[s]=0);
+  let derivedBreach=0,recordedBreach=0,breach=0,dueSoon=0,accepted=0,open=0,revisedLapsed=0;
+  rows.forEach(r=>{
+    const d=derive(r,today);
+    byStatus[d.status]=(byStatus[d.status]||0)+1;
+    if(d.derivedBreach)derivedBreach++;
+    if(d.recordedBreach)recordedBreach++;
+    if(d.breach)breach++;
+    if(d.dueSoon)dueSoon++;
+    if(d.accepted)accepted++;else open++;
+    if(d.revisedLapsed)revisedLapsed++;
+  });
+  return {total:rows.length,byStatus,derivedBreach,recordedBreach,breach,dueSoon,accepted,open,revisedLapsed};
+}
+
+/* ── header countdown chips ─────────────────────────────────────── */
+function chipHtml(label,date,today){
+  const n=daysUntil(date,today);
+  let cls='',txt='';
+  if(n==null){txt='—';}
+  else if(n<0){cls='red';txt='passed';}
+  else if(n===0){cls='amber';txt='today';}
+  else {txt=n+(n===1?' day':' days');if(n<=7)cls='amber';}
+  return '<div class="kchip '+cls+'"><span class="kl">'+esc(label)+'</span>'+
+    '<span class="kv">'+esc(fmtShort(date))+' <small>— '+esc(txt)+'</small></span></div>';
+}
+function renderChips(){
+  $('chips').innerHTML=
+    '<div class="kchip"><span class="kl">Notice issued</span><span class="kv">'+esc(fmtShort(NOTICE.issued))+' <small>— clause '+esc(NOTICE.clause)+'</small></span></div>'+
+    KEYDATES.map(k=>chipHtml(k.label,k.date,TODAY)).join('');
+  $('datebanner').innerHTML=TODAY_OVERRIDE
+    ? '<div class="datebanner">Date preview — this page is showing as at '+esc(fmtLong(TODAY_OVERRIDE))+', not today.</div>' : '';
+}
+renderChips();
+
+/* ── Graph write-back ───────────────────────────────────────────────
+   redfm-data.js exports no generic PATCH (updateFault/updateVisit are pinned to
+   FaultRegister / ServiceVisits) and does not export getSiteId / getListId, so the
+   update is written here, using the same Graph shape as redfm-data.js. The token
+   comes from MSAL: a second PublicClientApplication on the same client id shares
+   the localStorage token cache the data layer already signed in to, so it picks up
+   the existing account silently — no second sign-in prompt.                        */
+const GRAPHCFG={
+  clientId:"9de89aff-4367-4355-808d-f9fccbb1f974",
+  tenantId:"63dfe382-90e1-467d-926e-af043415e67f",
+  siteHostname:"redbristol.sharepoint.com",
+  sitePath:"/sites/REDFMMaintenance",
+  scopes:["Sites.ReadWrite.All"]
+};
+let patchApp=null,patchSiteId=null,patchListId=null;
+async function patchToken(){
+  if(!window.msal||!window.msal.PublicClientApplication)throw new Error('MSAL not loaded — cannot write back');
+  if(!patchApp){
+    patchApp=new window.msal.PublicClientApplication({
+      auth:{clientId:GRAPHCFG.clientId,authority:"https://login.microsoftonline.com/"+GRAPHCFG.tenantId,redirectUri:window.location.origin},
+      cache:{cacheLocation:"localStorage"}
+    });
+    if(patchApp.initialize)await patchApp.initialize();
+  }
+  const acct=(patchApp.getAllAccounts()||[])[0]||null;
+  if(acct){
+    try{const r=await patchApp.acquireTokenSilent({scopes:GRAPHCFG.scopes,account:acct});return r.accessToken;}catch(e){}
+  }
+  const r=await patchApp.acquireTokenPopup({scopes:GRAPHCFG.scopes});
+  return r.accessToken;
+}
+async function graph(path,method,body){
+  const token=await patchToken();
+  const res=await fetch("https://graph.microsoft.com/v1.0"+path,{
+    method:method||"GET",
+    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+    body:body?JSON.stringify(body):undefined
+  });
+  if(!res.ok)throw new Error("Graph "+res.status+": "+(await res.text()));
+  return res.status===204?null:res.json();
+}
+async function siteAndList(){
+  if(!patchSiteId){const s=await graph("/sites/"+GRAPHCFG.siteHostname+":"+GRAPHCFG.sitePath);patchSiteId=s.id;}
+  if(!patchListId){
+    const r=await graph("/sites/"+patchSiteId+"/lists?$select=id,displayName&$top=100");
+    (r.value||[]).forEach(l=>{if(l.displayName===LIST)patchListId=l.id;});
+    if(!patchListId)throw new Error('List "'+LIST+'" not found on the site');
+  }
+  return {sid:patchSiteId,lid:patchListId};
+}
+async function patchAction(itemId,fields){
+  const {sid,lid}=await siteAndList();
+  return graph("/sites/"+sid+"/lists/"+lid+"/items/"+itemId+"/fields","PATCH",fields);
+}
+// Item ids where REDFM.listItems did not carry one through in fields.
+async function resolveItemIds(rows){
+  const missing=rows.filter(r=>!itemIdOf(r));
+  if(!missing.length)return true;
+  const {sid,lid}=await siteAndList();
+  const page=await graph("/sites/"+sid+"/lists/"+lid+"/items?$expand=fields&$top=500");
+  const byRef={};
+  (page.value||[]).forEach(i=>{const f=i.fields||{};const k=String(f.Reference||f.Title||'').trim();if(k)byRef[k]=i.id;});
+  rows.forEach(r=>{if(!itemIdOf(r)&&byRef[refOf(r)])r._id=byRef[refOf(r)];});
+  return rows.every(r=>!!itemIdOf(r));
+}
+
+/* ── load ───────────────────────────────────────────────────────── */
+let ROWS=[],CAN_EDIT=true,EDIT_MSG='';
+function sortRows(a,b){
+  const ka=derive(a,TODAY).orig||'9999-12-31',kb=derive(b,TODAY).orig||'9999-12-31';
+  if(ka!==kb)return ka<kb?-1:1;
+  const na=parseInt((refOf(a).match(/(\d+)/)||[])[1]||'9999',10),nb=parseInt((refOf(b).match(/(\d+)/)||[])[1]||'9999',10);
+  if(na!==nb)return na-nb;
+  return refOf(a).localeCompare(refOf(b));
+}
+async function load(){
+  $('status').textContent='Loading the corrective actions…';
+  try{
+    const rows=await REDFM.listItems(LIST);
+    ROWS=(rows||[]).slice().sort(sortRows);
+    CAN_EDIT=true;EDIT_MSG='';
+    if(ROWS.length&&ROWS.some(r=>!itemIdOf(r))){
+      try{
+        const ok=await resolveItemIds(ROWS);
+        if(!ok){CAN_EDIT=false;EDIT_MSG='Some rows could not be matched to a SharePoint item id, so updates are switched off for this load. Reload to try again.';}
+      }catch(e){CAN_EDIT=false;EDIT_MSG='Updates are switched off for this load — the SharePoint item ids could not be read ('+(e.message||e)+').';}
+    }
+    $('signin').style.display='none';
+    $('loadstate').style.display='none';
+    $('board').style.display='block';
+    $('btnprint').disabled=false;
+    $('status').textContent=ROWS.length+' corrective action'+(ROWS.length===1?'':'s')+' loaded · as at '+fmtDMY(TODAY);
+    render();
+  }catch(e){
+    $('status').textContent='Could not load: '+(e.message||e);
+    $('loadstate').innerHTML='<b>Could not read the CorrectiveActions list.</b><br>'+esc(e.message||String(e));
+    $('loadstate').style.display='block';
+  }
+}
+
+/* ── render ─────────────────────────────────────────────────────── */
+function renderSummary(S){
+  const clear=S.breach===0;
+  $('breachbox').innerHTML='<div class="breachbox'+(clear?' clear':'')+'">'+
+    '<div class="big" id="breachcount">'+S.breach+'</div>'+
+    '<div class="bl"><strong>'+(clear?'No outstanding breaches':'Outstanding breach'+(S.breach===1?'':'es')+' under section 4')+'</strong>'+
+    (clear
+      ? 'No action has passed its due date while still outstanding, as at '+esc(fmtLong(TODAY))+'.'
+      : S.derivedBreach+' derived from the due dates recorded here (past due and still Outstanding)'+
+        (S.recordedBreach?' · '+S.recordedBreach+' already recorded as Outstanding breach on the list':'')+
+        '. Each one passed its due date without a prior written notification being recorded, so it stands as a breach under section 4 of the notice.')+
+    '</div></div>';
+  $('statuscounts').innerHTML=STATUSES.map(s=>
+    '<div class="sc" data-status="'+esc(s)+'"><b>'+(S.byStatus[s]||0)+'</b>'+esc(s)+'</div>').join('')+
+    '<div class="sc"><b>'+S.total+'</b>Total on the notice</div>';
+  $('metrics').innerHTML=
+    '<div class="metric red"><div class="l">Outstanding breaches</div><div class="v">'+S.breach+'</div><div class="s">Derived from due date vs status</div></div>'+
+    '<div class="metric amber"><div class="l">Due within 3 days</div><div class="v">'+S.dueSoon+'</div><div class="s">Still Outstanding</div></div>'+
+    '<div class="metric blue"><div class="l">Awaiting RED FM decision</div><div class="v">'+((S.byStatus['Response received']||0)+(S.byStatus['Slippage notified']||0))+'</div><div class="s">Response received or slippage notified</div></div>'+
+    '<div class="metric green"><div class="l">Accepted</div><div class="v">'+S.accepted+'</div><div class="s">Closed out by RED FM</div></div>';
+}
+
+function editHtml(r,d){
+  const id=itemIdOf(r)||'';
+  const opts=STATUSES.map(s=>'<option'+(s===d.status?' selected':'')+'>'+esc(s)+'</option>').join('');
+  return '<div class="edit" data-ref="'+esc(refOf(r))+'">'+
+    '<div class="erow">'+
+      '<div><label>Status</label><select class="e-status" data-id="'+esc(id)+'">'+opts+'</select></div>'+
+      '<div><label>Response date</label><input type="date" class="e-respdate" value="'+esc(d10(r.ResponseDate))+'"></div>'+
+    '</div>'+
+    '<label>Response summary — what Coolstream said</label><textarea class="e-respsum">'+esc(r.ResponseSummary||'')+'</textarea>'+
+    '<div class="erow">'+
+      '<div><label>Revised due date</label><input type="date" class="e-revdue" value="'+esc(d10(r.RevisedDueDate))+'"></div>'+
+      '<div><label>Slippage reason — as notified in writing</label><textarea class="e-slip" style="min-height:44px">'+esc(r.SlippageReason||'')+'</textarea></div>'+
+    '</div>'+
+    '<label>RED FM notes (internal)</label><textarea class="e-notes">'+esc(r.RedFmNotes||'')+'</textarea>'+
+    '<div class="esave">'+
+      (CAN_EDIT&&id?'<button class="btn btn-red btn-sm savebtn" data-id="'+esc(id)+'" data-ref="'+esc(refOf(r))+'">Save '+esc(refOf(r))+'</button>':
+        '<span class="msg">Read-only — no SharePoint item id for this row.</span>')+
+      '<span class="msg savemsg"></span>'+
+    '</div></div>';
+}
+
+function rowHtml(r,d){
+  const ref=refOf(r);
+  const cls=d.breach?'r-breach':(d.dueSoon?'r-soon':(d.accepted?'r-ok':''));
+  let dueSub='';
+  if(d.days!=null){
+    if(d.days<0)dueSub='<span class="dsub r">'+Math.abs(d.days)+' day'+(Math.abs(d.days)===1?'':'s')+' past due</span>';
+    else if(d.days===0)dueSub='<span class="dsub a">due today</span>';
+    else if(d.days<=3)dueSub='<span class="dsub a">'+d.days+' day'+(d.days===1?'':'s')+' left</span>';
+    else dueSub='<span class="dsub">'+d.days+' days left</span>';
+  }
+  const revSub=d.revised?'<span class="dsub">revised from '+esc(fmtShort(d.orig))+'</span>':'';
+  const noticeSub=d.fromNotice?'<span class="dsub">from notice</span>':'';
+  let flags='';
+  if(d.derivedBreach)flags+='<span class="flag">BREACH</span>';
+  else if(d.recordedBreach)flags+='<span class="flag">BREACH — RECORDED</span>';
+  if(d.revisedLapsed)flags+='<span class="flag a">REVISED DATE PASSED</span>';
+  if(String(r.Severity||'')==='Critical')flags+='<span class="flag crit">CRITICAL</span>';
+  return '<tr class="datarow '+cls+'" data-ref="'+esc(ref)+'" data-breach="'+(d.breach?'1':'0')+'" data-state="'+(d.breach?'breach':(d.dueSoon?'soon':(d.accepted?'accepted':'open')))+'">'+
+    '<td class="ref" data-label="Ref"><span class="rid">'+esc(ref||'—')+'</span>'+flags+'</td>'+
+    '<td class="act wide" data-label="Action required">'+esc(r.ActionRequired||'')+
+      (r.RedFmNotes?'<span class="dsub">RED FM: '+esc(r.RedFmNotes)+'</span>':'')+'</td>'+
+    '<td data-label="Clause">'+esc(r.ClauseRef||NOTICE.clause)+'</td>'+
+    '<td data-label="Due"><span class="dnum">'+esc(d.eff?fmtShort(d.eff):'—')+'</span>'+dueSub+revSub+noticeSub+'</td>'+
+    '<td data-label="Status"><span class="st '+(STCLASS[d.status]||'s-out')+'">'+esc(d.status)+'</span></td>'+
+    '<td data-label="Response date">'+esc(d10(r.ResponseDate)?fmtShort(r.ResponseDate):'—')+'</td>'+
+    '<td class="sum wide" data-label="Response summary">'+esc(r.ResponseSummary||'—')+
+      (r.SlippageReason?'<span class="dsub">Slippage: '+esc(r.SlippageReason)+'</span>':'')+'</td>'+
+    '<td data-label="Record"><button class="updbtn" data-ref="'+esc(ref)+'">Record ▾</button></td>'+
+    '</tr>'+
+    '<tr class="editrow" data-editfor="'+esc(ref)+'"><td colspan="8">'+editHtml(r,d)+'</td></tr>';
+}
+
+function render(){
+  const S=summarise(ROWS,TODAY);
+  if(!ROWS.length){
+    $('board').style.display='none';
+    $('loadstate').style.display='block';
+    $('loadstate').innerHTML='<b>The CorrectiveActions list is empty.</b><br>'+
+      'Nothing has been recorded against notice '+esc(NOTICE.ref)+' yet. That is not the same as nothing being outstanding — the 19 actions on the notice still stand.<br>'+
+      '<button class="btn btn-red" id="emptyadd">Add the first action</button>';
+    const b=$('emptyadd');if(b)b.onclick=()=>{showAdd(true);};
+    buildPrint(S);
+    $('status').textContent='0 corrective actions loaded · as at '+fmtDMY(TODAY);
+    return;
+  }
+  renderSummary(S);
+  const groups={};
+  ROWS.forEach(r=>{const k=derive(r,TODAY).orig||'';(groups[k]=groups[k]||[]).push(r);});
+  const keys=Object.keys(groups).sort((a,b)=>(a||'9999')<(b||'9999')?-1:1);
+  let html='';
+  if(!CAN_EDIT&&EDIT_MSG)html+='<div class="roflag">'+esc(EDIT_MSG)+'</div>';
+  keys.forEach(k=>{
+    const list=groups[k];
+    const gs=summarise(list,TODAY);
+    const note=DEADLINE_NOTE[k]?' '+DEADLINE_NOTE[k]:'';
+    html+='<div class="cohead">Due '+esc(k?fmtLong(k)+note:'no due date recorded')+
+      '<span class="cnt">'+list.length+' action'+(list.length===1?'':'s')+'</span>'+
+      (gs.breach?'<span class="cnt r">'+gs.breach+' breach'+(gs.breach===1?'':'es')+'</span>':'')+
+      '<span class="sub">'+(gs.accepted?gs.accepted+' accepted · ':'')+gs.open+' not yet closed</span></div>'+
+      '<div class="tblscroll"><table>'+COLGROUP+'<thead><tr>'+
+      '<th>Ref</th><th>Action required</th><th>Clause</th><th>Due</th><th>Status</th><th>Response date</th><th>Response summary</th><th>Record</th>'+
+      '</tr></thead><tbody>';
+    list.forEach(r=>{html+=rowHtml(r,derive(r,TODAY));});
+    html+='</tbody></table></div>';
+  });
+  $('capanel').innerHTML=html;
+  buildPrint(S);
+}
+
+/* ── print / export summary ─────────────────────────────────────── */
+function ptable(cols,rows){
+  if(!rows.length)return '<div class="pnone">None.</div>';
+  return '<table><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c==null?'':c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+}
+function buildPrint(S){
+  const dv=ROWS.map(r=>({r,d:derive(r,TODAY)}));
+  const breaches=dv.filter(x=>x.d.breach);
+  const outstanding=dv.filter(x=>!x.d.breach&&(x.d.status==='Outstanding'));
+  const awaiting=dv.filter(x=>x.d.status==='Response received'||x.d.status==='Slippage notified');
+  const accepted=dv.filter(x=>x.d.accepted);
+  const printed=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  let h='<h1>Corrective action position — Coolstream UK Ltd</h1>'+
+    '<div class="pmeta">Contract Performance Notice <b>'+esc(NOTICE.ref)+'</b>, issued <b>'+esc(fmtLong(NOTICE.issued))+'</b> under clause '+esc(NOTICE.clause)+'.<br>'+
+    'Position as at <b>'+esc(fmtLong(TODAY))+'</b>'+(TODAY_OVERRIDE?' (date preview)':'')+' · printed '+esc(printed)+' · RED FM internal record.<br>'+
+    'Compliance reviews '+esc(fmtLong(KEYDATES[0].date))+' and '+esc(fmtLong(KEYDATES[1].date))+' · End Client audit '+esc(fmtLong(KEYDATES[2].date))+'.</div>';
+  if(!ROWS.length){
+    h+='<div class="psum"><b>Nothing recorded.</b> The CorrectiveActions list holds no entries against this notice. The 19 actions on the notice still stand and have not been tracked here.</div>';
+  }else{
+    h+='<div class="psum"><b>'+S.breach+'</b> outstanding breach'+(S.breach===1?'':'es')+' · '+
+      '<b>'+S.byStatus['Outstanding']+'</b> outstanding · '+
+      '<b>'+(S.byStatus['Response received']||0)+'</b> response received · '+
+      '<b>'+(S.byStatus['Slippage notified']||0)+'</b> slippage notified · '+
+      '<b>'+S.accepted+'</b> accepted · <b>'+S.total+'</b> tracked in total.</div>';
+    h+='<h2>Outstanding breaches — section 4</h2>'+
+      ptable(['Ref','Action required','Clause','Due','Days past due','Status','Last response'],
+        breaches.map(x=>[refOf(x.r),x.r.ActionRequired||'',x.r.ClauseRef||NOTICE.clause,fmtDMY(x.d.eff),
+          x.d.overdue?String(Math.abs(x.d.days)):'not yet past due — recorded as breach',
+          x.d.status,x.r.ResponseSummary||'—']));
+    h+='<h2>Outstanding — not yet responded to</h2>'+
+      ptable(['Ref','Action required','Clause','Due','Days left'],
+        outstanding.map(x=>[refOf(x.r),x.r.ActionRequired||'',x.r.ClauseRef||NOTICE.clause,fmtDMY(x.d.eff),
+          x.d.days!=null?String(x.d.days):'']));
+    h+='<h2>Response received / slippage notified</h2>'+
+      ptable(['Ref','Status','Response date','Response summary','Revised due','Slippage reason'],
+        awaiting.map(x=>[refOf(x.r),x.d.status,d10(x.r.ResponseDate)?fmtDMY(x.r.ResponseDate):'—',
+          x.r.ResponseSummary||'—',x.d.revised?fmtDMY(x.d.revised):'—',x.r.SlippageReason||'—']));
+    h+='<h2>Accepted — closed out</h2>'+
+      ptable(['Ref','Action required','Response date','Response summary'],
+        accepted.map(x=>[refOf(x.r),x.r.ActionRequired||'',d10(x.r.ResponseDate)?fmtDMY(x.r.ResponseDate):'—',x.r.ResponseSummary||'—']));
+  }
+  h+='<div class="pfoot">Breach status is derived at print time from the due date (or revised due date where one is recorded) against the recorded status — an action past its due date and still outstanding is shown as a breach under section 4 of the notice. RED FM internal record for the compliance reviews and the End Client audit. RED FM (Red Electrical Bristol Ltd).</div>';
+  $('printview').innerHTML=h;
+}
+
+/* ── interactions ───────────────────────────────────────────────── */
+$('capanel').addEventListener('click',async e=>{
+  const t=e.target;
+  const open=t.closest('.updbtn');
+  if(open){
+    const ref=open.getAttribute('data-ref');
+    const row=$('capanel').querySelector('tr.editrow[data-editfor="'+CSS.escape(ref)+'"]');
+    if(row)row.classList.toggle('open');
+    return;
+  }
+  const btn=t.closest('.savebtn');
+  if(!btn)return;
+  const box=btn.closest('.edit');
+  const msg=box.querySelector('.savemsg');
+  const fields={
+    ActionStatus:box.querySelector('.e-status').value,
+    ResponseDate:box.querySelector('.e-respdate').value?box.querySelector('.e-respdate').value+'T12:00:00Z':null,
+    ResponseSummary:box.querySelector('.e-respsum').value,
+    RevisedDueDate:box.querySelector('.e-revdue').value?box.querySelector('.e-revdue').value+'T12:00:00Z':null,
+    SlippageReason:box.querySelector('.e-slip').value,
+    RedFmNotes:box.querySelector('.e-notes').value
+  };
+  btn.disabled=true;const label=btn.textContent;btn.textContent='Saving…';msg.textContent='';
+  try{
+    await patchAction(btn.getAttribute('data-id'),fields);
+    const ref=btn.getAttribute('data-ref');
+    msg.textContent='Saved ✓';
+    toast(ref+' updated ✓');
+    await load();   // re-reads the list, so the row re-renders and the panel closes
+    $('status').textContent=ref+' saved to SharePoint ✓ · '+ROWS.length+' corrective action'+(ROWS.length===1?'':'s')+' loaded · as at '+fmtDMY(TODAY);
+  }catch(err){
+    btn.disabled=false;btn.textContent=label;
+    msg.textContent='Could not save: '+(err.message||err);
+  }
+});
+
+function showAdd(on){
+  $('addpane').style.display=on?'block':'none';
+  $('btnadd').textContent=on?'Close the add form':'Add an action';
+  if(on){
+    if(!$('aRef').value){
+      let max=0;ROWS.forEach(r=>{const m=/(\d+)\s*$/.exec(refOf(r));if(m){const n=parseInt(m[1],10);if(n>max)max=n;}});
+      $('aRef').value='CA-'+String(max+1).padStart(2,'0');
+    }
+    $('addpane').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+$('btnadd').addEventListener('click',()=>showAdd($('addpane').style.display==='none'));
+
+$('aSave').addEventListener('click',async()=>{
+  const ref=$('aRef').value.trim(),act=$('aAction').value.trim(),due=$('aDue').value;
+  if(!ref){$('aMsg').textContent='Give it a reference.';return;}
+  if(!act){$('aMsg').textContent='Say what the action requires.';return;}
+  if(!due){$('aMsg').textContent='Give it a due date.';return;}
+  if(!window.REDFM){$('aMsg').textContent='Not signed in — cannot save.';return;}
+  $('aSave').disabled=true;$('aSave').textContent='Saving…';$('aMsg').textContent='';
+  try{
+    if(REDFM.getAccount&&!REDFM.getAccount())await REDFM.signIn();
+    await REDFM.addItem(LIST,{
+      Title:ref,Reference:ref,ActionRequired:act,
+      NoticeRef:$('aNotice').value.trim()||NOTICE.ref,
+      ClauseRef:$('aClause').value.trim()||NOTICE.clause,
+      DueDate:due+'T12:00:00Z',ActionStatus:'Outstanding',
+      ResponsibleParty:$('aParty').value.trim()||NOTICE.party,
+      Severity:$('aSev').value,RedFmNotes:$('aNotes').value.trim()
+    });
+    $('aMsg').textContent='Added ✓';toast(ref+' added ✓');
+    $('aRef').value='';$('aAction').value='';$('aDue').value='';$('aNotes').value='';
+    await load();
+  }catch(err){$('aMsg').textContent='Could not save: '+(err.message||err);}
+  $('aSave').disabled=false;$('aSave').textContent='Add to the tracker';
+});
+
+$('btnprint').addEventListener('click',()=>{buildPrint(summarise(ROWS,TODAY));window.print();});
+window.addEventListener('beforeprint',()=>{try{buildPrint(summarise(ROWS,TODAY));}catch(e){}});
+
+$('signin').addEventListener('click',async()=>{
+  if(!window.REDFM){$('status').textContent='Data layer not loaded.';return;}
+  try{await REDFM.signIn();await load();}catch(e){$('status').textContent='Sign-in failed: '+(e.message||e);}
+});
+
+if(window.REDFM){REDFM.init().then(s=>{if(s)load();}).catch(()=>{});}
+else{$('status').textContent='Data layer not loaded — sign-in unavailable.';}
+
+// exposed for the browser checks
+window.CA={d10,dnum,daysUntil,derive,summarise,chipHtml,TODAY,SCHEDULE,
+  rows:()=>ROWS,reload:load,setRows:r=>{ROWS=r.slice().sort(sortRows);render();}};
+</script>
+</body>
+</html>
