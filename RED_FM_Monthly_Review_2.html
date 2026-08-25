@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
+<title>RED FM — Monthly record review</title>
+<style>
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amb:#c2860c;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:900px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;line-height:1.5;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,select{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;}
+  input:focus,select:focus{outline:none;border-color:var(--red);}
+  .row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;}
+  .btn{font-size:15px;font-weight:700;padding:12px 18px;border-radius:11px;border:0;cursor:pointer;white-space:nowrap;}
+  .btn-red{background:var(--red);color:#fff;}
+  .btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .scoreline{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+  .pill{flex:1;min-width:120px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
+  .pill .n{font-size:26px;font-weight:800;line-height:1;}
+  .pill .l{font-size:11px;font-weight:700;color:var(--grey);margin-top:5px;text-transform:uppercase;letter-spacing:.3px;}
+  .pill.red .n{color:var(--red);}.pill.amb .n{color:var(--amb);}.pill.ok .n{color:var(--ok);}
+  h3{font-size:13px;margin:22px 4px 0;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
+  .chk{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-top:10px;border-left:4px solid var(--ok);}
+  .chk.red{border-left-color:var(--red);}
+  .chk.amb{border-left-color:var(--amb);}
+  .chk.grey{border-left-color:#9aa0a6;}
+  .chk h4{margin:0;font-size:15px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
+  .cnt{font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;background:#eef0f2;color:var(--grey);}
+  .chk.red .cnt{background:#fdecee;color:var(--red);}
+  .chk.amb .cnt{background:#fdf3e3;color:var(--amb);}
+  .chk .rule{font-size:12px;color:var(--grey);margin-top:5px;line-height:1.5;}
+  .chk ul{margin:10px 0 0;padding-left:18px;font-size:13.5px;line-height:1.6;}
+  .chk li b{font-weight:700;}
+  .ask{margin-top:10px;font-size:13px;background:#fbfbfc;border:1px solid var(--line);border-radius:9px;padding:9px 11px;line-height:1.5;}
+  .ask b{color:var(--red);}
+  .clean{font-size:13px;color:var(--ok);font-weight:600;margin-top:6px;}
+  .muted{color:var(--grey);font-size:12px;}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:900px;margin:0 auto;display:flex;gap:10px;}.bar .btn{flex:1;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  .empty{text-align:center;color:var(--grey);padding:34px 12px;}
+  @media print{.bar,.toast,.row,header{display:none!important}.wrap{padding-bottom:0}.chk{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
+<div class="htitle"><strong>Monthly record review</strong>Record quality review · the patterns no single form can see</div>
+<a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="note" style="margin-top:14px">Every form gate checks one submission at the moment it is made. None of them can see a <b>pattern</b> — a reading that never moves, a week with no visit, an out-of-range value that never became a fault. That is what this review looks for. It writes nothing; it reads the record and reports exceptions.</div>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="month">Month under review</label><input type="month" id="month"></div>
+      <div><label for="reviewer">Reviewed by</label><input id="reviewer" placeholder="Your name" autocomplete="name"></div>
+      <div><button class="btn btn-red" id="run">Run review</button></div>
+    </div>
+    <div class="muted" style="margin-top:9px">Reads ServiceVisits, Readings, FaultRegister, RDMAlarms and ParameterChanges. Sign-in required.</div>
+  </div>
+
+  <div id="out"><div class="empty">Pick a month and run the review.</div></div>
+</div>
+
+<div class="bar"><div class="inner">
+  <button class="btn btn-ghost" id="print">Print / save as PDF</button>
+</div></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=16"></script>
+<script>
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.className='toast show';setTimeout(()=>t.className='toast',2600);}
+
+/* default to the last completed month — you review August in September */
+(function(){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);
+  $('month').value=d.toISOString().slice(0,7);})();
+
+const D=s=>{const d=new Date(s);return isNaN(d)?null:d;};
+const ymd=d=>d.toISOString().slice(0,10);
+const dayName=d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+const fmt=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+const num=v=>{const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n;};
+const hrs=(a,b)=>(b-a)/36e5;
+
+/* Every check returns {id,title,sev,rule,ask,hits:[strings]}.
+   sev: 'red'   — non-conformance against a stated obligation
+        'amb'   — observation; verify before it is recorded as an exception
+        'grey'  — housekeeping; RED FM's own record-keeping, not the contractor's */
+function runChecks(D0,D1,visits,readings,faults,alarms,params){
+  const out=[];
+  const inWin=d=>d&&d>=D0&&d<=D1;
+  const vIn=visits.filter(v=>inWin(D(v.VisitDate)));
+  const vDate={};visits.forEach(v=>{const d=D(v.VisitDate);if(d)vDate[v.Title]=d;});
+
+  /* ---------- A. did the work happen at all ---------- */
+  const weeks=[];{const c=new Date(D0);while(c<=D1){if(c.getDay()===3)weeks.push(new Date(c));c.setDate(c.getDate()+1);}}
+  const weekly=vIn.filter(v=>v.ServiceType==='Weekly');
+  const missWk=weeks.filter(w=>!weekly.some(v=>Math.abs(hrs(w,D(v.VisitDate)))<=72))
+                    .map(w=>'No weekly visit for the week of <b>'+fmt(w)+'</b>');
+  out.push({id:'A1',title:'Weekly visit every week',sev:'red',
+    rule:'Clause 4.1 — a weekly attendance is a stated obligation. A week with no ServiceVisit of type Weekly within 3 days of the Wednesday is recorded as an exception.',
+    ask:'Obtain the visit record for that week. If none exists, confirm whether the visit was rescheduled and record the outcome against this line.',hits:missWk});
+
+  const GROUPS=['A&B','C&D','E'];
+  const gapG=[];
+  weekly.forEach(v=>{const cov=String(v.PlantSection||'');
+    const miss=GROUPS.filter(g=>cov.indexOf(g)===-1);
+    if(miss.length)gapG.push('<b>'+v.Title+'</b> ('+fmt(D(v.VisitDate))+') covered '+(cov||'nothing')+' — missing '+miss.join(', '));});
+  out.push({id:'A2',title:'All three plant groups covered each week',sev:'amb',
+    rule:'A weekly visit recorded against fewer than all three plant groups leaves the remaining groups unchecked until the following week.',
+    ask:'Confirm why the group was not covered and whether it was picked up on the next attendance.',hits:gapG});
+
+  /* ---------- B. do the numbers behave like real measurements ---------- */
+  const rIn=readings.filter(r=>inWin(vDate[r.VisitRef]));
+  const byKey={};
+  rIn.forEach(r=>{const k=(r.ReadingKey||'')+'||'+(r.Asset||'');(byKey[k]=byKey[k]||[]).push(r);});
+  /* a field that never varies anywhere is a setpoint, not a measurement — do not flag it */
+  const varies={};
+  rIn.forEach(r=>{const k=r.ReadingKey||'';(varies[k]=varies[k]||new Set()).add(String(r.Value));});
+
+  const frozen=[];
+  Object.keys(byKey).forEach(k=>{
+    const key=k.split('||')[0];
+    if(!varies[key]||varies[key].size<2)return;
+    const rows=byKey[k].filter(r=>num(r.Value)!==null)
+                       .sort((a,b)=>vDate[a.VisitRef]-vDate[b.VisitRef]);
+    let run=1;
+    for(let i=1;i<=rows.length;i++){
+      const same=i<rows.length&&String(rows[i].Value)===String(rows[i-1].Value);
+      if(same){run++;continue;}
+      if(run>=3){const s=rows[i-run],e=rows[i-1];
+        frozen.push('<b>'+k.replace('||',' · ')+'</b> read exactly '+e.Value+' on '+run+
+          ' consecutive visits ('+fmt(vDate[s.VisitRef])+' → '+fmt(vDate[e.VisitRef])+')');}
+      run=1;}
+  });
+  out.push({id:'B1',title:'Readings that never move',sev:'amb',
+    rule:'Three or more consecutive visits recording an identical value for a quantity that varies elsewhere. Instrument readings on operating plant normally drift, so an unchanging value warrants verification.',
+    ask:'Request the reading be re-taken and witnessed on the next visit. If the value is genuinely stable, record the reason and this check can be set to ignore it.',hits:frozen});
+
+  const orphan=[];
+  rIn.filter(r=>String(r.OutOfRange)==='Yes').forEach(r=>{
+    const v=visits.find(x=>x.Title===r.VisitRef)||{};
+    const vd=vDate[r.VisitRef];
+    const asset=String(r.Asset||'').trim();
+    const matched=faults.some(f=>{const fd=D(f.FaultDate);
+      return fd&&vd&&Math.abs(hrs(vd,fd))<=168&&
+        (String(f.AssetId||'').trim()===asset||String(f.Plant||'').trim()===asset.split(' ')[0]);});
+    if(!matched&&!(parseInt(v.FaultsFlagged,10)>0))
+      orphan.push('<b>'+r.VisitRef+'</b> ('+(vd?fmt(vd):'?')+') flagged '+(r.ReadingKey||'?')+' on '+(asset||'?')+
+        ' as out of range — no fault raised within 7 days');});
+  out.push({id:'B2',title:'Out of range, but no fault raised',sev:'red',
+    rule:'A reading marked out of range with no corresponding FaultRegister entry inside seven days.',
+    ask:'Confirm what action was taken at the time and obtain the supporting record.',hits:orphan});
+
+  const undocumented=vIn.filter(v=>(parseInt(v.FaultsFlagged,10)||0)>(parseInt(v.FaultsDocumented,10)||0))
+    .map(v=>'<b>'+v.Title+'</b> ('+fmt(D(v.VisitDate))+') flagged '+v.FaultsFlagged+' issue(s) but documented '+(v.FaultsDocumented||0));
+  out.push({id:'B3',title:'Issues flagged on the visit but never written up',sev:'red',
+    rule:'FaultsFlagged exceeds FaultsDocumented on a saved visit — an issue was indicated but no description was recorded against it.',
+    ask:'Request the fault detail for each so the visit is a complete record under notice 5.5.',hits:undocumented});
+
+  /* ---------- C. what happened to the faults ---------- */
+  const now=new Date();
+  const noResp=faults.filter(f=>{const fd=D(f.FaultDate);
+    return fd&&inWin(fd)&&String(f.Stage||'Reported')==='Reported'&&
+      String(f.TriageStatus||'')!=='Awaiting triage'&&hrs(fd,now)>48;})
+    .map(f=>'<b>'+f.Title+'</b> raised '+fmt(D(f.FaultDate))+' — still at "Reported" after '+
+      Math.floor(hrs(D(f.FaultDate),now)/24)+' days');
+  out.push({id:'C1',title:'Faults with no response inside 48 hours',sev:'red',
+    rule:'Clause 4.1 response time. Still at stage "Reported" more than 48 hours after being raised. Measured in calendar hours, not working hours — check the weekend cases before recording an exception.',
+    ask:'Confirm the response date for each and update the stage, or record the exception with its date.',hits:noResp});
+
+  const rep=faults.filter(f=>(parseInt(f.RepeatCount,10)||1)>=3&&
+      ['Closed','Reported and fixed'].indexOf(String(f.Stage||''))===-1)
+    .map(f=>'<b>'+f.Title+'</b> — '+f.RepeatCount+' occurrences on '+(f.AssetId||f.Plant||'?')+', still open');
+  out.push({id:'C2',title:'Repeat faults that should have escalated',sev:'red',
+    rule:'Notice 5.2 — three or more recorded occurrences on the same asset with the fault still open.',
+    ask:'Request a root-cause assessment rather than a further temporary repair.',hits:rep});
+
+  const stuck=faults.filter(f=>String(f.TriageStatus||'')==='Awaiting triage')
+    .filter(f=>{const fd=D(f.FaultDate);return fd&&hrs(fd,now)>120;})
+    .map(f=>'<b>'+f.Title+'</b> from '+(f.RaisedBy||'site')+' — untriaged '+Math.floor(hrs(D(f.FaultDate),now)/24)+' days');
+  out.push({id:'C3',title:'Site reports sitting untriaged',sev:'grey',
+    rule:'Reports from site waiting more than 5 days for a decision. These do not age against the contractor while untriaged — the delay sits with RED FM.',
+    ask:'Clear the triage queue before completing this review. An untriaged backlog weakens every other line on the page.',hits:stuck});
+
+  /* ---------- D. is the record complete ---------- */
+  const incomplete=visits.filter(v=>{const d=D(v.VisitDate);
+    return d&&d<=D1&&['Awaiting document','Partially completed','Awaiting fault detail'].indexOf(String(v.Status||''))!==-1&&hrs(d,now)>336;})
+    .map(v=>'<b>'+v.Title+'</b> ('+fmt(D(v.VisitDate))+') — still "'+v.Status+'" after 14 days');
+  out.push({id:'D1',title:'Visits still missing their paperwork',sev:'amb',
+    rule:'Notice 5.5 — a regime is not complete until its certificate or analysis record is attached. Outstanding beyond 14 days is recorded as an exception.',
+    ask:'Request the outstanding document by name and date, and record the response.',hits:incomplete});
+
+  /* ---------- E. RDM ---------- */
+  const noRdm=weekly.filter(v=>!String(v.RdmAlarmsRecorded||'').trim())
+    .map(v=>'<b>'+v.Title+'</b> ('+fmt(D(v.VisitDate))+') recorded nothing about RDM alarms');
+  out.push({id:'E1',title:'Weekly visits with no RDM alarm check',sev:'red',
+    rule:'Clause 4.4 — RDM monitoring forms part of the weekly attendance. A blank entry means no record of the alarm review exists for that week.',
+    ask:'Request the RDM export for those dates and attach it to the visit record.',hits:noRdm});
+
+  const aIn=alarms.filter(a=>inWin(D(a.AlarmDate)));
+  const ran=a=>{const s=D(a.ActiveSince);if(!s)return null;const c=D(a.ClearedAt);return hrs(s,c||now);};
+  const long=aIn.filter(a=>{const h=ran(a);return h!=null&&h>24;})
+    .map(a=>{const h=ran(a);return '<b>'+(a.AssetId||'?')+'</b> — "'+String(a.AlarmText||'').slice(0,60)+
+      '" ran '+(h<48?Math.round(h)+' hours':Math.round(h/24)+' days')+' from '+fmt(D(a.ActiveSince))+
+      (a.ClearedAt?'':' <b>and is still recorded as running</b>')+' ('+(a.Outcome||'no outcome recorded')+')';});
+  out.push({id:'E2',title:'Alarms that ran over 24 hours',sev:'amb',
+    rule:'An alarm active for more than 24 hours, measured from when it started to when it cleared (or to now, if it has never been closed out).',
+    ask:'Confirm what response was made and, where an alarm is still shown as running, whether it has in fact cleared.',hits:long});
+
+  const notNotified=aIn.filter(a=>{const h=ran(a);return h!=null&&h>24&&String(a.NotifiedRedFm||'')!=='Sent';})
+    .map(a=>'<b>'+(a.AssetId||'?')+'</b> — '+fmt(D(a.ActiveSince))+' · notification status "'+(a.NotifiedRedFm||'not set')+'"');
+  out.push({id:'E4',title:'Alarms over 24 hours with no written notification recorded',sev:'red',
+    rule:'Clause 4.4(c) — an alarm running beyond one business day requires written notification to RED FM. This lists those with no notification recorded as sent.',
+    ask:'Obtain the written notification for each, or record the exception with its date.',hits:notNotified});
+
+  const pIn=params.filter(p=>inWin(D(p.ChangeDate)));
+  const notBack=pIn.filter(p=>{const dur=String(p.IntendedDuration||'');const m=/(\d+)/.exec(dur);
+    if(!m)return false;const days=/hour/i.test(dur)?parseInt(m[1],10)/24:parseInt(m[1],10);
+    return hrs(D(p.ChangeDate),now)/24>days+2;})
+    .map(p=>'<b>'+(p.AssetId||'?')+'</b> '+(p.Parameter||'')+' set to '+(p.ValueAfter||'?')+
+      ' on '+fmt(D(p.ChangeDate))+' for "'+p.IntendedDuration+'" — no reversion logged');
+  out.push({id:'E3',title:'Parameter changes and inhibits never put back',sev:'red',
+    rule:'An alarm inhibit or setpoint change past its stated duration with no reversion recorded. An inhibited alarm cannot annunciate.',
+    ask:'Confirm the reversion date for each, or the reason the change remains in place.',hits:notBack});
+
+  /* ---------- F. hygiene ---------- */
+  const names={};vIn.forEach(v=>{const n=String(v.Engineer||'').trim();if(n)names[n.toLowerCase()]=(names[n.toLowerCase()]||new Set()).add(n);});
+  const variant=Object.keys(names).filter(k=>names[k].size>1).map(k=>'Same engineer recorded as: '+[...names[k]].join(' / '));
+  const odd=vIn.filter(v=>{const d=D(v.VisitDate);return d&&d>now;})
+    .map(v=>'<b>'+v.Title+'</b> is dated '+fmt(D(v.VisitDate))+' — in the future');
+  out.push({id:'F1',title:'Data hygiene',sev:'grey',
+    rule:'Name spellings that differ between visits, and visits dated ahead of today. Neither affects the work; both weaken the audit trail.',
+    ask:'Correct in SharePoint so the record reads consistently.',hits:variant.concat(odd)});
+
+  return out;
+}
+
+function render(checks,meta){
+  const red=checks.filter(c=>c.sev==='red').reduce((n,c)=>n+c.hits.length,0);
+  const amb=checks.filter(c=>c.sev==='amb').reduce((n,c)=>n+c.hits.length,0);
+  const grey=checks.filter(c=>c.sev==='grey').reduce((n,c)=>n+c.hits.length,0);
+  const clean=checks.filter(c=>!c.hits.length).length;
+  let h='<div class="card"><div style="font-size:17px;font-weight:800">Record review — '+meta.label+'</div>'+
+    '<div class="muted" style="margin-top:4px">Reviewed by '+(meta.reviewer||'—')+' on '+fmt(new Date())+
+    ' · '+meta.visits+' visits, '+meta.readings+' readings, '+meta.faults+' faults in scope</div>'+
+    '<div class="scoreline">'+
+    '<div class="pill red"><div class="n">'+red+'</div><div class="l">Non-conformance</div></div>'+
+    '<div class="pill amb"><div class="n">'+amb+'</div><div class="l">Observation</div></div>'+
+    '<div class="pill grey"><div class="n">'+grey+'</div><div class="l">Housekeeping</div></div>'+
+    '<div class="pill '+(clean===checks.length?'ok':clean>=checks.length/2?'amb':'red')+'"><div class="n">'+clean+'/'+checks.length+'</div><div class="l">Checks clean</div></div>'+
+    '</div></div>';
+
+  const order={red:0,amb:1,grey:2};
+  const sorted=checks.slice().sort((a,b)=>(b.hits.length>0)-(a.hits.length>0)||order[a.sev]-order[b.sev]);
+  h+='<h3>Findings</h3>';
+  sorted.forEach(c=>{
+    h+='<div class="chk '+(c.hits.length?c.sev:'')+'"><h4>'+c.id+' · '+c.title+
+       '<span class="cnt">'+(c.hits.length?c.hits.length+' found':'clean')+'</span></h4>'+
+       '<div class="rule">'+c.rule+'</div>';
+    if(c.hits.length){
+      h+='<ul>'+c.hits.slice(0,25).map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+      if(c.hits.length>25)h+='<div class="muted" style="margin-top:6px">…and '+(c.hits.length-25)+' more of the same.</div>';
+      h+='<div class="ask"><b>Follow-up:</b> '+c.ask+'</div>';
+    } else h+='<div class="clean">Nothing found.</div>';
+    h+='</div>';});
+  h+='<div class="note">This review reads the record; it does not judge intent. Verify each line against the underlying paperwork before it is recorded as an exception — a missed week may have been agreed in advance, and an unchanging reading may be genuinely stable.</div>';
+  $('out').innerHTML=h;
+}
+
+$('run').onclick=async function(){
+  const m=$('month').value;if(!m){toast('Pick a month first');return;}
+  this.textContent='Reading…';this.disabled=true;
+  try{
+    if(!REDFM.getAccount())await REDFM.signIn();
+    const D0=new Date(m+'-01T00:00:00');
+    const D1=new Date(D0.getFullYear(),D0.getMonth()+1,0,23,59,59);
+    const [visits,readings,faults,alarms,params]=await Promise.all([
+      REDFM.getServiceVisits(),REDFM.getReadings(),REDFM.getFaults(),
+      REDFM.listItems('RDMAlarms').catch(()=>[]),
+      REDFM.listItems('ParameterChanges').catch(()=>[])]);
+    const inWin=d=>d&&d>=D0&&d<=D1;
+    const checks=runChecks(D0,D1,visits,readings,faults,alarms,params);
+    render(checks,{label:D0.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),
+      reviewer:$('reviewer').value.trim(),
+      visits:visits.filter(v=>inWin(D(v.VisitDate))).length,
+      readings:readings.length,
+      faults:faults.filter(f=>inWin(D(f.FaultDate))).length});
+    toast('Review complete');
+  }catch(e){$('out').innerHTML='<div class="empty">Could not read the records: '+(e.message||e)+'</div>';}
+  this.textContent='Run review';this.disabled=false;
+};
+$('print').onclick=()=>window.print();
+</script>
+</body>
+</html>
