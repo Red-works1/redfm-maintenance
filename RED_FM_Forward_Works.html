@@ -193,7 +193,7 @@ function renderRegister(rows){
     });
   });
   $('reg').innerHTML=html;
-  $('regMeta').innerHTML=rows.length+' entr'+(rows.length===1?'y':'ies')+' on the register · published snapshot, refreshed hourly';
+  $('regMeta').innerHTML=rows.length+' entr'+(rows.length===1?'y':'ies')+' on the register · '+(LIVE?'live — signed in, changes save straight away':'published snapshot, refreshed hourly');
 }
 
 /* The register used to read only the hourly published snapshot. A snapshot has no item ids,
