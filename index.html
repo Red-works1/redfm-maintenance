@@ -37,13 +37,19 @@
 
 <div class="wrap">
 
-  <h2>Report a fault <span class="freq">any time</span></h2>
+  <h2>Faults &amp; problems <span class="freq">any time</span></h2>
   <div class="grid">
     <a class="tile" href="RED_FM_Fault_Register.html">
       <div class="tname">Fault register <span class="go">›</span></div>
-      <div class="tdesc">Raise a fault with plant, severity, description, action and up to 5 photos.</div>
+      <div class="tdesc">Raise a fault with plant, severity, description, action and up to 5 photos. This is the one that counts — it ages, escalates and shows on the dashboard.</div>
       <div class="tags"><span class="tag">Photos</span><span class="tag">PDF + photos filed</span></div></a>
+    <a class="tile" href="RED_FM_Triage.html">
+      <div class="tname">Triage queue <span class="go">›</span></div>
+      <div class="tdesc">Problems reported by Border staff, waiting on a decision. In scope, quote it, or not for us.</div>
+      <div class="tags"><span class="tag signin">RED FM</span><span class="tag">Site reports</span></div></a>
   </div>
+
+  <div class="note">Border staff raise problems themselves — QR labels round the site, and a <b>Report a problem</b> button on their read-only view. Those land in the triage queue above and are <b>not</b> counted as open faults until someone triages them. <a href="RED_FM_Report_a_Problem.html" style="color:var(--red);font-weight:700;">Preview the page they see →</a></div>
 
   <h2>Forward works &amp; parameter changes <span class="freq">as it happens</span></h2>
   <div class="grid">
@@ -71,6 +77,10 @@
       <div class="tname">Quarterly service <span class="go">›</span></div>
       <div class="tdesc">Detailed compressor readings + checks. Pick chamber A–E, then Readings or Checks.</div>
       <div class="tags"><span class="tag">A–E</span><span class="tag">Readings + checks</span></div></a>
+    <a class="tile" href="RED_FM_Vibration_Analysis.html">
+      <div class="tname">Vibration analysis <span class="go">›</span></div>
+      <div class="tdesc">Quarterly overall velocity per compressor with trended assessment. Analysis record required.</div>
+      <div class="tags"><span class="tag">Record</span></div></a>
   </div>
 
   <h2>Six-monthly <span class="freq">condenser monthly Jun–Sep</span></h2>
@@ -99,18 +109,6 @@
       <div class="tname">A&amp;B leak detection <span class="go">›</span></div>
       <div class="tdesc">Bacharach unit validation — 100ppm + 1000ppm sensors and system checks.</div>
       <div class="tags"><span class="tag">A&amp;B plant room</span><span class="tag">Cert</span></div></a>
-    <a class="tile" href="RED_FM_Triage.html">
-      <div class="tname">Triage queue <span class="go">›</span></div>
-      <div class="tdesc">Problems reported by Border staff, waiting on a decision. In scope, quote it, or not for us.</div>
-      <div class="tags"><span class="tag">Site reports</span></div></a>
-    <a class="tile" href="RED_FM_Report_a_Problem.html">
-      <div class="tname">Report a problem <span class="go">›</span></div>
-      <div class="tdesc">The page behind the QR labels. No login — anyone on site can raise a fault.</div>
-      <div class="tags"><span class="tag">Public</span></div></a>
-    <a class="tile" href="RED_FM_Vibration_Analysis.html">
-      <div class="tname">Vibration analysis <span class="go">›</span></div>
-      <div class="tdesc">Quarterly overall velocity per compressor with trended assessment. Analysis record required.</div>
-      <div class="tags"><span class="tag">Quarterly</span><span class="tag">Record</span></div></a>
     <a class="tile" href="RED_FM_Oil_Analysis.html">
       <div class="tname">Oil analysis <span class="go">›</span></div>
       <div class="tdesc">Upload the lab's oil analysis report for the A&amp;B packs — files the PDF and marks it done on the dashboard.</div>
@@ -132,9 +130,13 @@
       <div class="tdesc">The client report — regime progress + fault tracker, no figures. Print to PDF for Border.</div>
       <div class="tags"><span class="tag anon">Client-safe</span><span class="tag">Report</span></div></a>
     <a class="tile" href="RED_FM_Corrective_Actions.html">
-      <div class="tname">Corrective actions — CAN-001 <span class="go">&rsaquo;</span></div>
-      <div class="tdesc">Tracks the 19 corrective actions issued to Coolstream under notice REDFM/CS/CAN-001 — due dates, responses, slippage and outstanding breaches, with a printable summary for the September reviews.</div>
+      <div class="tname">Corrective action tracker <span class="go">&rsaquo;</span></div>
+      <div class="tdesc">Due dates, responses and current status against the open notice, with a printable summary for the periodic reviews.</div>
       <div class="tags"><span class="tag signin">RED FM internal</span><span class="tag">Print summary</span></div></a>
+    <a class="tile" href="RED_FM_Monthly_Review.html">
+      <div class="tname">Monthly record review <span class="go">&rsaquo;</span></div>
+      <div class="tdesc">Reads a month of visits, readings, faults and RDM entries and reports the patterns no single form can see — missed weeks, readings that never move, out-of-range values that never became a fault.</div>
+      <div class="tags"><span class="tag signin">RED FM internal</span><span class="tag">13 checks</span></div></a>
 
   </div>
 

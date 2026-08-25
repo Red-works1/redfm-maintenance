@@ -1,1 +1,25 @@
-{"platform":{"apiRuntime":"node:20"},"routes":[{"route":"/api/report-problem","methods":["POST"],"allowedRoles":["anonymous"]},{"route":"/RED_FM_Report_a_Problem.html","allowedRoles":["anonymous"]}],"navigationFallback":{"rewrite":"/index.html","exclude":["/api/*","*.{css,js,png,jpg,svg,json,pdf,ico}"]},"globalHeaders":{"X-Content-Type-Options":"nosniff","Referrer-Policy":"same-origin"}}
+{
+  "platform": { "apiRuntime": "node:20" },
+  "routes": [
+    { "route": "/api/report-problem", "methods": ["POST"], "allowedRoles": ["anonymous"] },
+    { "route": "/RED_FM_Report_a_Problem.html", "allowedRoles": ["anonymous"] },
+
+    { "route": "/RED_FM_Monthly_Review.html", "allowedRoles": ["redfm"] },
+    { "route": "/RED_FM_Corrective_Actions.html", "allowedRoles": ["redfm"] },
+    { "route": "/RED_FM_Compliance_Dashboard_INTERNAL.html", "allowedRoles": ["redfm"] },
+    { "route": "/RED_FM_Triage.html", "allowedRoles": ["redfm"] },
+    { "route": "/internal/*", "allowedRoles": ["redfm"] }
+  ],
+  "responseOverrides": {
+    "401": { "statusCode": 302, "redirect": "/.auth/login/aad" },
+    "403": { "statusCode": 302, "redirect": "/index.html" }
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "*.{css,js,png,jpg,svg,json,pdf,ico}"]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin"
+  }
+}
