@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
+<title>RED FM — Vibration analysis</title>
+<style>
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:56px;font-size:18px;font-weight:800;padding:12px 0;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  h3{font-size:14px;margin:16px 4px 0;}
+  .test{border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:10px;}
+  .test.done{border-color:var(--ok);background:#f4faf5;}
+  .trow{display:flex;align-items:center;gap:10px;}
+  .chk{width:30px;height:30px;border:2px solid var(--line);border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;background:#fff;cursor:pointer;}
+  .chk.on{background:var(--ok);border-color:var(--ok);}
+  .tname{font-size:15px;font-weight:600;}
+  .fields{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .test.done .fields{display:grid;}
+  .fields .full{grid-column:1/3;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}.fields{display:grid!important}}
+</style>
+<style>
+  textarea{font-family:inherit;line-height:1.45;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .secbar button{flex:1;min-width:64px;font-size:15px;font-weight:800;padding:11px 0;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbar button.on{background:var(--red);color:#fff;border-color:var(--red);}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{border:1px solid var(--line);padding:7px 6px;text-align:center;}
+  th{background:#fafafb;font-size:12px;color:var(--grey);}
+  td.lab{text-align:left;font-weight:600;font-size:13px;}
+  td input{width:100%;border:none;text-align:center;font-size:15px;padding:6px 2px;}
+  td input:focus{outline:2px solid var(--red);border-radius:5px;}
+  .vbtn{font-size:13px;font-weight:800;padding:8px 6px;border-radius:9px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;width:100%;}
+  .vbtn.ok{background:#eef7f0;border-color:var(--ok);color:var(--ok);}
+  .vbtn.mon{background:#fdf3e3;border-color:#c2860c;color:#c2860c;}
+  .vbtn.act{background:#fdecee;border-color:var(--red);color:var(--red);}
+  .tblscroll{overflow-x:auto;}
+</style>
+</head>
+<body>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
+<div class="htitle"><strong>Vibration analysis</strong>Border Holdings — Avonmouth · quarterly, per compressor · notice 5.5 / CA-12</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="card"><div class="hgrid">
+    <div><label>Date of analysis</label><input id="hDate" type="date"></div>
+    <div><label>Engineer <span style="color:var(--red)">*</span></label><input id="hEng" placeholder="Name"></div>
+    <div class="full" style="grid-column:1/3"><label>Instrument used</label><input id="hInst" placeholder="e.g. SKF CMAS 100-SL vibration meter"></div>
+  </div></div>
+
+  <div class="note"><b>Pick the pack, record the overall velocity at each point in mm/s</b>, then set the assessment for each compressor. Trended levels are what the record is for — a single reading with no comparison is not an analysis.</div>
+
+  <div class="secbar" id="secbar"></div>
+  <div id="body"></div>
+
+  <h3 style="font-size:14px;margin:16px 4px 0">Comments</h3>
+  <div class="card"><textarea id="hComm" rows="3" placeholder="e.g. No2 trending upward against last quarter — non-drive end bearing to be monitored"></textarea></div>
+
+  <h3 style="font-size:14px;margin:16px 4px 0">Vibration analysis record <span style="color:var(--red)">*</span></h3>
+  <div class="card">
+    <div class="muted" style="font-size:13px;margin-bottom:9px">The instrument report or analysis sheet showing trended levels. <b>Notice 5.5 &mdash; this regime cannot be recorded as complete until the record is attached.</b> You may submit now and attach later; the visit stays <b>Awaiting document</b>, and shows as incomplete on the dashboard, until it lands.</div>
+    <input type="file" id="certFile" accept="application/pdf,image/*,.doc,.docx,.csv,.xlsx">
+    <div id="certName" class="muted" style="font-size:13px;margin-top:7px;font-weight:700"></div>
+  </div>
+
+  <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="finish">Finish &amp; submit</button></div></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=16"></script>
+<script src="redfm-draft.js?v=2"></script>
+<script>
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
+
+/* Measurement points mirror the Vibration sections already on the quarterly service sheet,
+   so a reading taken here is comparable with the one taken there. */
+const VIB_AB=["Non-drive end LH","Non-drive end RH","Non-drive end Axle","Body drive end"];
+const VIB_STD=["Non-drive end Hor","Non-drive end Axle","Drive end Hor"];
+const GROUPS={
+ "A":{cols:["No1","No2","No3"],rows:VIB_AB,plant:"A"},
+ "B":{cols:["No1","No2"],rows:VIB_AB,plant:"B"},
+ "C":{cols:["No1","No2","No3","No4"],rows:VIB_STD,plant:"C"},
+ "D":{cols:["No1","No2","No3","No4"],rows:VIB_STD,plant:"D"},
+ "E":{cols:["E1 Compr No1","E1 Compr No2","E2 Compr No1","E2 Compr No2"],rows:VIB_STD,plant:"E"}
+};
+const ASSESS=[["ok","Satisfactory"],["mon","Monitor"],["act","Action required"]];
+let sec="A";
+const state={vals:{},assess:{}};
+
+function quarterOf(d){const m=new Date(d);if(isNaN(m))return'';return 'Q'+(Math.floor(m.getMonth()/3)+1)+' '+m.getFullYear();}
+function cellId(g,c,r){return g+'|'+c+'|'+r;}
+
+function draw(){
+  $('secbar').innerHTML=Object.keys(GROUPS).map(k=>`<button data-k="${k}" class="${k===sec?'on':''}">${k}</button>`).join('');
+  $('secbar').querySelectorAll('button').forEach(b=>b.onclick=()=>{sec=b.dataset.k;draw();});
+  const g=GROUPS[sec];
+  let html='<div class="card"><div class="tblscroll"><table><thead><tr><th style="text-align:left">Point (mm/s)</th>'+
+    g.cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+  g.rows.forEach(r=>{
+    html+=`<tr><td class="lab">${r}</td>`+g.cols.map(c=>{
+      const id=cellId(sec,c,r);
+      return `<td><input inputmode="decimal" data-id="${id}" value="${state.vals[id]||''}" placeholder="—"></td>`;}).join('')+'</tr>';
+  });
+  html+='<tr><td class="lab">Assessment</td>'+g.cols.map(c=>{
+    const a=state.assess[sec+'|'+c]||'';
+    return `<td><div style="display:flex;flex-direction:column;gap:4px">`+
+      ASSESS.map(([k,lab])=>`<button type="button" class="vbtn ${a===k?k:''}" data-a="${sec}|${c}" data-v="${k}">${lab}</button>`).join('')+
+      `</div></td>`;}).join('')+'</tr>';
+  html+='</tbody></table></div></div>';
+  $('body').innerHTML=html;
+  $('body').querySelectorAll('input[data-id]').forEach(i=>i.oninput=e=>{state.vals[e.target.dataset.id]=e.target.value;REDFMDraft.save();});
+  $('body').querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.a;state.assess[k]=state.assess[k]===b.dataset.v?'':b.dataset.v;REDFMDraft.save();draw();});
+}
+
+/* ---- Notice 5.5 / clause 8.4 — the regime record. ---- */
+let certFile=null, certMsg='', CERT_DONE_STATUS="Awaiting document";
+$('certFile').addEventListener('change',e=>{
+  certFile=e.target.files[0]||null;
+  $('certName').textContent=certFile?('Attached: '+certFile.name):'';
+  $('certName').style.color=certFile?'#1a7f37':'';
+});
+async function fileRegimeRecord(ref,dateStr,plantStr){
+  if(!certFile)return ' · NO RECORD ATTACHED — this regime stays incomplete until one is';
+  try{
+    const ext=(certFile.name.split('.').pop()||'pdf').toLowerCase();
+    const fname='VibrationAnalysis_'+String(dateStr||'').slice(0,10)+'_'+String(plantStr||'').replace(/[^A-Za-z0-9]+/g,'')+'_'+ref+'.'+ext;
+    await REDFM.uploadFile("Reports",fname,certFile,certFile.type||'application/pdf');
+    CERT_DONE_STATUS="Partially completed";
+    return ' · record filed ✓';
+  }catch(e){return ' · RECORD DID NOT UPLOAD ('+(e.message||e)+') — this regime stays incomplete until it does';}
+}
+
+let redfmReady=!!window.REDFM, signedIn=false, submitted=false;
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  const r={ref:'VIB-'+Date.now().toString(36).toUpperCase(),date:$('hDate').value,
+    engineer:$('hEng').value.trim(),instrument:$('hInst').value.trim(),comments:$('hComm').value.trim()};
+  if(!r.engineer){toast('Enter your name');return;}
+  if(!r.date){toast('Set the date');return;}
+
+  const g=GROUPS[sec], out=[];
+  g.cols.forEach(c=>{
+    g.rows.forEach(row=>{
+      const v=(state.vals[cellId(sec,c,row)]||'').trim();
+      if(v)out.push({col:c,point:row,value:v});
+    });
+  });
+  if(!out.length){toast('Record at least one reading before submitting');return;}
+  const noAssess=g.cols.filter(c=>{
+    const any=g.rows.some(row=>(state.vals[cellId(sec,c,row)]||'').trim());
+    return any && !state.assess[sec+'|'+c];});
+  if(noAssess.length){toast('Set an assessment for '+noAssess.join(', '));return;}
+
+  const flagged=g.cols.filter(c=>state.assess[sec+'|'+c]==='act');
+  const sections='Pack '+sec;
+
+  let saveMsg='SharePoint not configured yet — kept a local copy.';
+  if(redfmReady){
+    $('finish').textContent='Saving…';
+    try{
+      if(!signedIn){await REDFM.signIn();signedIn=true;}
+      const visitFields={Title:r.ref,ServiceType:"Vibration analysis",
+        PlantSection:sections,Engineer:r.engineer,VisitDate:r.date,
+        Status:"Awaiting document",
+        FaultsFlagged:flagged.length,FaultsDocumented:0,
+        FaultFound:flagged.length?"Yes":"No",
+        Notes:(r.instrument?('Instrument: '+r.instrument+'. '):'')+r.comments};
+      const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),
+        ReadingKey:('vib '+e.point+' '+e.col).toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+        Asset:(sec+' '+e.col).trim(),
+        Value:e.value,Unit:'mm/s',
+        OutOfRange:state.assess[sec+'|'+e.col]==='act'?'Yes':'No'}));
+      const visit=await REDFM.saveVisit(visitFields,readingRows);
+      try{REDFMDraft.clear();}catch(e){}
+      saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' reading(s)';
+      certMsg=await fileRegimeRecord(r.ref,r.date,sections);
+      if(CERT_DONE_STATUS==="Partially completed" && visit && visit.id){
+        try{await REDFM.updateVisit(visit.id,{Status:"Partially completed"});}catch(e){}
+      }
+      try{
+        const grid=[{name:'Vibration — pack '+sec+' ('+quarterOf(r.date)+')',
+          cols:['Compressor','Point','mm/s','Assessment'],
+          rows:out.map(e=>[e.col,e.point,e.value,(ASSESS.find(a=>a[0]===state.assess[sec+'|'+e.col])||['','—'])[1]])}];
+        const blob=REDFM.buildReportPdf({title:'Vibration analysis — pack '+sec,
+          subtitle:'Border Holdings, Avonmouth · '+quarterOf(r.date),
+          ref:r.ref,date:r.date,engineer:r.engineer,plant:sections,
+          faults:[],withdrawn:[],reviewed:[],
+          extra:[['Quarter',quarterOf(r.date)],['Instrument',r.instrument||'—'],['Contractor','Coolstream (UK) Ltd'],['Action required on',flagged.length?flagged.join(', '):'none']]},grid);
+        await REDFM.uploadReportPdf('VibrationAnalysis_'+sec+'_'+r.date+'_'+r.ref+'.pdf',blob);
+        saveMsg+=' · PDF filed';
+      }catch(pe){saveMsg+=' (PDF skipped: '+(pe.message||pe)+')';}
+    }catch(err){saveMsg='Could not save online — kept a local copy. ('+(err.message||err)+')';}
+  }
+
+  submitted=true;
+  document.querySelectorAll('input,textarea,button.vbtn').forEach(e=>{e.style.pointerEvents='none';e.style.opacity=.9;});
+  $('finish').style.display='none';$('summary').style.display='block';
+  $('sumHead').textContent='✓ Vibration analysis submitted — ref '+r.ref;
+  $('sumBody').innerHTML=`<div>${r.date} · ${r.engineer} · pack ${sec} · ${out.length} reading(s) · ${flagged.length} needing action</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}${certMsg}</div>
+    <div class="muted" style="margin-top:4px">The other packs stay open for later visits this quarter.</div>`;
+  $('summary').scrollIntoView({behavior:'smooth'});
+  toast('Vibration analysis submitted ✓');
+});
+
+$('hDate').value=new Date().toISOString().slice(0,10);
+draw();
+REDFMDraft.init({key:'vibration',state:state,draw:draw});
+</script>
+</body>
+</html>

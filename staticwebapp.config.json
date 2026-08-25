@@ -1,0 +1,8 @@
+{
+  "routes": [
+    { "route": "/api/report-problem", "methods": ["POST"], "allowedRoles": ["anonymous"] },
+    { "route": "/RED_FM_Report_a_Problem.html", "allowedRoles": ["anonymous"] }
+  ],
+  "navigationFallback": { "rewrite": "/index.html", "exclude": ["/api/*", "*.{css,js,png,jpg,svg,json,pdf}"] },
+  "globalHeaders": { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin" }
+}

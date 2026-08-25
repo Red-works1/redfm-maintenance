@@ -3,18 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
 <title>RED FM — Border Holdings Compliance (read-only)</title>
 <style>
-  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;--amber:#c2860c;--blue:#175c9e;}
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;--amber:#c2860c;--blue:#175c9e;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
   header{background:#fff;border-bottom:4px solid var(--red);padding:18px;}
   .brand{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1040px;margin:0 auto;flex-wrap:wrap;}
   .lhs{display:flex;align-items:center;gap:14px;}
-  .logo{font-weight:800;letter-spacing:1.5px;font-size:32px;}.logo b{color:var(--red);}
+  .logo{display:block;height:34px;width:auto;flex:0 0 auto;}
   .htitle{font-size:13px;color:var(--grey);line-height:1.25;}.htitle strong{display:block;color:var(--ink);font-size:17px;}
   .period{text-align:right;font-size:12px;color:var(--grey);line-height:1.5;}
-  .hubbtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap;margin-top:6px;}
+  .hubbtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap;margin-top:6px;}
   .wrap{max-width:1040px;margin:0 auto;padding:0 16px 50px;}
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;}
   .btn{font-size:14px;font-weight:700;padding:11px 16px;border-radius:10px;border:0;cursor:pointer;}
@@ -144,7 +145,7 @@
 </head>
 <body>
 <header><div class="brand">
-  <div class="lhs"><div class="logo">RED<b>FM</b></div>
+  <div class="lhs"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
   <div class="htitle"><strong>Border Holdings — Maintenance compliance</strong>Avonmouth cold store · delivered by Coolstream</div></div>
   <div class="period" id="period">Read-only view · no commercial figures</div>
 </div></header>
@@ -154,6 +155,7 @@
     <button class="btn btn-red" id="signin" style="display:none">Sign in</button>
     <button class="btn btn-red" id="genpdf" disabled>Download report (PDF)</button>
     <a class="btn btn-ghost" href="reports.html" style="text-decoration:none;">Report library</a>
+    <a class="btn btn-red" href="RED_FM_Report_a_Problem.html" style="text-decoration:none;">Report a problem</a>
     <span class="note" id="status"></span>
   </div>
 
@@ -443,7 +445,15 @@ function compute(){
   const onTime=regs.filter(r=>r.rag==="g").length;
   const attention=regs.filter(r=>r.rag!=="g").length;
   const callouts=faults.filter(f=>(f.Stage||"")===CALLOUT_STAGE);
-  const open=faults.filter(f=>{const st=f.Stage||"Reported";return st!==CALLOUT_STAGE && RESOLVED_STAGES.indexOf(st)===-1;});
+  // A report raised by site staff is not an open fault against RED FM until a human has
+  // triaged it. Until then it is neither instructed nor chargeable, so it must not age.
+  const untriaged=f=>String(f.TriageStatus||"").trim()==="Awaiting triage";
+  // Trade is blank on everything an engineer raised, and on every fault predating the site
+  // reporting page — blank means refrigeration. A site report tagged as anything else is a
+  // RED FM job, not a Coolstream performance measure, so it stays out of these figures.
+  const refrig=f=>{const t=String(f.Trade||"").trim();return t===""||t==="Refrigeration";};
+  const open=faults.filter(f=>{const st=f.Stage||"Reported";return st!==CALLOUT_STAGE && RESOLVED_STAGES.indexOf(st)===-1 && !untriaged(f) && refrig(f);});
+  const awaitingTriage=faults.filter(untriaged).length;
   const closed=faults.filter(f=>RESOLVED_STAGES.indexOf(f.Stage||"Reported")!==-1).length;
   return {regs,overall,onTime,attention,open,closed,callouts,faults};
 }
@@ -712,14 +722,15 @@ function render(){
         <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
       const rc=repeatCount(f);                                   // item 6 — repeat counter / escalation
       const rcls=rc>=3?'rep-r':(rc===2?'rep-a':'');
-      const age=f.FaultDate?ageDays(f.FaultDate):null;            // item 7 — ageing, amber 14+, red 30+
+      const triaging=String(f.TriageStatus||'').trim()==='Awaiting triage';
+      const age=(!triaging&&f.FaultDate)?ageDays(f.FaultDate):null;   // item 7 — ageing, amber 14+, red 30+
       const acls=age==null?'':(age>=30?'open-r':(age>=14?'open-a':''));
       const asset=f.AssetId||f.Plant||'';                         // item 14 — asset history link
       return `<tr${rcls?' class="'+rcls+'"':''}><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b>${rc>=3?'<span class="esc">ESCALATED</span>':''}</td><td data-label="Asset">${asset?`<a href="#" class="assetlink" data-asset="${esc(asset)}">${esc(asset)}</a>`:''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
         <td class="wide" data-label="Fault">${(f.Description||'').replace(/</g,'&lt;')}</td><td data-label="Stage">${STAGE_LABEL[st]}</td>
         <td class="wide" data-label="Action taken">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
         <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
-        <td data-label="Open (days)"><span class="${acls}">${age==null?'':age}</span></td>
+        <td data-label="Open (days)"><span class="${acls}">${triaging?'<i style="color:#c2860c;font-style:normal;font-weight:700">awaiting triage</i>':(age==null?'':age)}</span></td>
         <td data-label="Flags">${rc>=2?`<span class="flags">\u00d7${rc}</span>`:''}</td>
         <td class="wide closcell" data-label="Closure evidence / why open">${closureCell(f)}</td>
         <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');

@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
 <title>RED FM — F-Gas leak testing</title>
 <style>
-  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
   header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
-  .brand{display:flex;align-items:center;gap:12px;}.logo{font-weight:800;letter-spacing:1px;font-size:26px;}.logo b{color:var(--red);}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}
   .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
   .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
   .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
@@ -41,8 +42,8 @@
 </style>
 </head>
 <body>
-<header><div class="brand"><div class="logo">RED<b>FM</b></div>
-<div class="htitle"><strong>F-Gas leak testing</strong>Border Holdings — Avonmouth · six-monthly direct + indirect</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
+<div class="htitle"><strong>F-Gas leak testing</strong>Border Holdings — Avonmouth · six-monthly direct + indirect</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
 
 <div class="wrap">
   <div class="card"><div class="hgrid">
@@ -61,6 +62,13 @@
   <h3 style="font-size:14px;margin:16px 4px 0">Overall comments</h3>
   <div class="card"><textarea id="hComm" rows="3" placeholder="e.g. no leaks found; indirect logs indicate no refrigerant loss"></textarea></div>
 
+  <h3 style="font-size:14px;margin:16px 4px 0">F-Gas leak check record <span style="color:var(--red)">*</span></h3>
+  <div class="card">
+    <div class="muted" style="font-size:13px;margin-bottom:9px">The signed leak check record or certificate covering the tests logged above. <b>Notice 5.5 &mdash; this regime cannot be recorded as complete until the record is attached.</b> You may submit now and attach later; the visit stays <b>Awaiting document</b>, and shows as incomplete on the dashboard, until it lands.</div>
+    <input type="file" id="certFile" accept="application/pdf,image/*,.doc,.docx">
+    <div id="certName" class="muted" style="font-size:13px;margin-top:7px;font-weight:700"></div>
+  </div>
+
   <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
 </div>
 
@@ -74,6 +82,27 @@
 <script src="redfm-draft.js?v=2"></script>
 <script src="redfm-faultflow.js?v=4"></script>
 <script>
+/* ---- Notice 5.5 / clause 8.4 — the regime record. A regime is not complete until the
+   underlying certificate or data sheet is actually filed. The visit is written as
+   'Awaiting document' and is only promoted once the upload has succeeded. ---- */
+let certFile=null, certMsg='', CERT_DONE_STATUS="Awaiting document";
+document.getElementById('certFile').addEventListener('change',e=>{
+  certFile=e.target.files[0]||null;
+  const n=document.getElementById('certName');
+  n.textContent=certFile?('Attached: '+certFile.name):'';
+  n.style.color=certFile?'#1a7f37':'';
+});
+async function fileRegimeRecord(ref,dateStr,plantStr){
+  if(!certFile)return ' · NO RECORD ATTACHED — this regime stays incomplete until one is';
+  try{
+    const ext=(certFile.name.split('.').pop()||'pdf').toLowerCase();
+    const fname='FGasRecord'+'_'+String(dateStr||'').slice(0,10)+'_'+String(plantStr||'').replace(/[^A-Za-z0-9]+/g,'')+'_'+ref+'.'+ext;
+    await REDFM.uploadFile("Reports",fname,certFile,certFile.type||'application/pdf');
+    CERT_DONE_STATUS="Partially completed";
+    return ' · record filed ✓';
+  }catch(e){return ' · RECORD DID NOT UPLOAD ('+(e.message||e)+') — this regime stays incomplete until it does';}
+}
+
 const TESTS=[
  {key:"direct",label:"Electronic leak-detector test",sub:"entire plant",opts:["No leak found","Leak found"]},
  {key:"indirect",label:"Indirect leak check",sub:"performance running log data",opts:["No loss indicated","Loss indicated"]}];
@@ -216,7 +245,7 @@ $('finish').addEventListener('click',async()=>{
       const holding=leaks>0&&window.REDFMFaultFlow;
       const visitFields={Title:r.ref,ServiceType:"F-Gas",
         PlantSection:sys,Engineer:r.engineer,VisitDate:r.visitDate,
-        Status:holding?"Awaiting fault detail":"Partially completed",
+        Status:holding?"Awaiting fault detail":"Awaiting document",
         FaultsFlagged:leaks,FaultsDocumented:0,
         FaultFound:leaks>0?"Yes":"No",
         Notes:(r.detector?('Detector: '+r.detector+'. '):'')+r.comments};
@@ -225,6 +254,10 @@ $('finish').addEventListener('click',async()=>{
         Value:e.result+' — '+e.date+(e.comment?(' ('+e.comment+')'):''),Unit:'',
         OutOfRange:(e.result.startsWith('Leak')||e.result.startsWith('Loss'))?'Yes':'No'}));
       const visit=await REDFM.saveVisit(visitFields,readingRows);
+      certMsg=await fileRegimeRecord(r.ref,r.visitDate,sys);
+      if(CERT_DONE_STATUS==="Partially completed" && !(holding) && visit && visit.id){
+        try{await REDFM.updateVisit(visit.id,{Status:"Partially completed"});}catch(e){}
+      }
       try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' test(s)';
 
@@ -233,7 +266,7 @@ $('finish').addEventListener('click',async()=>{
         // and NO report is filed until every flagged leak/loss has a fault record behind it.
         saveMsg+=' · '+leaks+' flagged item(s) still to document — report not filed yet';
         startFaultFlow=()=>REDFMFaultFlow.start({
-          visitId:visit&&visit.id,completeStatus:"Partially completed",visitRef:r.ref,visitDate:r.visitDate,engineer:r.engineer,
+          visitId:visit&&visit.id,completeStatus:CERT_DONE_STATUS,visitRef:r.ref,visitDate:r.visitDate,engineer:r.engineer,
           plant:sys,items:flagged,
           buildReport:(faults,withdrawn,reviewed)=>buildReport(faults,withdrawn,reviewed)
         });
@@ -253,7 +286,7 @@ $('finish').addEventListener('click',async()=>{
   $('finish').style.display='none';$('summary').style.display='block';
   $('sumHead').textContent=`✓ Submitted — ref ${r.ref}`;
   $('sumBody').innerHTML=`<div>${r.visitDate} · ${r.engineer} · ${out.length} test(s) · ${leaks} leak/loss flagged</div>
-    <div class="muted" style="margin-top:4px">${saveMsg}</div>
+    <div class="muted" style="margin-top:4px">${saveMsg}${certMsg}</div>
     <div class="muted" style="margin-top:4px">Remaining systems stay open for later visits.</div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-red" id="pr">Print / Save PDF</button>

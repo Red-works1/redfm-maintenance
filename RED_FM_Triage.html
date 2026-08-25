@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
+<title>RED FM — Triage queue</title>
+<style>
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:56px;font-size:18px;font-weight:800;padding:12px 0;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  h3{font-size:14px;margin:16px 4px 0;}
+  .test{border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:10px;}
+  .test.done{border-color:var(--ok);background:#f4faf5;}
+  .trow{display:flex;align-items:center;gap:10px;}
+  .chk{width:30px;height:30px;border:2px solid var(--line);border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;background:#fff;cursor:pointer;}
+  .chk.on{background:var(--ok);border-color:var(--ok);}
+  .tname{font-size:15px;font-weight:600;}
+  .fields{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .test.done .fields{display:grid;}
+  .fields .full{grid-column:1/3;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}.fields{display:grid!important}}
+</style>
+<style>
+  textarea{font-family:inherit;line-height:1.45;}
+  .wrap{max-width:860px;}
+  .rep{background:#fff;border:1px solid var(--line);border-left:4px solid #c2860c;border-radius:12px;padding:14px;margin-top:12px;}
+  .rep h4{margin:0;font-size:16px;}
+  .meta{font-size:13px;color:var(--grey);margin-top:3px;}
+  .desc{margin-top:10px;font-size:14px;line-height:1.5;white-space:pre-wrap;}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .acts button{flex:1;min-width:130px;font-size:14px;font-weight:800;padding:11px 8px;border-radius:10px;border:1.5px solid var(--line);background:#fff;cursor:pointer;}
+  .acts button.scope{border-color:var(--ok);color:var(--ok);}
+  .acts button.quote{border-color:#175c9e;color:#175c9e;}
+  .acts button.out{border-color:var(--red);color:var(--red);}
+  .sev{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:6px;}
+  .sev.High{background:#fdecee;color:var(--red);}.sev.Medium{background:#fdf3e3;color:#c2860c;}.sev.Low{background:#eef7f0;color:var(--ok);}
+  .trade{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:6px;background:#eef1f6;color:#3b4a5e;}
+  .trade.ref{background:#e8f1fb;color:#175c9e;}
+  .trade.oth{background:#f3eefa;color:#5b3a8e;}
+  .empty{text-align:center;color:var(--grey);padding:34px 12px;}
+  .why{margin-top:10px;display:none;}
+</style>
+</head>
+<body>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
+<div class="htitle"><strong>Triage queue</strong>Problems reported from site · nothing here is chargeable or counted until you decide</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="note" style="margin-top:14px">Reports raised by Border staff, from a QR label or their dashboard. Nothing here ages against RED FM, notifies Coolstream or appears as an instructed job until you put it <b>In scope</b>. That is the point of the queue.</div>
+  <div id="list"><div class="empty">Loading…</div></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="redfm-data.js?v=16"></script>
+<script>
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dmy=d=>{if(!d)return'—';const x=new Date(d);return isNaN(x)?'—':String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();};
+const FAULTS_LIB="https://redbristol.sharepoint.com/sites/REDFMMaintenance/Faults";
+/* Trade is shown first because it is the thing that decides who gets sent. A report that
+   is not refrigeration is still worth having — it just must not end up in the numbers
+   Coolstream are measured against. */
+const tradeCls=t=>String(t||'')==='Refrigeration'?'ref':(String(t||'')?'oth':'');
+
+let rows=[];
+async function load(){
+  try{
+    const signed=await REDFM.init();
+    if(!signed)await REDFM.signIn();
+    const all=await REDFM.getFaultsWithId();
+    rows=all.filter(f=>String(f.TriageStatus||'').trim()==='Awaiting triage')
+            .sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
+    draw();
+  }catch(e){$('list').innerHTML='<div class="empty">Could not load the queue. '+esc(e.message||e)+'</div>';}
+}
+
+function draw(){
+  if(!rows.length){$('list').innerHTML='<div class="empty">✓ Nothing waiting to be triaged.</div>';return;}
+  $('list').innerHTML=rows.map((f,i)=>`
+    <div class="rep" data-i="${i}">
+      <h4>${esc(f.Title||'')}<span class="sev ${esc(f.Severity||'Low')}">${esc(f.Severity||'')}</span><span class="trade ${tradeCls(f.Trade)}">${esc(f.Trade||'Not stated')}</span></h4>
+      <div class="meta">Reported ${dmy(f.FaultDate)} by ${esc(f.RaisedBy||'—')}</div>
+      <div class="desc">${esc(f.Description||'')}</div>
+      <div class="meta" style="margin-top:8px"><b>Where:</b> ${esc(f.AssetId||f.Plant||'not stated')}</div>
+      <div class="meta" style="margin-top:4px">Any photo is filed against this reference in <a href="${FAULTS_LIB}" target="_blank" rel="noopener">the Faults library</a>.</div>
+      <div class="acts">
+        <button class="scope" data-a="In scope" data-i="${i}">In scope — action it</button>
+        <button class="quote" data-a="Quote issued" data-i="${i}">Quote it first</button>
+        <button class="out" data-a="Out of scope" data-i="${i}">Not for us</button>
+      </div>
+      <div class="why" id="why${i}">
+        <label>Why? (recorded against the report)</label>
+        <textarea id="wt${i}" rows="2" placeholder="e.g. building fabric, not refrigeration — passed to Border"></textarea>
+        <button class="btn btn-red" style="margin-top:8px" data-c="${i}">Confirm</button>
+      </div>
+    </div>`).join('');
+  $('list').querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i, a=b.dataset.a;
+    if(a==='Out of scope'){$('why'+i).style.display='block';$('why'+i).dataset.a=a;return;}
+    apply(i,a,'');
+  });
+  $('list').querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.c, why=$('wt'+i).value.trim();
+    if(why.length<5){toast('Say why — it goes on the record');return;}
+    apply(i,'Out of scope',why);
+  });
+}
+
+async function apply(i,status,why){
+  const f=rows[i];
+  const today=new Date().toISOString().slice(0,10);
+  const stamp='\n\n[Triaged '+today+'] '+status+(why?(' — '+why):'');
+  const patch={TriageStatus:status,LastReviewed:today,Description:(f.Description||'')+stamp};
+  if(status==='Out of scope'){patch.Stage='Closed';patch.ClosedDate=today;patch.ClosureNote='Out of scope at triage: '+why;}
+  if(status==='Quote issued')patch.Stage='Awaiting our quote';
+  try{
+    await REDFM.updateFault(f._id,patch);
+    rows.splice(i,1);draw();
+    toast(f.Title+' → '+status);
+  }catch(e){toast('Could not save: '+(e.message||e));}
+}
+
+load();
+</script>
+</body>
+</html>

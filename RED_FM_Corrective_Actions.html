@@ -3,18 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
 <title>RED FM — Corrective actions (CAN-001)</title>
 <style>
-  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;--amber:#c2860c;--blue:#175c9e;}
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e6e6ea;--bg:#f4f4f6;--ok:#1a7f37;--amber:#c2860c;--blue:#175c9e;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
   header{background:#fff;border-bottom:4px solid var(--red);padding:18px;}
   .brand{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1040px;margin:0 auto;flex-wrap:wrap;}
   .lhs{display:flex;align-items:center;gap:14px;}
-  .logo{font-weight:800;letter-spacing:1.5px;font-size:32px;}.logo b{color:var(--red);}
+  .logo{display:block;height:34px;width:auto;flex:0 0 auto;}
   .htitle{font-size:13px;color:var(--grey);line-height:1.25;}.htitle strong{display:block;color:var(--ink);font-size:17px;}
   .period{text-align:right;font-size:12px;color:var(--grey);line-height:1.5;}
-  .hubbtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#15151a;font-weight:700;font-size:13px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap;margin-top:6px;}
+  .hubbtn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap;margin-top:6px;}
   .wrap{max-width:1040px;margin:0 auto;padding:0 16px 60px;}
 
   /* ── notice strip ─────────────────────────────────────────────── */
@@ -145,7 +146,7 @@
   @media print{
     body{background:#fff;}
     header{border-bottom:3px solid var(--red);padding:0 0 8px;}
-    .logo{font-size:22px;}.htitle{display:none;}.period,.hubbtn{display:none;}
+    .logo{display:block;height:34px;width:auto;flex:0 0 auto;}.htitle{display:none;}.period,.hubbtn{display:none;}
     .toolbar,.notice,.metrics,.breachbox,.statuscounts,.sechead,#capanel,#addpane,#loadstate,.toast,.datebanner{display:none!important;}
     #printview{display:block!important;}
     #printview table{break-inside:auto;}
@@ -156,7 +157,7 @@
 
   /* ── mobile stacking ──────────────────────────────────────────── */
   @media(max-width:640px){
-    .brand{gap:8px;}.logo{font-size:26px;}.period{text-align:left;}
+    .brand{gap:8px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}.period{text-align:left;}
     #capanel table,#capanel tbody,#capanel tr,#capanel td{display:block;width:auto;}
     #capanel thead{display:none;}
     #capanel tr.datarow{border:1px solid var(--line);border-radius:12px;margin:0 14px 12px;padding:2px 0;background:#fff;}
@@ -179,7 +180,7 @@
 </head>
 <body>
 <header><div class="brand">
-  <div class="lhs"><div class="logo">RED<b>FM</b></div>
+  <div class="lhs"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
   <div class="htitle"><strong>Corrective action tracker — Coolstream UK Ltd</strong>Contract Performance Notice REDFM/CS/CAN-001 · clause 9.3</div></div>
   <div class="period" id="period">RED FM internal tracking<br><a class="hubbtn" href="index.html">⌂ Hub</a></div>
 </div></header>

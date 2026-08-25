@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
+<title>Report a problem — Border Cold Stores</title>
+<style>
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--red);}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .secbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .secbtn{flex:1;min-width:56px;font-size:18px;font-weight:800;padding:12px 0;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .secbtn.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .secbtn .n{display:block;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;}
+  h3{font-size:14px;margin:16px 4px 0;}
+  .test{border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:10px;}
+  .test.done{border-color:var(--ok);background:#f4faf5;}
+  .trow{display:flex;align-items:center;gap:10px;}
+  .chk{width:30px;height:30px;border:2px solid var(--line);border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;background:#fff;cursor:pointer;}
+  .chk.on{background:var(--ok);border-color:var(--ok);}
+  .tname{font-size:15px;font-weight:600;}
+  .fields{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .test.done .fields{display:grid;}
+  .fields .full{grid-column:1/3;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}
+  .toast.show{opacity:1;}
+  @media print{.bar,.toast,.secbar{display:none!important}header{position:static}.fields{display:grid!important}}
+</style>
+<style>
+  textarea{font-family:inherit;line-height:1.45;}
+  body{background:#f5f5f7;}
+  .wrap{max-width:620px;}
+  .big{font-size:17px;font-weight:800;margin:18px 4px 0;}
+  .sub{font-size:14px;color:var(--grey);margin:4px 4px 0;line-height:1.45;}
+  .pick{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .pick button{flex:0 0 auto;min-width:62px;font-size:15px;font-weight:800;padding:12px 14px;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .pick button.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .urg button{width:100%;text-align:left;font-size:15px;font-weight:700;padding:14px;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;margin-top:8px;}
+  .urg button small{display:block;font-weight:500;color:var(--grey);font-size:13px;margin-top:2px;}
+  .urg button.on{border-color:var(--red);background:#fdecee;}
+  .urg button.on small{color:#a4101c;}
+  .photo{display:block;width:100%;padding:16px;border:2px dashed var(--line);border-radius:12px;background:#fff;text-align:center;color:var(--grey);font-weight:700;cursor:pointer;font-size:15px;}
+  .photo.has{border-color:var(--ok);color:var(--ok);background:#f2f9f4;}
+  #prev{max-width:100%;border-radius:10px;margin-top:10px;display:none;}
+  .hint{font-size:13px;color:var(--grey);margin-top:7px;min-height:18px;}
+  .hint.ok{color:var(--ok);font-weight:700;}
+  .done{text-align:center;padding:28px 12px;}
+  .done .tick{font-size:44px;color:var(--ok);}
+  .ref{font-weight:800;font-size:20px;margin-top:6px;}
+</style>
+</head>
+<body>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
+<div class="htitle"><strong>Report a problem</strong>Border Cold Stores, Avonmouth · anything on site · goes straight to RED FM</div></div></header>
+
+<div class="wrap" id="form">
+
+  <div class="note" style="margin-top:14px">Something broken, leaking, tripping or not working? Tell us here. <b>No login needed</b> — it takes about thirty seconds. RED FM picks these up and decides what happens next; you do not need to chase anyone.</div>
+
+  <div class="big">What sort of problem is it?</div>
+  <div class="sub">Your best guess is fine — it just tells us who to send. Pick "not sure" if it isn't obvious.</div>
+  <div class="card urg" id="trade"></div>
+
+  <div class="big">Where is it?</div>
+  <div class="sub">Anywhere on site. If you scanned a label this is already filled in, but you can change it.</div>
+  <div class="card">
+    <input id="where" list="areas" placeholder="e.g. C2 cold store, main loading bay, first floor office">
+    <datalist id="areas"></datalist>
+    <div class="sub" style="margin:8px 0 0 2px">Chambers and plant rooms will suggest themselves as you type.</div>
+  </div>
+
+  <div class="big">What is wrong?</div>
+  <div class="sub">Plain words are fine. What you can see, hear or smell.</div>
+  <div class="card"><textarea id="what" rows="4" placeholder="e.g. water dripping from the cooler onto the pallets under it, been like it since Friday"></textarea></div>
+
+  <div class="big">How urgent is it?</div>
+  <div class="card urg" id="urg"></div>
+
+  <div class="big">Photo</div>
+  <div class="sub">Optional, but a photo usually means it gets fixed without anyone needing to come and look first.</div>
+  <div class="card">
+    <label class="photo" id="plabel" for="photo">Take or choose a photo</label>
+    <input type="file" id="photo" accept="image/*" capture="environment" style="display:none">
+    <img id="prev" alt="">
+  </div>
+
+  <div class="big">Who are you?</div>
+  <div class="sub">So we can come back to you if we need to ask something.</div>
+  <div class="card"><div class="hgrid">
+    <div><label>Your name <span style="color:var(--red)">*</span></label><input id="who" placeholder="Name"></div>
+    <div><label>Phone or email</label><input id="contact" placeholder="Optional"></div>
+  </div></div>
+
+  <div class="card" style="border:none;background:none;padding:4px">
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+
+<div class="wrap" id="done" style="display:none">
+  <div class="card done">
+    <div class="tick">✓</div>
+    <div style="font-weight:800;font-size:18px;margin-top:6px">Thanks — that's logged with RED FM</div>
+    <div class="ref" id="ref"></div>
+    <div class="sub" style="margin-top:10px" id="doneMsg">Someone at RED FM will look at it. You don't need to do anything else.</div>
+    <button class="btn btn-ghost" id="again" style="margin-top:18px">Report something else</button>
+  </div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="send">Send it</button></div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+
+/* Where the report is posted. The endpoint holds the credentials server-side — this page
+   carries no secret of any kind, which is why it can be left open to anyone on site. */
+const SUBMIT_ENDPOINT="/api/report-problem";
+
+const PLACES=["A","B","C1","C2","C3","C4","D1","D2","D3","D4","E1","E2","A&B Plant Room"];
+const URGENCY=[
+  ["Low","Just noting it","Nothing is at risk right now, but somebody should know."],
+  ["Medium","Needs looking at","It is getting worse, or it is not working properly."],
+  ["High","Urgent — product or safety","Temperature is going the wrong way, or somebody could get hurt."]
+];
+/* Trade is the single most useful thing a reporter can tell us: it decides who turns up.
+   "Not sure" is deliberately offered — a wrong guess is worse than an honest shrug. */
+const TRADES=[
+  ["Refrigeration","Refrigeration","Chambers, coolers, compressors, temperature, ice, defrost."],
+  ["Electrical","Electrical","Lighting, power, sockets, panels, anything tripping."],
+  ["Doors & loading bays","Doors and loading bays","Dock levellers, shutters, strip curtains, door seals."],
+  ["Building fabric","Building fabric","Roof, walls, floors, drains, leaks coming from the building."],
+  ["Other / not sure","Something else, or not sure","Tell us what you can see and we will work it out."]
+];
+let urg="", trade="", photoData=null, photoName="";
+
+const qs=new URLSearchParams(location.search);
+const pre=(qs.get('asset')||qs.get('plant')||'').trim();
+
+/* The reporter can type anything. If what they type names a chamber or plant room we
+   still tag it, so repeat detection and the per-asset history keep working. */
+function matchPlace(txt){
+  const t=String(txt||'').trim();
+  if(!t)return "";
+  const up=t.toUpperCase().replace(/[^A-Z0-9& ]/g,' ');
+  const hit=PLACES.filter(p=>p!=='General')
+    .filter(p=>new RegExp('(^|[^A-Z0-9])'+p.toUpperCase().replace(/[&]/g,'\\&').replace(/ /g,'\\s*')+'([^A-Z0-9]|$)').test(up))
+    .sort((a,b)=>b.length-a.length)[0];
+  return hit||"";
+}
+
+function drawTrade(){
+  $('trade').innerHTML=TRADES.map(([k,t,d])=>`<button type="button" data-t="${k}" class="${k===trade?'on':''}">${t}<small>${d}</small></button>`).join('');
+  $('trade').querySelectorAll('button').forEach(b=>b.onclick=()=>{trade=trade===b.dataset.t?'':b.dataset.t;drawTrade();check();});
+}
+function drawUrg(){
+  $('urg').innerHTML=URGENCY.map(([k,t,d])=>`<button type="button" data-u="${k}" class="${k===urg?'on':''}">${t}<small>${d}</small></button>`).join('');
+  $('urg').querySelectorAll('button').forEach(b=>b.onclick=()=>{urg=urg===b.dataset.u?'':b.dataset.u;drawUrg();check();});
+}
+
+/* Downscale on the phone so a 12MP photo does not have to travel over warehouse wifi. */
+function shrink(file){
+  return new Promise(res=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const max=1400,sc=Math.min(1,max/Math.max(img.width,img.height));
+        const c=document.createElement('canvas');
+        c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',0.72));
+      };
+      img.onerror=()=>res(fr.result);
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+$('photo').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  photoName=f.name||'photo.jpg';
+  $('plabel').textContent='Processing…';
+  photoData=await shrink(f);
+  $('prev').src=photoData;$('prev').style.display='block';
+  $('plabel').textContent='Photo attached — tap to change';
+  $('plabel').classList.add('has');
+});
+
+function missing(){
+  const m=[];
+  if(!trade)m.push('what sort of problem it is');
+  if($('where').value.trim().length<2)m.push('where it is');
+  if($('what').value.trim().length<10)m.push('a bit more about what is wrong');
+  if(!urg)m.push('how urgent it is');
+  if(!$('who').value.trim())m.push('your name');
+  return m;
+}
+function check(){
+  const m=missing();
+  const h=$('hint');
+  if(!m.length){h.textContent='Ready to send.';h.className='hint ok';}
+  else{h.textContent='Still needed: '+(m.length===1?m[0]:m.slice(0,-1).join(', ')+' and '+m[m.length-1]);h.className='hint';}
+}
+['what','who','where'].forEach(id=>$(id).addEventListener('input',check));
+
+/* If the post fails (no signal in the chamber, endpoint down) the report is kept on the
+   phone and retried, so a report is never silently lost. */
+const PEND='redfm_pending_reports';
+function stash(p){try{const a=JSON.parse(localStorage.getItem(PEND)||'[]');a.push(p);localStorage.setItem(PEND,JSON.stringify(a));}catch(e){}}
+async function flush(){
+  let a=[];try{a=JSON.parse(localStorage.getItem(PEND)||'[]');}catch(e){return;}
+  if(!a.length)return;
+  const left=[];
+  for(const p of a){try{const r=await fetch(SUBMIT_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!r.ok)left.push(p);}catch(e){left.push(p);}}
+  try{localStorage.setItem(PEND,JSON.stringify(left));}catch(e){}
+}
+
+$('send').addEventListener('click',async()=>{
+  const m=missing();
+  if(m.length){check();toast('Still needed: '+m[0]);return;}
+  const payload={
+    place:$('where').value.trim(),
+    placeCode:matchPlace($('where').value),
+    trade:trade,
+    description:$('what').value.trim(),
+    severity:urg,
+    reportedBy:$('who').value.trim(),
+    contact:$('contact').value.trim(),
+    via:pre?'QR label':'Dashboard',
+    reportedAt:new Date().toISOString(),
+    photoName:photoData?photoName:'',
+    photo:photoData||''
+  };
+  $('send').textContent='Sending…';$('send').disabled=true;
+  let ref='', ok=false;
+  try{
+    const r=await fetch(SUBMIT_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(r.ok){const j=await r.json().catch(()=>({}));ref=j.ref||'';ok=true;}
+  }catch(e){}
+  if(!ok){stash(payload);}
+  $('form').style.display='none';$('done').style.display='block';
+  $('ref').textContent=ref?('Reference '+ref):'';
+  if(!ok)$('doneMsg').textContent='Saved on this phone — it will send itself as soon as you have signal. You can close this page.';
+  window.scrollTo(0,0);
+});
+
+$('again').addEventListener('click',()=>{
+  urg='';trade='';photoData=null;
+  $('what').value='';$('where').value=pre||'';
+  $('prev').style.display='none';$('plabel').textContent='Take or choose a photo';$('plabel').classList.remove('has');
+  $('send').textContent='Send it';$('send').disabled=false;
+  $('done').style.display='none';$('form').style.display='block';
+  drawTrade();drawUrg();check();window.scrollTo(0,0);
+});
+
+$('areas').innerHTML=PLACES.map(p=>`<option value="${p}">`).join('');
+if(pre)$('where').value=pre;
+drawTrade();drawUrg();check();flush();
+</script>
+</body>
+</html>

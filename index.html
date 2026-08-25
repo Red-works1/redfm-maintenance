@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
 <title>RED FM — Border Holdings Maintenance</title>
 <style>
-  :root{--red:#E01322;--ink:#15151a;--grey:#6b6b72;--line:#e6e6ea;--bg:#f5f5f7;--ok:#1a7f37;}
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e6e6ea;--bg:#f5f5f7;--ok:#1a7f37;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
   header{background:#fff;border-bottom:4px solid var(--red);padding:20px 18px;}
   .brand{display:flex;align-items:center;gap:14px;max-width:920px;margin:0 auto;}
-  .logo{font-weight:800;letter-spacing:1.5px;font-size:34px;}.logo b{color:var(--red);}
+  .logo{display:block;height:34px;width:auto;flex:0 0 auto;}
   .htitle{font-size:14px;color:var(--grey);line-height:1.25;}.htitle strong{display:block;color:var(--ink);font-size:18px;}
   .wrap{max-width:920px;margin:0 auto;padding:0 16px 60px;}
   h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:30px 4px 4px;display:flex;align-items:center;gap:10px;}
@@ -31,7 +32,7 @@
 </style>
 </head>
 <body>
-<header><div class="brand"><div class="logo">RED<b>FM</b></div>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
 <div class="htitle"><strong>Border Holdings — Avonmouth maintenance</strong>Delivered by Coolstream · tap a form to open it</div></div></header>
 
 <div class="wrap">
@@ -98,6 +99,18 @@
       <div class="tname">A&amp;B leak detection <span class="go">›</span></div>
       <div class="tdesc">Bacharach unit validation — 100ppm + 1000ppm sensors and system checks.</div>
       <div class="tags"><span class="tag">A&amp;B plant room</span><span class="tag">Cert</span></div></a>
+    <a class="tile" href="RED_FM_Triage.html">
+      <div class="tname">Triage queue <span class="go">›</span></div>
+      <div class="tdesc">Problems reported by Border staff, waiting on a decision. In scope, quote it, or not for us.</div>
+      <div class="tags"><span class="tag">Site reports</span></div></a>
+    <a class="tile" href="RED_FM_Report_a_Problem.html">
+      <div class="tname">Report a problem <span class="go">›</span></div>
+      <div class="tdesc">The page behind the QR labels. No login — anyone on site can raise a fault.</div>
+      <div class="tags"><span class="tag">Public</span></div></a>
+    <a class="tile" href="RED_FM_Vibration_Analysis.html">
+      <div class="tname">Vibration analysis <span class="go">›</span></div>
+      <div class="tdesc">Quarterly overall velocity per compressor with trended assessment. Analysis record required.</div>
+      <div class="tags"><span class="tag">Quarterly</span><span class="tag">Record</span></div></a>
     <a class="tile" href="RED_FM_Oil_Analysis.html">
       <div class="tname">Oil analysis <span class="go">›</span></div>
       <div class="tdesc">Upload the lab's oil analysis report for the A&amp;B packs — files the PDF and marks it done on the dashboard.</div>

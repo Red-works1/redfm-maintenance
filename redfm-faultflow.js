@@ -79,31 +79,31 @@ window.REDFMFaultFlow = (function () {
     s.textContent = [
       ".ff-wrap{position:fixed;inset:0;z-index:9999;background:rgba(21,21,26,.72);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}",
       ".ff-card{background:#fff;border-radius:14px;max-width:640px;width:100%;margin:auto;box-shadow:0 18px 50px rgba(0,0,0,.35);overflow:hidden;font-family:inherit;}",
-      ".ff-head{background:#15151a;color:#fff;padding:16px 18px;}",
+      ".ff-head{background:#1E1E1E;color:#fff;padding:16px 18px;}",
       ".ff-head h3{margin:0;font-size:17px;font-weight:800;letter-spacing:.2px;}",
       ".ff-head p{margin:5px 0 0;font-size:12.5px;color:#b9b9c2;line-height:1.45;}",
       ".ff-bar{height:4px;background:#2a2a33;}",
-      ".ff-bar i{display:block;height:100%;background:#E01322;transition:width .25s ease;}",
+      ".ff-bar i{display:block;height:100%;background:#C8102E;transition:width .25s ease;}",
       ".ff-body{padding:18px;}",
-      ".ff-ctx{background:#f5f5f7;border:1px solid #e3e3e8;border-left:4px solid #E01322;border-radius:10px;padding:12px 14px;margin-bottom:16px;}",
-      ".ff-asset{font-size:21px;font-weight:800;color:#15151a;line-height:1.15;}",
+      ".ff-ctx{background:#f5f5f7;border:1px solid #e3e3e8;border-left:4px solid #C8102E;border-radius:10px;padding:12px 14px;margin-bottom:16px;}",
+      ".ff-asset{font-size:21px;font-weight:800;color:#1E1E1E;line-height:1.15;}",
       ".ff-meta{font-size:12.5px;color:#6b6b72;margin-top:4px;line-height:1.5;}",
-      ".ff-body label{display:block;font-size:13px;font-weight:700;color:#15151a;margin:14px 0 6px;}",
-      ".ff-body label span{color:#E01322;}",
-      ".ff-body textarea,.ff-body select,.ff-body input[type=text],.ff-body input[type=date]{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 12px;border:1.5px solid #e3e3e8;border-radius:10px;background:#fff;color:#15151a;}",
+      ".ff-body label{display:block;font-size:13px;font-weight:700;color:#1E1E1E;margin:14px 0 6px;}",
+      ".ff-body label span{color:#C8102E;}",
+      ".ff-body textarea,.ff-body select,.ff-body input[type=text],.ff-body input[type=date]{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 12px;border:1.5px solid #e3e3e8;border-radius:10px;background:#fff;color:#1E1E1E;}",
       ".ff-body textarea{min-height:76px;resize:vertical;}",
-      ".ff-body textarea:focus,.ff-body select:focus,.ff-body input:focus{outline:none;border-color:#E01322;}",
+      ".ff-body textarea:focus,.ff-body select:focus,.ff-body input:focus{outline:none;border-color:#C8102E;}",
       ".ff-sev{display:flex;gap:8px;}",
       ".ff-sev button{flex:1;font:inherit;font-size:15px;font-weight:700;padding:12px 0;border-radius:10px;border:1.5px solid #e3e3e8;background:#fff;color:#6b6b72;cursor:pointer;}",
       '.ff-sev button.on[data-v="Low"]{background:#eef7f0;color:#1a7f37;border-color:#1a7f37;}',
       '.ff-sev button.on[data-v="Medium"]{background:#fdf3e3;color:#b9770b;border-color:#b9770b;}',
-      '.ff-sev button.on[data-v="High"]{background:#fdecee;color:#E01322;border-color:#E01322;}',
+      '.ff-sev button.on[data-v="High"]{background:#fdecee;color:#C8102E;border-color:#C8102E;}',
       ".ff-ph{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}",
       ".ff-ph .thumb{width:74px;height:74px;border-radius:8px;object-fit:cover;border:1px solid #e3e3e8;}",
-      ".ff-add{width:74px;height:74px;border-radius:8px;border:1.5px dashed #e3e3e8;background:#fff;color:#E01322;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;}",
+      ".ff-add{width:74px;height:74px;border-radius:8px;border:1.5px dashed #e3e3e8;background:#fff;color:#C8102E;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;}",
       ".ff-actions{display:flex;gap:10px;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid #e3e3e8;}",
       ".ff-btn{font:inherit;font-size:15px;font-weight:700;padding:13px 20px;border-radius:10px;border:0;cursor:pointer;}",
-      ".ff-btn.primary{background:#E01322;color:#fff;flex:1;}",
+      ".ff-btn.primary{background:#C8102E;color:#fff;flex:1;}",
       ".ff-btn.primary:disabled{opacity:.5;cursor:default;}",
       ".ff-link{background:none;border:0;font:inherit;font-size:12.5px;color:#6b6b72;text-decoration:underline;cursor:pointer;padding:6px 0;}",
       ".ff-hint{font-size:12.5px;color:#b9770b;margin-top:10px;line-height:1.5;}",
@@ -111,7 +111,7 @@ window.REDFMFaultFlow = (function () {
       ".ff-warn{background:#fdecee;border:1px solid #f6c3c8;color:#8c1018;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:12px;line-height:1.5;}",
       ".ff-done{text-align:center;padding:34px 24px;}",
       ".ff-done .tick{font-size:38px;color:#1a7f37;}",
-      ".ff-done h3{margin:10px 0 6px;font-size:19px;color:#15151a;}",
+      ".ff-done h3{margin:10px 0 6px;font-size:19px;color:#1E1E1E;}",
       ".ff-done p{margin:0;font-size:13.5px;color:#6b6b72;line-height:1.55;}",
       ".ff-banner{background:#fdf3e3;border:1px solid #f0d9a8;border-left:4px solid #b9770b;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13.5px;color:#7a4e05;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}",
       ".ff-banner button{font:inherit;font-size:13.5px;font-weight:700;padding:9px 15px;border-radius:8px;border:0;background:#b9770b;color:#fff;cursor:pointer;}"
@@ -463,7 +463,7 @@ window.REDFMFaultFlow = (function () {
         var body = el("div", "ff-body");
         var ctx = el("div", "ff-ctx");
         ctx.innerHTML = '<div class="ff-asset">' + esc(f.assetId || f.plant || "Plant") +
-          (f.repeatCount > 1 ? ' <span style="font-size:13px;font-weight:700;color:#E01322">&times;' + f.repeatCount + ' flagged</span>' : "") +
+          (f.repeatCount > 1 ? ' <span style="font-size:13px;font-weight:700;color:#C8102E">&times;' + f.repeatCount + ' flagged</span>' : "") +
           "</div>" +
           '<div class="ff-meta">' + esc(f.ref) + (f.line ? " &middot; " + esc(f.line) : "") +
           "<br>" + esc(f.description || "") +
