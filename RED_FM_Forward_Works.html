@@ -47,6 +47,24 @@
   .entry.declined .edesc,.entry.declined .eref{text-decoration:line-through;color:var(--grey);}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;}.toast.show{opacity:1;}
   @media print{.bar,.toast,.modes{display:none!important}header{position:static}}
+  /* ---- forward works status editor -------------------------------------------------- */
+  .fwx{position:fixed;inset:0;background:rgba(20,20,24,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:24px 14px;overflow-y:auto;}
+  .fwx.on{display:flex;}
+  .fwxcard{background:#fff;border-radius:14px;max-width:600px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.3);}
+  .fwxhead{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .fwxhead h3{margin:0;font-size:17px;}
+  .fwxhead .x{border:0;background:none;font-size:24px;line-height:1;color:var(--grey);cursor:pointer;padding:0 4px;}
+  .fwxbody{padding:16px 20px 4px;}
+  .fwxbody label{display:block;font-size:12px;font-weight:700;color:var(--grey);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;}
+  .fwxbody select,.fwxbody input,.fwxbody textarea{width:100%;font-size:15px;padding:10px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;background:#fff;}
+  .fwxbody textarea{min-height:70px;line-height:1.45;}
+  .fwxwhat{background:#fbfbfc;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:13.5px;line-height:1.55;color:var(--grey);}
+  .fwxfoot{padding:14px 20px 20px;display:flex;gap:10px;}
+  .fwxfoot .btn{flex:1;}
+  .fwxnote{font-size:12.5px;color:var(--grey);padding:0 20px 14px;line-height:1.5;}
+  .fwhist{border-left:3px solid var(--line);padding-left:12px;margin:12px 0;}
+  .fwhist .a{font-size:13.5px;font-weight:700;}
+  .fwhist .b{font-size:12.5px;color:var(--grey);margin-top:2px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -112,7 +130,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
-<script src="redfm-data.js?v=16"></script>
+<script src="redfm-data.js?v=17"></script>
 <script src="redfm-draft.js?v=2"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -174,6 +192,9 @@ function renderRegister(rows){
         +'<div class="edesc">'+esc(r.WorkDescription||'')+'</div>'
         +(meta.length?'<div class="meta">'+meta.join('')+'</div>':'')
         +(r.Notes?'<div class="muted" style="margin-top:8px">'+esc(r.Notes)+'</div>':'')
+        +(LIVE&&r._id?'<div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap">'
+            +'<button class="btn btn-ghost editfw" data-id="'+esc(r._id)+'" style="font-size:13px;padding:7px 14px">Update</button>'
+            +'<button class="btn btn-ghost histfw" data-ref="'+esc(r.Title||'')+'" style="font-size:13px;padding:7px 14px;opacity:.85">History</button></div>':'')
         +'</div>';
     });
   });
@@ -181,7 +202,18 @@ function renderRegister(rows){
   $('regMeta').innerHTML=rows.length+' entr'+(rows.length===1?'y':'ies')+' on the register · published snapshot, refreshed hourly';
 }
 
+/* The register used to read only the hourly published snapshot. A snapshot has no item ids,
+   so nothing on it could be changed — which is why the status was stuck at whatever it was
+   created as. Signed in, we now read SharePoint directly and get ids; signed out, the snapshot
+   still works as a read-only view. */
+let LIVE=false;
 async function loadRegister(){
+  if(window.REDFM&&typeof REDFM.listItemsWithId==='function'&&REDFM.getAccount&&REDFM.getAccount()){
+    try{
+      snapRows=await REDFM.listItemsWithId('ForwardWorks');
+      LIVE=true; renderRegister(snapRows); return;
+    }catch(e){ /* fall through to the snapshot */ }
+  }
   try{
     const res=await fetch(SNAP+'?t='+Date.now());
     if(!res.ok){pending('The register publishes hourly — nothing here yet.');return;}
@@ -190,7 +222,7 @@ async function loadRegister(){
       pending('The register publishes hourly — nothing here yet. Entries added today appear here after the next publish.');
       return;
     }
-    snapRows=snap.forwardworks;
+    snapRows=snap.forwardworks; LIVE=false;
     renderRegister(snapRows);
   }catch(e){
     pending('The register publishes hourly — nothing here yet. (Could not reach the published snapshot from this device.)');
@@ -198,9 +230,110 @@ async function loadRegister(){
 }
 loadRegister();
 
+/* ==================================================================================
+   Moving an entry along the register: Recommended → Quoted → Approved → Scheduled →
+   Completed, or Declined. Scheduled without a date is the one combination that is never
+   allowed — "scheduled" with no date is just "approved" wearing a better word, and it is
+   what makes a forward works register quietly useless a year later.
+   Every change is written to the same history list the faults use.
+   ================================================================================== */
+const FW_ALL=["Recommended","Quoted","Approved","Scheduled","Completed","Declined"];
+let FWX=null;
+const fw$=id=>document.getElementById(id);
+function fwWho(){ try{const a=REDFM.getAccount();return (a&&(a.username||a.name))||'unknown';}catch(e){return 'unknown';} }
+function fwxClose(){ fw$('fwx').classList.remove('on'); FWX=null; }
+
+async function fwLog(ref,field,from,to,note){
+  try{
+    await REDFM.addItem('FaultHistory',{Title:(ref||'FW')+' · '+field,FaultRef:String(ref||''),FieldName:field,
+      FromValue:String(from==null?'':from),ToValue:String(to==null?'':to),
+      ChangedBy:fwWho(),ChangedAt:new Date().toISOString(),ChangeNote:String(note||'')});
+  }catch(e){ fw$('fwxnote').textContent='Saved, but the history entry did not write: '+(e.message||e); }
+}
+
+function fwSyncFields(){
+  const st=fw$('fwxstatus').value;
+  fw$('fwxdatewrap').style.display=(st==='Scheduled'||st==='Completed')?'block':'none';
+  fw$('fwxquotewrap').style.display=(st==='Quoted'||st==='Approved'||st==='Scheduled'||st==='Completed')?'block':'none';
+  fw$('fwxdatelabel').textContent=(st==='Completed')?'Date completed':'Date scheduled';
+}
+
+function openFwEditor(id){
+  const r=(snapRows||[]).find(x=>String(x._id)===String(id)); if(!r)return;
+  FWX=r;
+  fw$('fwxtitle').textContent='Update '+(r.Title||'entry');
+  fw$('fwxbody').innerHTML=
+    '<div class="fwxwhat"><b>'+esc(r.AssetId||'')+'</b> · '+esc(r.Category||'')+'<br>'+esc(r.WorkDescription||'')+'</div>'+
+    '<label for="fwxstatus">Status</label><select id="fwxstatus">'+
+      FW_ALL.map(x=>'<option '+(x===(r.WorkStatus||'Recommended')?'selected':'')+'>'+x+'</option>').join('')+'</select>'+
+    '<div id="fwxdatewrap" style="display:none"><label id="fwxdatelabel" for="fwxdate">Date scheduled</label>'+
+      '<input type="date" id="fwxdate" value="'+esc(d10(r.TargetDate)||'')+'"></div>'+
+    '<div id="fwxquotewrap" style="display:none"><label for="fwxquote">Quote reference</label>'+
+      '<input id="fwxquote" value="'+esc(r.QuoteRef||'')+'" placeholder="e.g. CS-2291"></div>'+
+    '<label for="fwxnotes">Notes</label><textarea id="fwxnotes" placeholder="Anything worth knowing about this entry">'+esc(r.Notes||'')+'</textarea>'+
+    '<label for="fwxwhy">Why you are changing it <span style="color:var(--grey);font-weight:600;text-transform:none;letter-spacing:0">(goes in the history)</span></label>'+
+      '<input id="fwxwhy" placeholder="e.g. quote returned, Border approved on the call">';
+  fw$('fwxfoot').innerHTML='<button class="btn btn-red" id="fwxsave">Save</button>'+
+    '<button class="btn btn-ghost" id="fwxcancel">Cancel</button>';
+  fw$('fwxnote').textContent='Signed in as '+fwWho()+' — every change is recorded against this account.';
+  fw$('fwx').classList.add('on');
+  fw$('fwxstatus').addEventListener('change',fwSyncFields); fwSyncFields();
+  fw$('fwxsave').onclick=fwSave; fw$('fwxcancel').onclick=fwxClose;
+}
+
+async function fwSave(){
+  const r=FWX; if(!r)return;
+  const st=fw$('fwxstatus').value;
+  const dt=(fw$('fwxdate')&&fw$('fwxdate').value)||'';
+  if((st==='Scheduled'||st==='Completed')&&!dt){
+    fw$('fwxnote').textContent=(st==='Scheduled'?'A scheduled entry needs a date — that is the whole point of scheduling it.':'Give the date it was completed.');
+    return;
+  }
+  const btn=fw$('fwxsave'); btn.disabled=true; btn.textContent='Saving…';
+  const why=fw$('fwxwhy').value.trim();
+  const next={WorkStatus:st,
+    TargetDate:dt?new Date(dt+'T09:00:00').toISOString():null,
+    QuoteRef:(fw$('fwxquote')&&fw$('fwxquote').value.trim())||'',
+    Notes:fw$('fwxnotes').value};
+  const before={WorkStatus:r.WorkStatus||'Recommended',TargetDate:d10(r.TargetDate)||'',QuoteRef:r.QuoteRef||'',Notes:r.Notes||''};
+  const after ={WorkStatus:next.WorkStatus,TargetDate:dt,QuoteRef:next.QuoteRef,Notes:next.Notes};
+  const changed=Object.keys(after).filter(k=>String(after[k])!==String(before[k]));
+  if(!changed.length){ fw$('fwxnote').textContent='Nothing changed.'; btn.disabled=false; btn.textContent='Save'; return; }
+  try{
+    const payload=Object.assign({},next); if(payload.TargetDate===null) delete payload.TargetDate;
+    await REDFM.updateItem('ForwardWorks',r._id,payload);
+    for(const k of changed) await fwLog(r.Title,k==='TargetDate'?(st==='Completed'?'Date completed':'Date scheduled'):k,before[k],after[k],why);
+    fwxClose(); await loadRegister();
+  }catch(err){ btn.disabled=false; btn.textContent='Save'; fw$('fwxnote').textContent='Did not save: '+(err.message||err); }
+}
+
+async function openFwHistory(ref){
+  fw$('fwxtitle').textContent='History — '+ref;
+  fw$('fwxbody').innerHTML='<div class="fwxwhat">Loading…</div>';
+  fw$('fwxfoot').innerHTML=''; fw$('fwxnote').textContent='';
+  fw$('fwx').classList.add('on');
+  try{
+    const all=await REDFM.listItems('FaultHistory',x=>String(x.FaultRef||'')===String(ref));
+    all.sort((a,b)=>new Date(b.ChangedAt||0)-new Date(a.ChangedAt||0));
+    fw$('fwxbody').innerHTML= all.length? all.map(h=>'<div class="fwhist"><div class="a">'+esc(h.FieldName||'')+'</div><div class="b">'+
+        (esc(h.FromValue)||'(empty)')+' → <b>'+(esc(h.ToValue)||'(empty)')+'</b><br>'+esc(h.ChangedBy||'')+' · '+
+        (h.ChangedAt?new Date(h.ChangedAt).toLocaleString('en-GB'):'')+(h.ChangeNote?'<br><i>'+esc(h.ChangeNote)+'</i>':'')+'</div></div>').join('')
+      : '<div class="fwxwhat">No changes recorded yet.</div>';
+  }catch(e){ fw$('fwxbody').innerHTML='<div class="fwxwhat">Could not read the history: '+esc(e.message||e)+'</div>'; }
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target; if(!t||!t.closest)return;
+  const ed=t.closest('.editfw'); if(ed){e.preventDefault();openFwEditor(ed.dataset.id);return;}
+  const hi=t.closest('.histfw'); if(hi){e.preventDefault();openFwHistory(hi.dataset.ref||'');return;}
+  if(t.id==='fwxclose'||t.id==='fwx'){fwxClose();}
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') fwxClose(); });
+
+
 // ── SharePoint ─────────────────────────────────────────────────────────────
 let redfmReady=!!window.REDFM, signedIn=false;
-if(redfmReady){REDFM.init().then(s=>{signedIn=s;}).catch(()=>{redfmReady=false;});}
+if(redfmReady){REDFM.init().then(s=>{signedIn=s;if(s)loadRegister();}).catch(()=>{redfmReady=false;});}
 
 // Simple shared sequential ref (FW-1001, FW-1002 …) — same max-trailing-number
 // pattern as the fault register; falls back to the timestamp ref if the list
@@ -271,5 +404,11 @@ REDFMDraft.init({key:'forwardworks',extra:{
   restore:function(o){if(o.mode==='add')setMode('add');}
 }});
 </script>
+<div class="fwx" id="fwx"><div class="fwxcard">
+  <div class="fwxhead"><h3 id="fwxtitle">Update entry</h3><button class="x" id="fwxclose" aria-label="Close">&times;</button></div>
+  <div class="fwxbody" id="fwxbody"></div>
+  <div class="fwxfoot" id="fwxfoot"></div>
+  <div class="fwxnote" id="fwxnote"></div>
+</div></div>
 </body>
 </html>

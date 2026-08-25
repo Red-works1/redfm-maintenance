@@ -107,24 +107,27 @@
   .modalsec span{color:var(--grey);font-weight:600;}
   .modalnote{padding:10px 20px 16px;font-size:12px;color:var(--grey);}
   .tblscroll{overflow-x:auto;}
-  /* The fault list carries three columns of real prose — fault, action taken and closure
-     evidence. Left to share the card width with nine short columns they collapsed to about
-     one word per line, which is unreadable on the page and worse in print. Give the prose
-     columns a floor and let the table scroll sideways instead of wrapping to nothing. */
-  table.faulttbl{min-width:1460px;}
-  table.faulttbl th,table.faulttbl td{vertical-align:top;}
-  table.faulttbl td.wide{min-width:250px;line-height:1.5;}
-  table.faulttbl td.closcell{min-width:210px;}
-  table.faulttbl th:nth-child(1),table.faulttbl td:nth-child(1){min-width:104px;}
-  table.faulttbl th:nth-child(2),table.faulttbl td:nth-child(2){min-width:66px;}
-  table.faulttbl th:nth-child(3),table.faulttbl td:nth-child(3){min-width:84px;}
-  table.faulttbl th:nth-child(5),table.faulttbl td:nth-child(5){min-width:104px;}
-  table.faulttbl th:nth-child(7),table.faulttbl td:nth-child(7){min-width:92px;}
-  table.faulttbl th:nth-child(8),table.faulttbl td:nth-child(8){min-width:78px;}
-  table.faulttbl th:nth-child(10),table.faulttbl td:nth-child(10){min-width:88px;}
-  /* Call-out detail is prose too. */
-  #calloutbox table{min-width:900px;}
-  #calloutbox td:nth-child(5){min-width:340px;line-height:1.5;}
+  /* A fault has three fields of real prose and seven short ones. That is not a table — every
+     attempt to make it one either crushes the sentences or forces sideways scrolling, and on a
+     phone it does both. Each fault is a card instead: the short facts as chips across the top,
+     the prose full width underneath. Identical on a laptop and a phone, never scrolls sideways. */
+  .fcard{background:#fff;border:1px solid var(--line);border-left:4px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 18px 12px;}
+  .fcard.s-High{border-left-color:var(--red);} .fcard.s-Medium{border-left-color:var(--amber);} .fcard.s-Low{border-left-color:var(--ok);}
+  .fcard.rep-r{background:#fdf6f7;} .fcard.rep-a{background:#fdfaf3;}
+  .fhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  .fref{font-size:15px;font-weight:800;letter-spacing:-.2px;}
+  .chip{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:#eef0f2;color:var(--grey);white-space:nowrap;}
+  .chip.asset{background:#fdecee;color:var(--red);cursor:pointer;text-decoration:none;}
+  .fage{font-size:12px;font-weight:700;color:var(--grey);margin-left:auto;white-space:nowrap;}
+  .fage.open-a{color:var(--amber);} .fage.open-r{color:var(--red);}
+  .fbody{margin-top:11px;}
+  .fl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);margin-top:11px;}
+  .ft{font-size:14px;line-height:1.55;margin-top:3px;}
+  .ffoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:13px;padding-top:11px;border-top:1px solid var(--line);}
+  .ffoot .raised{font-size:12.5px;color:var(--grey);margin-right:auto;}
+  .ffoot .btn{font-size:13px;padding:7px 14px;}
+  @media(max-width:560px){ .fcard{margin:0 12px 12px;padding:13px 14px;} .fage{margin-left:0;width:100%;} .ffoot .btn{flex:1;} }
+  @media print{ .fcard{break-inside:avoid;border-left-width:3px;} .ffoot .btn{display:none;} }
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
@@ -226,7 +229,7 @@
 
     <div class="sechead">
       <h2><a href="RED_FM_Forward_Works.html" style="color:var(--ink);text-decoration:none;border-bottom:2px solid var(--red);">Forward works</a></h2>
-      <div class="legend"><span>Indicative budget figures</span><a href="RED_FM_Forward_Works.html" style="color:var(--red);font-weight:700;text-decoration:none;">Full register →</a></div>
+      <div class="legend"><span>Counts only — no figures</span><a href="RED_FM_Forward_Works.html" style="color:var(--red);font-weight:700;text-decoration:none;">Full register →</a></div>
     </div>
     <div class="card" id="fwbox"></div>
   </div>
@@ -671,9 +674,8 @@ const FW_CATEGORIES=["Deferred remedial","Seasonal","Recommendation","Improvemen
 const FW_CLOSED=["Completed","Declined"];      // everything else is still outstanding
 const FW_OLDEST=3;
 function fwStatus(w){const s=String((w&&w.WorkStatus)||'').trim();return FW_STATUSES.indexOf(s)!==-1?s:FW_STATUSES[0];}
-// BudgetCost is an indicative budget figure the client may see; it may arrive as a number or as text
-function fwBudget(w){const n=Number(String((w&&w.BudgetCost)==null?'':w.BudgetCost).replace(/[^0-9.\-]/g,''));return isFinite(n)?n:0;}
-function money(n){return '£'+Math.round(n).toLocaleString('en-GB');}
+// Budget figures are deliberately not read or formatted on this page — see the note in
+// renderForward(). If a figure is ever needed here again it belongs behind the redfm role first.
 function renderForward(works){
   if(works==null){$('fwbox').innerHTML='<div class="empty">Forward works records are not available in this view.</div>';return;}
   if(!works.length){$('fwbox').innerHTML='<div class="empty">No forward works recorded.</div>'+srcNote();return;}
@@ -683,7 +685,6 @@ function renderForward(works){
     const c=String(w.Category||'').trim();
     if(byCat[c]!=null)byCat[c]++;else otherCat++;});
   const outstanding=works.filter(w=>FW_CLOSED.indexOf(fwStatus(w))===-1);
-  const budget=outstanding.reduce((a,w)=>a+fwBudget(w),0);
   const oldest=works.filter(w=>fwStatus(w)==="Recommended").slice()
     .sort((a,b)=>new Date(a.RaisedDate||0)-new Date(b.RaisedDate||0)).slice(0,FW_OLDEST);
   const scls={"Recommended":"us","Completed":"fixed"};
@@ -692,9 +693,12 @@ function renderForward(works){
   const cats=FW_CATEGORIES.map(c=>`<div class="stage"><div class="c">${byCat[c]}</div><div class="s">${c}</div></div>`).join('')+
     (otherCat?`<div class="stage"><div class="c">${otherCat}</div><div class="s">Other</div></div>`:'');
   const cat=`<div class="cohead">By category</div><div class="pipe">${cats}</div>`;
-  const bud=`<div class="cohead">Indicative budget <span>· items not completed or declined</span></div>`+
-    `<div class="pipe"><div class="stage co"><div class="c">${money(budget)}</div><div class="s">indicative budget total</div></div>`+
-    `<div class="stage"><div class="c">${outstanding.length}</div><div class="s">items outstanding</div></div></div>`;
+  /* No money on this page. Neither the dashboard nor the client view is behind a login, and
+     the footer promises "no commercial figures" — a running total of what the site is about to
+     be quoted is exactly the figure that should not be sitting on a guessable URL. The count of
+     outstanding items is the useful half and carries no commercial information. */
+  const bud=`<div class="cohead">Outstanding <span>· not completed or declined</span></div>`+
+    `<div class="pipe"><div class="stage co"><div class="c">${outstanding.length}</div><div class="s">items outstanding</div></div></div>`;
   const old=oldest.length?`<div class="cohead">Oldest still at Recommended <span>· ${oldest.length} shown</span></div>`+
     `<div class="tblscroll"><table><thead><tr><th>Ref</th><th>Asset</th><th>Work</th><th>Category</th><th>Raised</th><th>Waiting</th></tr></thead><tbody>`+
     oldest.map(w=>`<tr><td data-label="Ref"><b>${esc(w.Title||'')||'—'}</b></td>
@@ -744,33 +748,46 @@ function render(){
   if(!C.open.length){$('faulttable').innerHTML='<div class="empty">No open faults — all clear.</div>';}
   else{
     const rows=C.open.slice().sort((a,b)=>new Date(a.FaultDate)-new Date(b.FaultDate)).map(f=>{
-      const st=f.Stage||"Reported";const who=STAGE_WHO[st];
-      const upd=EDITABLE?`<td class="upd">
-        <select class="fsev" data-id="${f._id}" style="font-size:12px;padding:3px;margin-right:4px;">${SEVERITIES.map(s=>`<option ${s===(f.Severity||'Low')?'selected':''}>${s}</option>`).join('')}</select>
-        <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
-        <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
-        <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
-      const rc=repeatCount(f);                                   // item 6 — repeat counter / escalation
+      const st=f.Stage||"Reported";
+      const rc=repeatCount(f);
       const rcls=rc>=3?'rep-r':(rc===2?'rep-a':'');
       const triaging=String(f.TriageStatus||'').trim()==='Awaiting triage';
-      const age=(!triaging&&f.FaultDate)?ageDays(f.FaultDate):null;   // item 7 — ageing, amber 14+, red 30+
+      const age=(!triaging&&f.FaultDate)?ageDays(f.FaultDate):null;
       const acls=age==null?'':(age>=30?'open-r':(age>=14?'open-a':''));
-      const asset=f.AssetId||f.Plant||'';                         // item 14 — asset history link
-      return `<tr${rcls?' class="'+rcls+'"':''}><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b>${rc>=2?`<span class="flags">\u00d7${rc}</span>`:''}${rc>=3?'<span class="esc">ESCALATED</span>':''}</td><td data-label="Asset">${asset?`<a href="#" class="assetlink" data-asset="${esc(asset)}">${esc(asset)}</a>`:(f.Plant?esc(f.Plant):'')}</td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
-        <td class="wide" data-label="Fault">${(f.Description||'').replace(/</g,'&lt;')}</td><td data-label="Stage">${STAGE_LABEL[st]}</td>
-        <td class="wide" data-label="Action taken">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
-        <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
-        <td data-label="Open (days)"><span class="${acls}">${triaging?'<i style="color:#c2860c;font-style:normal;font-weight:700">awaiting triage</i>':(age==null?'':age)}</span></td>
-        <td class="wide closcell" data-label="Closure evidence / why open">${closureCell(f)}</td>
-        <td data-label="Whose action"><span class="who ${whoOf(f)==='Border'?'Border':'RED'}">${whoOf(f)}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<div class="tblscroll"><table class="faulttbl"><thead><tr><th>Ref</th><th>Asset</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Open (days)</th><th>Closure evidence / why open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
+      const asset=f.AssetId||f.Plant||'';
+      const sev=f.Severity||'Low';
+      const who=whoOf(f);
+      const clos=closureCell(f);
+      const ageTxt=triaging?'awaiting triage':(age==null?'':age+' day'+(age===1?'':'s')+' open');
+      return `<div class="fcard s-${sev} ${rcls}">
+        <div class="fhead">
+          <span class="fref">${esc(f.Title||f.FaultRef||'')}</span>
+          <span class="sev ${sev}">${esc(sev)}</span>
+          ${asset?`<a href="#" class="chip asset assetlink" data-asset="${esc(asset)}">${esc(asset)}</a>`:''}
+          <span class="chip">${esc(STAGE_LABEL[st]||st)}</span>
+          <span class="who ${who==='Border'?'Border':'RED'}">${esc(who)}</span>
+          ${rc>=2?`<span class="flags">×${rc}</span>`:''}${rc>=3?'<span class="esc">ESCALATED</span>':''}
+          <span class="fage ${acls}">${ageTxt}</span>
+        </div>
+        <div class="fbody">
+          <div class="fl">Fault</div><div class="ft">${(f.Description||'').replace(/</g,'&lt;')||'—'}</div>
+          <div class="fl">Action taken</div><div class="ft">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</div>
+          ${clos&&clos!=='—'?`<div class="fl">Closure evidence / why open</div><div class="ft">${clos}</div>`:''}
+        </div>
+        <div class="ffoot"><span class="raised">Raised ${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):'—'}</span></div>
+      </div>`;}).join('');
+    $('faulttable').innerHTML=rows;
   }
 
   const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
   $('calloutbox').innerHTML=`<div class="cohead">Call-out log <span>(${co.length} total)</span></div>`+
-    (co.length?`<div class="tblscroll"><table><thead><tr><th>Ref</th><th>Asset</th><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
-      co.map(f=>`<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Asset">${f.AssetId||f.Plant||''}</td><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
-      `</tbody></table></div>`:`<div class="empty">No call-outs logged.</div>`);
+    (co.length?co.map(f=>`<div class="fcard">
+        <div class="fhead"><span class="fref">${esc(f.Title||f.FaultRef||'')}</span>
+          ${(f.AssetId||f.Plant)?`<span class="chip asset">${esc(f.AssetId||f.Plant)}</span>`:''}
+          <span class="fage">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):'—'}</span></div>
+        <div class="fbody"><div class="ft">${(f.Description||'').replace(/</g,'&lt;')||'—'}</div></div>
+        <div class="ffoot"><span class="raised">Logged by ${esc(f.RaisedBy||'—')}</span></div>
+      </div>`).join(''):`<div class="empty">No call-outs logged.</div>`);
 
   $('period').innerHTML='Read-only · '+(window.SNAPLABEL||'live');
 }
