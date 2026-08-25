@@ -80,7 +80,7 @@
   <!-- ─── VIEW THE REGISTER ─────────────────────────────────────────────── -->
   <div id="viewPane">
     <div class="card">
-      <div class="note">Deferred, seasonal and recommended work, each with the window we recommend it is done in — so it comes round on a plan instead of sitting on the live fault list. Budget figures are <b>indicative planning figures</b>, not quotations.</div>
+      <div class="note">Deferred, seasonal and recommended work, each with the window we recommend it is done in — so it comes round on a plan instead of sitting on the live fault list. Status, window and category only — no commercial figures are shown here.</div>
       <div class="muted" id="regMeta" style="margin-top:10px">Loading the register…</div>
     </div>
     <div id="reg"></div>
@@ -109,10 +109,10 @@
       <input id="fWindow" placeholder="e.g. Oct–Nov 2026, before next summer">
 
       <div class="row">
-        <div><label>Indicative budget (£)</label><input id="fCost" type="number" inputmode="decimal" min="0" step="1" placeholder="e.g. 1200"></div>
+        <div><label>Indicative budget (£) <span class="muted" style="font-weight:400">· internal only</span></label><input id="fCost" type="number" inputmode="decimal" min="0" step="1" placeholder="e.g. 1200"></div>
         <div><label>Target date</label><input id="fTarget" type="date"></div>
       </div>
-      <div class="muted" style="margin-top:6px">Budget is an <b>indicative planning figure only</b> — it is not a quotation and it is shown to Border as such.</div>
+      <div class="muted" style="margin-top:6px">Budget is an <b>indicative planning figure only</b>, recorded for RED FM planning. It is not a quotation and it is <b>not displayed</b> on the register.</div>
 
       <label>Raised by <span class="req">*</span></label>
       <input id="fBy" placeholder="Your name">
@@ -161,11 +161,6 @@ function statusClass(s){
   if(v==='declined')return 's-declined';
   return '';                       // Recommended (and anything unknown) — grey
 }
-function money(v){
-  if(v==null||v==='')return '';
-  const n=Number(v);if(!isFinite(n))return String(v);
-  return '£'+n.toLocaleString('en-GB',{maximumFractionDigits:0});
-}
 function d10(v){return v?String(v).slice(0,10):'';}
 function pending(msg){$('regMeta').innerHTML=msg;$('reg').innerHTML='';}
 
@@ -181,7 +176,6 @@ function renderRegister(rows){
       const cls=statusClass(r.WorkStatus);
       const meta=[];
       if(r.RecommendedWindow)meta.push('<span class="m">Window <b>'+esc(r.RecommendedWindow)+'</b></span>');
-      if(r.BudgetCost!=null&&r.BudgetCost!=='')meta.push('<span class="m">Indicative budget <b>'+esc(money(r.BudgetCost))+'</b></span>');
       if(r.TargetDate)meta.push('<span class="m">Target <b>'+esc(d10(r.TargetDate))+'</b></span>');
       if(r.RaisedDate)meta.push('<span class="m">Raised <b>'+esc(d10(r.RaisedDate))+'</b></span>');
       if(r.QuoteRef)meta.push('<span class="m">Quote <b>'+esc(r.QuoteRef)+'</b></span>');
