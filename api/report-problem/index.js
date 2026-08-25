@@ -107,7 +107,8 @@ module.exports = async function (context, req) {
     if (!list) throw new Error("FaultRegister list not found");
 
     const ref = await nextRef(tk, site.id, list.id);
-    const today = new Date().toISOString().slice(0, 10);
+        // Azure runs in UTC; between 00:00 and 01:00 BST that is still yesterday, and FaultDate starts the 48h clock in clause 4.1.
+    const today = (() => { try { const d = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" }); if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d; } catch (e) {} return new Date().toISOString().slice(0, 10); })();
 
     const detail = description
       + `\n\nLocation as given: ${place}`
