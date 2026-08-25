@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
+<title>RED FM — Log an RDM alarm</title>
+<style>
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amb:#c2860c;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 130px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;}
+  .note{font-size:13px;color:var(--grey);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:11px 13px;margin-top:12px;line-height:1.5;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;}
+  input,textarea,select{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font-family:inherit;}
+  textarea{line-height:1.45;min-height:76px;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--red);}
+  .f{margin-top:12px;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:520px){.two{grid-template-columns:1fr;}}
+  .tabs{display:flex;gap:8px;margin-top:14px;}
+  .tab{flex:1;font-size:14px;font-weight:800;padding:12px 6px;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .tab.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .tab .n{display:inline-block;margin-left:6px;font-size:11px;background:rgba(0,0,0,.12);border-radius:20px;padding:1px 7px;}
+  .btn{font-size:16px;font-weight:700;padding:14px 18px;border-radius:11px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:760px;margin:0 auto;}.bar .btn{width:100%;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:82px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:30;font-weight:600;max-width:92%;text-align:center;}
+  .toast.show{opacity:1;}
+  .al{background:#fff;border:1px solid var(--line);border-left:4px solid var(--amb);border-radius:12px;padding:13px 14px;margin-top:11px;}
+  .al.long{border-left-color:var(--red);}
+  .al h4{margin:0;font-size:15px;}
+  .meta{font-size:12.5px;color:var(--grey);margin-top:4px;}
+  .hrs{font-weight:800;}.al.long .hrs{color:var(--red);}
+  .close{display:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
+  .al.open .close{display:block;}
+  .empty{text-align:center;color:var(--grey);padding:30px 12px;}
+  .muted{color:var(--grey);font-size:12px;}
+  .req{color:var(--red);}
+</style>
+</head>
+<body>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
+<div class="htitle"><strong>RDM alarms</strong>Log an alarm when it happens · clause 4.4</div>
+<a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" id="tabNew">Log an alarm</button>
+    <button class="tab" id="tabOpen">Still active<span class="n" id="openN">·</span></button>
+  </div>
+
+  <div id="paneNew">
+    <div class="note">Use this the moment you act on an alarm — not at the next weekly visit. An alarm that fires on a Thursday and clears on a Friday leaves no trace on a weekly sheet, and the clock in clause 4.4(c) runs from when the alarm started, not from when someone wrote it down.</div>
+
+    <div class="card">
+      <div class="f"><label for="text">What the alarm says <span class="req">*</span></label>
+        <textarea id="text" placeholder="e.g. C2 high temperature alarm, -14.2°C against -18 setpoint"></textarea></div>
+
+      <div class="two">
+        <div class="f"><label for="asset">Asset / chamber</label>
+          <input id="asset" list="assets" placeholder="e.g. C2" autocomplete="off">
+          <datalist id="assets"></datalist></div>
+        <div class="f"><label for="since">Alarm started <span class="req">*</span></label>
+          <input type="datetime-local" id="since"></div>
+      </div>
+
+      <div class="two">
+        <div class="f"><label for="how">How you picked it up</label>
+          <select id="how">
+            <option>RDM notification</option>
+            <option>Call from Border</option>
+            <option>Seen on site</option>
+            <option>Found on RDM history</option>
+          </select></div>
+        <div class="f"><label for="by">Your name <span class="req">*</span></label>
+          <input id="by" placeholder="Engineer name" autocomplete="name"></div>
+      </div>
+
+      <div class="f"><label for="outcome">Where it stands now <span class="req">*</span></label>
+        <select id="outcome">
+          <option value="">Choose…</option>
+          <option value="Ongoing">Still active — not resolved yet</option>
+          <option value="Actioned">Actioned — alarm cleared</option>
+          <option value="Acknowledged - no action">Acknowledged — no action needed</option>
+        </select></div>
+
+      <div class="f" id="clearedWrap" style="display:none"><label for="cleared">Alarm cleared at <span class="req">*</span></label>
+        <input type="datetime-local" id="cleared"></div>
+
+      <div class="f"><label for="action">What was done, or why no action was needed <span class="req">*</span></label>
+        <textarea id="action" placeholder="Be specific — this is the record that shows the alarm was dealt with"></textarea></div>
+
+      <div class="note" id="notifyNote" style="display:none"></div>
+    </div>
+  </div>
+
+  <div id="paneOpen" style="display:none">
+    <div class="note">Alarms logged as still active. Close each one off when it clears — until you do, it keeps counting and will show on the dashboard as running.</div>
+    <div id="openList"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<div class="bar"><div class="inner"><button class="btn btn-red" id="save">Log this alarm</button></div></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=17"></script>
+<script>
+const $=id=>document.getElementById(id);
+function toast(m,ms){const t=$('toast');t.textContent=m;t.className='toast show';setTimeout(()=>t.className='toast',ms||3200);}
+const PLANTS=["A","B","C1","C2","C3","C4","D1","D2","D3","D4","E1","E2","A&B Plant Room"];
+$('assets').innerHTML=PLANTS.map(p=>'<option value="'+p+'">').join('');
+
+const LONG_HOURS=24;                       // clause 4.4(c) — written notification within one business day
+const pad=n=>String(n).padStart(2,'0');
+function localNow(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());}
+$('since').value=localNow();
+const hoursBetween=(a,b)=>(b-a)/36e5;
+const fmt=d=>d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+function hoursText(h){if(h==null)return '—';return h<48?Math.round(h)+' hours':Math.round(h/24)+' days';}
+
+/* Outcome drives two things: whether we ask when it cleared, and whether RED FM has to be
+   notified in writing. Both are the engineer's to state — neither is inferred silently. */
+function syncOutcome(){
+  const v=$('outcome').value;
+  const needsCleared=(v==='Actioned'||v==='Acknowledged - no action');
+  $('clearedWrap').style.display=needsCleared?'block':'none';
+  if(needsCleared&&!$('cleared').value)$('cleared').value=localNow();
+  const since=$('since').value?new Date($('since').value):null;
+  const end=needsCleared&&$('cleared').value?new Date($('cleared').value):new Date();
+  const n=$('notifyNote');
+  if(since&&!isNaN(since)){
+    const h=hoursBetween(since,end);
+    if(h>LONG_HOURS){n.style.display='block';
+      n.innerHTML='<b>This alarm ran '+hoursText(h)+'.</b> Anything over 24 hours needs written notification to RED FM under clause 4.4(c). It will be flagged as due when you log it.';}
+    else n.style.display='none';
+  } else n.style.display='none';
+}
+['outcome','since','cleared'].forEach(id=>$(id).addEventListener('change',syncOutcome));
+
+function readForm(){
+  const text=$('text').value.trim(), by=$('by').value.trim(), action=$('action').value.trim();
+  const outcome=$('outcome').value, sinceRaw=$('since').value;
+  if(text.length<5)return {err:'Say what the alarm says.'};
+  if(!sinceRaw)return {err:'When did the alarm start?'};
+  if(!by)return {err:'We need your name on the record.'};
+  if(!outcome)return {err:'Say where the alarm stands now.'};
+  if(action.length<5)return {err:'Say what was done, or why no action was needed.'};
+  const needsCleared=(outcome==='Actioned'||outcome==='Acknowledged - no action');
+  if(needsCleared&&!$('cleared').value)return {err:'When did the alarm clear?'};
+  const since=new Date(sinceRaw);
+  const cleared=needsCleared?new Date($('cleared').value):null;
+  if(cleared&&cleared<since)return {err:'The alarm cannot clear before it started.'};
+  const h=hoursBetween(since,cleared||new Date());
+  return {fields:{
+    Title:'RDM-'+Date.now().toString().slice(-8),
+    VisitRef:'',
+    AlarmDate:since.toISOString(),
+    ActiveSince:since.toISOString(),
+    ClearedAt:cleared?cleared.toISOString():null,
+    AssetId:$('asset').value.trim(),
+    AlarmText:text,
+    Outcome:outcome,
+    ActionTaken:action+' · picked up: '+$('how').value,
+    RaisedBy:by,
+    HoursActive:Math.round(h*10)/10,
+    NotifiedRedFm:h>LONG_HOURS?'Due':'Not required',
+    Source:'Logged at the time'
+  }};
+}
+
+$('save').onclick=async function(){
+  const r=readForm();
+  if(r.err){toast(r.err);return;}
+  this.textContent='Saving…';this.disabled=true;
+  try{
+    if(!REDFM.getAccount())await REDFM.signIn();
+    const f=Object.assign({},r.fields);
+    if(f.ClearedAt===null)delete f.ClearedAt;
+    await REDFM.addItem('RDMAlarms',f);
+    toast('Alarm logged ✓'+(f.NotifiedRedFm==='Due'?' — flagged for written notification':''),4200);
+    ['text','asset','action','cleared'].forEach(id=>$(id).value='');
+    $('outcome').value='';$('since').value=localNow();syncOutcome();
+    loadOpen();
+  }catch(e){toast('Did not save: '+(e.message||e),6000);}
+  this.textContent='Log this alarm';this.disabled=false;
+};
+
+/* ---- still-active list ---------------------------------------------------- */
+let openRows=[];
+async function loadOpen(){
+  try{
+    if(!REDFM.getAccount())return;
+    const all=await REDFM.listItemsWithId('RDMAlarms');
+    openRows=all.filter(a=>!a.ClearedAt&&String(a.Outcome||'')==='Ongoing')
+                .sort((a,b)=>new Date(a.ActiveSince||a.AlarmDate||0)-new Date(b.ActiveSince||b.AlarmDate||0));
+    $('openN').textContent=openRows.length;
+    renderOpen();
+  }catch(e){$('openList').innerHTML='<div class="empty">Could not read the alarm list: '+(e.message||e)+'</div>';}
+}
+function renderOpen(){
+  if(!openRows.length){$('openList').innerHTML='<div class="empty">Nothing still running.</div>';return;}
+  const now=new Date();
+  $('openList').innerHTML=openRows.map((a,i)=>{
+    const s=new Date(a.ActiveSince||a.AlarmDate);
+    const h=isNaN(s)?null:hoursBetween(s,now);
+    const lng=h!=null&&h>LONG_HOURS;
+    return '<div class="al'+(lng?' long':'')+'" id="al'+i+'">'+
+      '<h4>'+esc(a.AssetId||'—')+' · '+esc(String(a.AlarmText||'').slice(0,90))+'</h4>'+
+      '<div class="meta">Started '+(isNaN(s)?'—':fmt(s))+' · running <span class="hrs">'+hoursText(h)+'</span>'+
+      ' · logged by '+esc(a.RaisedBy||'—')+(a.NotifiedRedFm==='Due'?' · <b>notification due</b>':'')+'</div>'+
+      '<button class="btn btn-ghost" style="margin-top:10px;padding:9px 14px;font-size:14px" onclick="openClose('+i+')">It has cleared</button>'+
+      '<div class="close">'+
+        '<div class="f"><label>Cleared at</label><input type="datetime-local" id="c'+i+'" value="'+localNow()+'"></div>'+
+        '<div class="f"><label>Outcome</label><select id="o'+i+'"><option>Actioned</option><option>Acknowledged - no action</option></select></div>'+
+        '<div class="f"><label>What was done</label><textarea id="a'+i+'" placeholder="What resolved it"></textarea></div>'+
+        '<button class="btn btn-red" style="margin-top:10px;width:100%" onclick="doClose('+i+')">Close this alarm</button>'+
+      '</div></div>';}).join('');
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+window.openClose=i=>{const el=$('al'+i);el.className=el.className.indexOf('open')===-1?el.className+' open':el.className.replace(' open','');};
+window.doClose=async i=>{
+  const a=openRows[i];
+  const cleared=$('c'+i).value, act=$('a'+i).value.trim(), out=$('o'+i).value;
+  if(!cleared){toast('When did it clear?');return;}
+  if(act.length<5){toast('Say what resolved it.');return;}
+  const s=new Date(a.ActiveSince||a.AlarmDate), c=new Date(cleared);
+  if(c<s){toast('It cannot clear before it started.');return;}
+  const h=hoursBetween(s,c);
+  try{
+    await REDFM.updateItem('RDMAlarms',a._id,{
+      ClearedAt:c.toISOString(),Outcome:out,
+      ActionTaken:String(a.ActionTaken||'')+' · CLOSED: '+act,
+      HoursActive:Math.round(h*10)/10,
+      NotifiedRedFm:h>LONG_HOURS?(a.NotifiedRedFm==='Sent'?'Sent':'Due'):'Not required'});
+    toast('Closed ✓ — ran '+hoursText(h));
+    loadOpen();
+  }catch(e){toast('Did not close: '+(e.message||e),6000);}
+};
+
+$('tabNew').onclick=()=>{$('tabNew').className='tab on';$('tabOpen').className='tab';
+  $('paneNew').style.display='';$('paneOpen').style.display='none';$('save').style.display='';};
+$('tabOpen').onclick=async()=>{$('tabOpen').className='tab on';$('tabNew').className='tab';
+  $('paneOpen').style.display='';$('paneNew').style.display='none';$('save').style.display='none';
+  if(!REDFM.getAccount()){try{await REDFM.signIn();}catch(e){}}
+  loadOpen();};
+
+(async()=>{try{await REDFM.init();if(REDFM.getAccount())loadOpen();}catch(e){}})();
+</script>
+</body>
+</html>

@@ -545,7 +545,11 @@ const RDM_LONG_HOURS=24;             // clause 4.4(c): written notification with
 const RDM_ACK="Acknowledged - no action";
 const RDM_NOT_RECORDED="not recorded";
 function alarmHours(a){
-  if(a&&a.ActiveSince){const d=new Date(a.ActiveSince);if(!isNaN(d))return Math.max(0,(now-d)/3600000);}
+  // An alarm that has been closed out is measured to the moment it cleared, not to now —
+  // otherwise a resolved alarm keeps growing forever and every old record eventually reads as a breach.
+  if(a&&a.ActiveSince){const d=new Date(a.ActiveSince);
+    if(!isNaN(d)){const c=a.ClearedAt?new Date(a.ClearedAt):null;
+      return Math.max(0,(((c&&!isNaN(c))?c:now)-d)/3600000);}}
   const n=Number(a&&a.HoursActive);  // the engineer's own figure where ActiveSince was not captured
   return isFinite(n)&&n>0?n:null;
 }
@@ -591,7 +595,7 @@ function renderRdm(visits,alarms){
       <td data-label="Outcome">${esc(a.Outcome||'')||'—'}</td>
       <td class="wide" data-label="Action taken">${esc(a.ActionTaken||'')||'—'}</td>
       <td data-label="Raised by">${esc(a.RaisedBy||'')||'—'}</td>
-      <td data-label="Active for"><span class="${lng?'hrs':''}">${hoursText(h)}</span></td></tr>`;}).join('');
+      <td data-label="Active for"><span class="${lng?'hrs':''}">${hoursText(h)}</span>${a.ClearedAt?'':' <b>still running</b>'}</td></tr>`;}).join('');
   const line=missing.length?'':`<div class="empty">✓ All ${wk.length} weekly report${wk.length===1?'':'s'} this period recorded an RDM answer.</div>`;
   $('rdmbox').innerHTML=banner+line+
     `<div class="tblscroll"><table><thead><tr><th>Date</th><th>Asset</th><th>Alarm</th><th>Outcome</th><th>Action taken</th><th>Raised by</th><th>Active for</th></tr></thead><tbody>${rows}</tbody></table></div>`+srcNote();

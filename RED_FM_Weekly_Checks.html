@@ -461,7 +461,8 @@ $('finish').addEventListener('click',async()=>{
         for(let i=0;i<rdmAlarms.length;i++){const a=rdmAlarms[i];
           await REDFM.addItem("RDMAlarms",{Title:r.ref+'-A'+(i+1),VisitRef:r.ref,AlarmDate:r.date,
             AssetId:(a.asset||'').trim(),AlarmText:a.text.trim(),Outcome:a.outcome,
-            ActionTaken:a.action.trim(),RaisedBy:r.engineer,ActiveSince:a.since||null});}
+            ActionTaken:a.action.trim(),RaisedBy:r.engineer,ActiveSince:a.since||null,
+            Source:"Weekly visit"});}
         for(let i=0;i<rdmInhibits.length;i++){const n=rdmInhibits[i];const ap=n.change==='Applied';
           await REDFM.addItem("ParameterChanges",{Title:r.ref+'-I'+(i+1),ChangeDate:r.date,
             AssetId:(n.asset||'').trim(),Parameter:n.param.trim(),ChangeType:"Alarm inhibit",
