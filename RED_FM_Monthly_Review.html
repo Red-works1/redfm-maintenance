@@ -210,11 +210,20 @@ function runChecks(D0,D1,visits,readings,faults,alarms,params){
     ask:'Request the RDM export for those dates and attach it to the visit record.',hits:noRdm});
 
   const aIn=alarms.filter(a=>inWin(D(a.AlarmDate)));
-  const long=aIn.filter(a=>{const s=D(a.ActiveSince);return s&&hrs(s,D(a.AlarmDate)||now)>24;})
-    .map(a=>'<b>'+(a.AssetId||'?')+'</b> — "'+String(a.AlarmText||'').slice(0,60)+'" active since '+fmt(D(a.ActiveSince))+' ('+(a.Outcome||'no outcome recorded')+')');
-  out.push({id:'E2',title:'Alarms that had been active over 24 hours',sev:'amb',
-    rule:'An alarm already active for more than 24 hours at the time of the visit.',
-    ask:'Cross-check against the escalation notifications for that period and confirm what response was made.',hits:long});
+  const ran=a=>{const s=D(a.ActiveSince);if(!s)return null;const c=D(a.ClearedAt);return hrs(s,c||now);};
+  const long=aIn.filter(a=>{const h=ran(a);return h!=null&&h>24;})
+    .map(a=>{const h=ran(a);return '<b>'+(a.AssetId||'?')+'</b> — "'+String(a.AlarmText||'').slice(0,60)+
+      '" ran '+(h<48?Math.round(h)+' hours':Math.round(h/24)+' days')+' from '+fmt(D(a.ActiveSince))+
+      (a.ClearedAt?'':' <b>and is still recorded as running</b>')+' ('+(a.Outcome||'no outcome recorded')+')';});
+  out.push({id:'E2',title:'Alarms that ran over 24 hours',sev:'amb',
+    rule:'An alarm active for more than 24 hours, measured from when it started to when it cleared (or to now, if it has never been closed out).',
+    ask:'Confirm what response was made and, where an alarm is still shown as running, whether it has in fact cleared.',hits:long});
+
+  const notNotified=aIn.filter(a=>{const h=ran(a);return h!=null&&h>24&&String(a.NotifiedRedFm||'')!=='Sent';})
+    .map(a=>'<b>'+(a.AssetId||'?')+'</b> — '+fmt(D(a.ActiveSince))+' · notification status "'+(a.NotifiedRedFm||'not set')+'"');
+  out.push({id:'E4',title:'Alarms over 24 hours with no written notification recorded',sev:'red',
+    rule:'Clause 4.4(c) — an alarm running beyond one business day requires written notification to RED FM. This lists those with no notification recorded as sent.',
+    ask:'Obtain the written notification for each, or record the exception with its date.',hits:notNotified});
 
   const pIn=params.filter(p=>inWin(D(p.ChangeDate)));
   const notBack=pIn.filter(p=>{const dur=String(p.IntendedDuration||'');const m=/(\d+)/.exec(dur);

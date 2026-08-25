@@ -87,7 +87,7 @@
   .srcnote{padding:11px 18px;font-size:12px;color:var(--grey);border-top:1px solid var(--line);}
   #faulttable tr.rep-a td{background:#fdf3e3;}
   #faulttable tr.rep-r td{background:#fdecee;}
-  #faulttable .flags{font-weight:800;color:var(--amber);}
+  #faulttable .flags{font-weight:800;color:var(--amber);margin-left:6px;white-space:nowrap;}
   #faulttable tr.rep-r .flags{color:var(--red);}
   #faulttable .esc{display:inline-block;background:#fdecee;color:var(--red);font-size:10px;font-weight:800;letter-spacing:.3px;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
   #faulttable th,#faulttable td{padding-left:11px;padding-right:11px;}   /* 13 columns now — tighten slightly */
@@ -107,6 +107,24 @@
   .modalsec span{color:var(--grey);font-weight:600;}
   .modalnote{padding:10px 20px 16px;font-size:12px;color:var(--grey);}
   .tblscroll{overflow-x:auto;}
+  /* The fault list carries three columns of real prose — fault, action taken and closure
+     evidence. Left to share the card width with nine short columns they collapsed to about
+     one word per line, which is unreadable on the page and worse in print. Give the prose
+     columns a floor and let the table scroll sideways instead of wrapping to nothing. */
+  table.faulttbl{min-width:1460px;}
+  table.faulttbl th,table.faulttbl td{vertical-align:top;}
+  table.faulttbl td.wide{min-width:250px;line-height:1.5;}
+  table.faulttbl td.closcell{min-width:210px;}
+  table.faulttbl th:nth-child(1),table.faulttbl td:nth-child(1){min-width:104px;}
+  table.faulttbl th:nth-child(2),table.faulttbl td:nth-child(2){min-width:66px;}
+  table.faulttbl th:nth-child(3),table.faulttbl td:nth-child(3){min-width:84px;}
+  table.faulttbl th:nth-child(5),table.faulttbl td:nth-child(5){min-width:104px;}
+  table.faulttbl th:nth-child(7),table.faulttbl td:nth-child(7){min-width:92px;}
+  table.faulttbl th:nth-child(8),table.faulttbl td:nth-child(8){min-width:78px;}
+  table.faulttbl th:nth-child(10),table.faulttbl td:nth-child(10){min-width:88px;}
+  /* Call-out detail is prose too. */
+  #calloutbox table{min-width:900px;}
+  #calloutbox td:nth-child(5){min-width:340px;line-height:1.5;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
@@ -145,12 +163,36 @@
     #faulttable td.upd select,#faulttable td.upd input{width:100%!important;margin:0 0 8px 0!important;font-size:15px!important;padding:11px!important;box-sizing:border-box;}
     #faulttable td.upd .savefault{width:100%!important;font-size:15px!important;padding:12px!important;margin:0!important;}
   }
+  /* ---- fault editor + change history ------------------------------------------------ */
+  .fx{position:fixed;inset:0;background:rgba(20,20,24,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:24px 14px;overflow-y:auto;}
+  .fx.on{display:flex;}
+  .fxcard{background:#fff;border-radius:14px;max-width:640px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.3);}
+  .fxhead{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .fxhead h3{margin:0;font-size:17px;}
+  .fxhead .x{border:0;background:none;font-size:24px;line-height:1;color:var(--grey);cursor:pointer;padding:0 4px;}
+  .fxbody{padding:16px 20px 4px;}
+  .fxbody label{display:block;font-size:12px;font-weight:700;color:var(--grey);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;}
+  .fxbody select,.fxbody input,.fxbody textarea{width:100%;font-size:15px;padding:10px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;background:#fff;}
+  .fxbody textarea{min-height:76px;line-height:1.45;}
+  .fxbody .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:560px){.fxbody .two{grid-template-columns:1fr;}}
+  .fxwhat{background:#fbfbfc;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:13.5px;line-height:1.55;color:var(--grey);}
+  .fxfoot{padding:14px 20px 20px;display:flex;gap:10px;flex-wrap:wrap;}
+  .fxfoot .btn{flex:1;min-width:150px;}
+  .fxnote{font-size:12.5px;color:var(--grey);padding:0 20px 14px;line-height:1.5;}
+  .fxfw{border-top:1px solid var(--line);margin-top:18px;padding-top:14px;}
+  .fxfw h4{margin:0 0 4px;font-size:14px;}
+  .hist{border-left:3px solid var(--line);padding:0 0 0 12px;margin:12px 0;}
+  .hist .h1{font-size:13.5px;font-weight:700;}
+  .hist .h2{font-size:12.5px;color:var(--grey);margin-top:2px;line-height:1.5;}
+  .hist .old{text-decoration:line-through;opacity:.7;}
+  .hist .new{font-weight:700;color:var(--ink);}
 </style>
 </head>
 <body>
 <header><div class="brand">
   <div class="lhs"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
-  <div class="htitle"><strong>Border Holdings — Maintenance compliance</strong>Avonmouth cold store · delivered by Coolstream</div></div>
+  <div class="htitle"><strong>Border Holdings — Maintenance compliance</strong>Avonmouth cold store · managed by RED FM</div></div>
   <div class="period" id="period">Live compliance · no commercial figures<br><a class="hubbtn" href="index.html">⌂ Hub</a></div>
 </div></header>
 
@@ -219,7 +261,7 @@
   <div class="state" id="loadstate">Sign in to load the live Border Holdings compliance picture from SharePoint.</div>
 </div>
 
-<footer>Client report — completion and fault status only, no commercial figures. RED FM holds the underlying signed records; F-Gas statutory records are Coolstream's. RED FM (Red Electrical Bristol Ltd) · maintenance delivered by Coolstream · Border Holdings, Avonmouth.</footer>
+<footer>Client report — completion and fault status only, no commercial figures. RED FM holds the underlying signed records; F-Gas statutory records are Coolstream's. RED FM (Red Electrical Bristol Ltd) · Border Holdings, Avonmouth · refrigeration sub-contracted to Coolstream UK Ltd.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -440,6 +482,15 @@ const SEVERITIES=["Low","Medium","High"];
 const RESOLVED_STAGES=["Closed","Reported and fixed"]; // count as not-open
 const CALLOUT_STAGE="Call out"; // tracked separately from the fault remediation list
 const STAGE_WHO={"Call out":"RED","Reported":"RED","Reported and fixed":"RED","Awaiting our quote":"RED","Awaiting sign-off":"Border","Approved":"RED","Closed":"RED"};
+const ACTION_WITH=["RED FM","Coolstream","Border"];
+/* Whose action was previously derived from the stage alone, which is right most of the time
+   and wrong exactly when it matters — a quote sitting with Coolstream while the stage still
+   reads "Reported". ActionWith, when set by hand, overrides it. */
+function whoOf(f){
+  const explicit=String((f&&f.ActionWith)||'').trim();
+  if(ACTION_WITH.indexOf(explicit)!==-1)return explicit;
+  return STAGE_WHO[(f&&f.Stage)||"Reported"]==="Border"?"Border":"RED FM";
+}
 const STAGE_LABEL={"Call out":"Call-out","Reported":"Reported","Reported and fixed":"Reported & fixed","Awaiting our quote":"Awaiting our quote","Awaiting sign-off":"Awaiting your sign-off","Approved":"Approved — scheduling","Closed":"Closed"};
 
 function compute(){
@@ -716,7 +767,7 @@ function render(){
   $('pipe').innerHTML=stages.map(s=>`<div class="stage ${cls[s]||''}"><div class="c">${counts[s]}</div><div class="s">${STAGE_LABEL[s]}</div></div>`).join('')
     +`<div class="stage co"><div class="c">${coMonth}</div><div class="s">Call-outs (this month)</div></div>`;
 
-  const awaitingBorder=C.open.filter(f=>STAGE_WHO[f.Stage||"Reported"]==="Border").length;
+  const awaitingBorder=C.open.filter(f=>whoOf(f)==="Border").length;
   $('faultbanner').innerHTML=awaitingBorder?`<div class="banner">⚠ ${awaitingBorder} fault(s) awaiting Border sign-off — action is with you. In cold storage an unfixed fault can spoil stock, so the dated sign-off trail matters.</div>`:'';
 
   if(!C.open.length){$('faulttable').innerHTML='<div class="empty">No open faults — all clear.</div>';}
@@ -724,32 +775,29 @@ function render(){
     const rows=C.open.slice().sort((a,b)=>new Date(a.FaultDate)-new Date(b.FaultDate)).map(f=>{
       const st=f.Stage||"Reported";const who=STAGE_WHO[st];
       const upd=EDITABLE?`<td class="upd">
-        <select class="fsev" data-id="${f._id}" style="font-size:12px;padding:3px;margin-right:4px;">${SEVERITIES.map(s=>`<option ${s===(f.Severity||'Low')?'selected':''}>${s}</option>`).join('')}</select>
-        <select class="fstage" data-id="${f._id}" style="font-size:12px;padding:3px;">${STAGES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
-        <input class="faction" data-id="${f._id}" value="${(f.ActionTaken||'').replace(/"/g,'&quot;')}" placeholder="action notes" style="font-size:12px;padding:3px;width:130px;margin:0 4px;">
-        <button class="btn savefault" data-id="${f._id}" style="font-size:12px;padding:4px 9px;">Save</button></td>`:'';
+        <button class="btn btn-ghost editfault" data-id="${f._id}" style="font-size:13px;padding:7px 12px;width:100%;">Edit</button>
+        <button class="btn btn-ghost histfault" data-ref="${esc(f.Title||f.FaultRef||'')}" style="font-size:12px;padding:6px 10px;width:100%;margin-top:6px;opacity:.85;">History</button></td>`:'';
       const rc=repeatCount(f);                                   // item 6 — repeat counter / escalation
       const rcls=rc>=3?'rep-r':(rc===2?'rep-a':'');
       const triaging=String(f.TriageStatus||'').trim()==='Awaiting triage';
       const age=(!triaging&&f.FaultDate)?ageDays(f.FaultDate):null;   // item 7 — ageing, amber 14+, red 30+
       const acls=age==null?'':(age>=30?'open-r':(age>=14?'open-a':''));
       const asset=f.AssetId||f.Plant||'';                         // item 14 — asset history link
-      return `<tr${rcls?' class="'+rcls+'"':''}><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b>${rc>=3?'<span class="esc">ESCALATED</span>':''}</td><td data-label="Asset">${asset?`<a href="#" class="assetlink" data-asset="${esc(asset)}">${esc(asset)}</a>`:''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
+      return `<tr${rcls?' class="'+rcls+'"':''}><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b>${rc>=2?`<span class="flags">\u00d7${rc}</span>`:''}${rc>=3?'<span class="esc">ESCALATED</span>':''}</td><td data-label="Asset">${asset?`<a href="#" class="assetlink" data-asset="${esc(asset)}">${esc(asset)}</a>`:(f.Plant?esc(f.Plant):'')}</td><td data-label="Severity"><span class="sev ${f.Severity||'Low'}">${f.Severity||''}</span></td>
         <td class="wide" data-label="Fault">${(f.Description||'').replace(/</g,'&lt;')}</td><td data-label="Stage">${STAGE_LABEL[st]}</td>
         <td class="wide" data-label="Action taken">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</td>
         <td data-label="Raised">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td>
         <td data-label="Open (days)"><span class="${acls}">${triaging?'<i style="color:#c2860c;font-style:normal;font-weight:700">awaiting triage</i>':(age==null?'':age)}</span></td>
-        <td data-label="Flags">${rc>=2?`<span class="flags">\u00d7${rc}</span>`:''}</td>
         <td class="wide closcell" data-label="Closure evidence / why open">${closureCell(f)}</td>
-        <td data-label="Whose action"><span class="who ${who}">${who==='Border'?'Border':'RED FM'}</span></td>${upd}</tr>`;}).join('');
-    $('faulttable').innerHTML=`<table><thead><tr><th>Ref</th><th>Asset</th><th>Plant</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Open (days)</th><th>Flags</th><th>Closure evidence / why open</th><th>Whose action</th>${EDITABLE?'<th>Update severity / stage / action</th>':''}</tr></thead><tbody>${rows}</tbody></table>`;
+        <td data-label="Whose action"><span class="who ${whoOf(f)==='Border'?'Border':'RED'}">${whoOf(f)}</span></td>${upd}</tr>`;}).join('');
+    $('faulttable').innerHTML=`<div class="tblscroll"><table class="faulttbl"><thead><tr><th>Ref</th><th>Asset</th><th>Severity</th><th>Fault</th><th>Stage</th><th>Action taken</th><th>Raised</th><th>Open (days)</th><th>Closure evidence / why open</th><th>Whose action</th>${EDITABLE?'<th>Change</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   const co=C.callouts.slice().sort((a,b)=>new Date(b.FaultDate)-new Date(a.FaultDate));
   $('calloutbox').innerHTML=`<div class="cohead">Call-out log <span>(${co.length} total)</span></div>`+
-    (co.length?`<table><thead><tr><th>Ref</th><th>Asset</th><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
+    (co.length?`<div class="tblscroll"><table><thead><tr><th>Ref</th><th>Asset</th><th>Date</th><th>Plant</th><th>Detail</th><th>Logged by</th></tr></thead><tbody>`+
       co.map(f=>`<tr><td data-label="Ref"><b>${f.Title||f.FaultRef||''}</b></td><td data-label="Asset">${f.AssetId||f.Plant||''}</td><td data-label="Date">${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):''}</td><td data-label="Plant"><b>${f.Plant||''}</b></td><td data-label="Detail">${(f.Description||'').replace(/</g,'&lt;')||'—'}</td><td data-label="Logged by">${f.RaisedBy||''}</td></tr>`).join('')+
-      `</tbody></table>`:`<div class="empty">No call-outs logged.</div>`);
+      `</tbody></table></div>`:`<div class="empty">No call-outs logged.</div>`);
 
   $('period').innerHTML=`Live · generated <b>${now.toLocaleDateString('en-GB')}</b><br><a class="hubbtn" href="index.html">⌂ Hub</a>`;
 }
@@ -824,16 +872,7 @@ $('genpdf').addEventListener('click',async()=>{
   $('genpdf').disabled=false;$('genpdf').textContent='Generate monthly client report (PDF)';
 });
 
-if(EDITABLE){$('faulttable').addEventListener('click',async e=>{
-  const btn=e.target.closest('.savefault');if(!btn)return;
-  const id=btn.dataset.id;
-  const sel=document.querySelector('.fstage[data-id="'+id+'"]');
-  const act=document.querySelector('.faction[data-id="'+id+'"]');
-  const sev=document.querySelector('.fsev[data-id="'+id+'"]');
-  btn.disabled=true;btn.textContent='Saving…';
-  try{await REDFM.updateFault(id,{Stage:sel.value,ActionTaken:act.value,Severity:sev.value});await load();}
-  catch(err){btn.disabled=false;btn.textContent='Save';$('status').textContent='Update failed: '+(err.message||err);}
-});}
+
 
 // item 14 / item 5 — asset-history and closure-note links; delegated because both tables are re-rendered on every load
 document.addEventListener('click',e=>{
@@ -842,7 +881,146 @@ document.addEventListener('click',e=>{
   const n=t.closest('.notelink');if(n){e.preventDefault();openNoteModal(n.getAttribute('data-fault')||'');return;}
 });
 
+
+/* ==================================================================================
+   Fault editor, change history, and move-to-forward-works.
+
+   Anyone signed in can change a fault — RED FM or Coolstream. That is deliberate: the
+   contractor closing out their own work is the point of the portal. What keeps it honest
+   is not restricting who can type, it is that every change is written to FaultHistory
+   with the account that made it, the old value and the new one. A record nobody can edit
+   silently is worth more than one only one side is allowed to touch.
+   ================================================================================== */
+const FX={f:null,mode:'edit'};
+const fxEl=id=>document.getElementById(id);
+function fxWho(){ try{ const a=REDFM.getAccount(); return (a&&(a.username||a.name))||'unknown'; }catch(e){ return 'unknown'; } }
+function fxClose(){ fxEl('fx').classList.remove('on'); FX.f=null; }
+function fxEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+const FW_CATEGORY=["Deferred remedial","Seasonal","Recommendation","Improvement"];
+const FW_STATUS="Recommended";
+
+async function fxLog(ref,field,from,to,note){
+  try{
+    await REDFM.addItem('FaultHistory',{
+      Title:(ref||'fault')+' · '+field,
+      FaultRef:String(ref||''), FieldName:field,
+      FromValue:String(from==null?'':from), ToValue:String(to==null?'':to),
+      ChangedBy:fxWho(), ChangedAt:new Date().toISOString(), ChangeNote:String(note||'')
+    });
+  }catch(e){ /* never let the audit write block the change itself — but say so */
+    fxEl('fxnote').textContent='Change saved, but the history entry did not write: '+(e.message||e); }
+}
+
+function openFaultEditor(id){
+  const f=(DATA.faults||[]).find(x=>String(x._id)===String(id));
+  if(!f){return;}
+  FX.f=f;
+  fxEl('fxtitle').textContent='Update '+(f.Title||f.FaultRef||'fault');
+  fxEl('fxbody').innerHTML=
+    '<div class="fxwhat"><b>'+fxEsc(f.AssetId||f.Plant||'')+'</b> · raised '+
+      (f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):'—')+'<br>'+fxEsc(f.Description||'')+'</div>'+
+    '<div class="two">'+
+      '<div><label for="fxsev">Severity</label><select id="fxsev">'+
+        SEVERITIES.map(x=>'<option '+(x===(f.Severity||'Low')?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+      '<div><label for="fxstage">Stage</label><select id="fxstage">'+
+        STAGES.map(x=>'<option '+(x===(f.Stage||'Reported')?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+    '</div>'+
+    '<label for="fxwith">Whose action</label><select id="fxwith">'+
+      ACTION_WITH.map(x=>'<option '+(x===whoOf(f)?'selected':'')+'>'+x+'</option>').join('')+'</select>'+
+    '<label for="fxact">Action taken</label><textarea id="fxact" placeholder="What has been done, or what is being waited on">'+fxEsc(f.ActionTaken||'')+'</textarea>'+
+    '<label for="fxwhy">Why you are changing it <span style="color:var(--grey);font-weight:600;text-transform:none;letter-spacing:0">(goes in the history)</span></label>'+
+      '<input id="fxwhy" placeholder="e.g. quote returned by Coolstream, waiting on Border">'+
+    '<div class="fxfw"><h4>Move this to forward works</h4>'+
+      '<div class="muted" style="font-size:12.5px;color:var(--grey);line-height:1.5">Use this when it is real but not urgent — planned work rather than an open fault. The fault closes, a forward works entry is created, and the link between them is recorded.</div>'+
+      '<div class="two" style="margin-top:6px">'+
+        '<div><label for="fxcat">Category</label><select id="fxcat">'+FW_CATEGORY.map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
+        '<div><label for="fxwin">Recommended window</label><input id="fxwin" placeholder="e.g. before summer 2027"></div>'+
+      '</div></div>';
+  fxEl('fxfoot').innerHTML=
+    '<button class="btn btn-red" id="fxsave">Save change</button>'+
+    '<button class="btn btn-ghost" id="fxmove">Move to forward works</button>';
+  fxEl('fxnote').textContent='Signed in as '+fxWho()+' — every change is recorded against this account.';
+  fxEl('fx').classList.add('on');
+  fxEl('fxsave').onclick=fxSave;
+  fxEl('fxmove').onclick=fxMove;
+}
+
+async function fxSave(){
+  const f=FX.f; if(!f)return;
+  const btn=fxEl('fxsave'); btn.disabled=true; btn.textContent='Saving…';
+  const why=fxEl('fxwhy').value.trim();
+  const next={Severity:fxEl('fxsev').value,Stage:fxEl('fxstage').value,ActionWith:fxEl('fxwith').value,ActionTaken:fxEl('fxact').value};
+  const before={Severity:f.Severity||'',Stage:f.Stage||'Reported',ActionWith:whoOf(f),ActionTaken:f.ActionTaken||''};
+  const changed=Object.keys(next).filter(k=>String(next[k])!==String(before[k]));
+  if(!changed.length){ fxEl('fxnote').textContent='Nothing changed.'; btn.disabled=false; btn.textContent='Save change'; return; }
+  try{
+    await REDFM.updateFault(f._id,next);
+    for(const k of changed) await fxLog(f.Title||f.FaultRef,k,before[k],next[k],why);
+    fxClose(); await load();
+  }catch(err){
+    btn.disabled=false; btn.textContent='Save change';
+    fxEl('fxnote').textContent='Did not save: '+(err.message||err);
+  }
+}
+
+async function fxMove(){
+  const f=FX.f; if(!f)return;
+  const win=fxEl('fxwin').value.trim();
+  if(win.length<3){ fxEl('fxnote').textContent='Give it a window first — forward works without a date is just a list.'; return; }
+  const btn=fxEl('fxmove'); btn.disabled=true; btn.textContent='Moving…';
+  const why=fxEl('fxwhy').value.trim();
+  try{
+    const ref='FW-'+String(Date.now()).slice(-8);
+    await REDFM.addItem('ForwardWorks',{
+      Title:ref, AssetId:f.AssetId||f.Plant||'',
+      WorkDescription:(f.Description||''),
+      Category:fxEl('fxcat').value, RecommendedWindow:win, WorkStatus:FW_STATUS,
+      RaisedDate:new Date().toISOString(), RaisedBy:fxWho(),
+      Notes:'Originated as fault '+(f.Title||f.FaultRef||'')+', moved to forward works on '+new Date().toLocaleDateString('en-GB')+(why?'. '+why:'')
+    });
+    const act=((f.ActionTaken||'')+' · Moved to forward works as '+ref).trim();
+    await REDFM.updateFault(f._id,{Stage:'Closed',ActionTaken:act});
+    await fxLog(f.Title||f.FaultRef,'Moved to forward works',(f.Stage||'Reported'),'Closed — '+ref,why);
+    fxClose(); await load();
+  }catch(err){
+    btn.disabled=false; btn.textContent='Move to forward works';
+    fxEl('fxnote').textContent='Did not move: '+(err.message||err);
+  }
+}
+
+async function openFaultHistory(ref){
+  fxEl('fxtitle').textContent='Change history — '+ref;
+  fxEl('fxbody').innerHTML='<div class="fxwhat">Loading…</div>';
+  fxEl('fxfoot').innerHTML=''; fxEl('fxnote').textContent='';
+  fxEl('fx').classList.add('on');
+  try{
+    const all=await REDFM.listItems('FaultHistory',x=>String(x.FaultRef||'')===String(ref));
+    all.sort((a,b)=>new Date(b.ChangedAt||0)-new Date(a.ChangedAt||0));
+    fxEl('fxbody').innerHTML= all.length
+      ? all.map(h=>'<div class="hist"><div class="h1">'+fxEsc(h.FieldName||'')+'</div><div class="h2">'+
+          '<span class="old">'+(fxEsc(h.FromValue)||'(empty)')+'</span> → <span class="new">'+(fxEsc(h.ToValue)||'(empty)')+'</span><br>'+
+          fxEsc(h.ChangedBy||'')+' · '+(h.ChangedAt?new Date(h.ChangedAt).toLocaleString('en-GB'):'')+
+          (h.ChangeNote?'<br><i>'+fxEsc(h.ChangeNote)+'</i>':'')+'</div></div>').join('')
+      : '<div class="fxwhat">No changes recorded yet. Anything changed from here on is logged.</div>';
+  }catch(e){ fxEl('fxbody').innerHTML='<div class="fxwhat">Could not read the history: '+fxEsc(e.message||e)+'</div>'; }
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target; if(!t||!t.closest) return;
+  const ed=t.closest('.editfault'); if(ed){ e.preventDefault(); openFaultEditor(ed.dataset.id); return; }
+  const hi=t.closest('.histfault'); if(hi){ e.preventDefault(); openFaultHistory(hi.dataset.ref||''); return; }
+  if(t.id==='fxclose'||t.id==='fx'){ fxClose(); }
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') fxClose(); });
+
 if(window.REDFM){REDFM.init().then(s=>{if(s)load();}).catch(()=>{});}
 </script>
+<div class="fx" id="fx"><div class="fxcard">
+  <div class="fxhead"><h3 id="fxtitle">Update fault</h3><button class="x" id="fxclose" aria-label="Close">&times;</button></div>
+  <div class="fxbody" id="fxbody"></div>
+  <div class="fxfoot" id="fxfoot"></div>
+  <div class="fxnote" id="fxnote"></div>
+</div></div>
 </body>
 </html>
