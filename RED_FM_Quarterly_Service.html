@@ -93,6 +93,22 @@
 <script src="redfm-draft.js?v=2"></script>
 <script src="redfm-faultflow.js?v=4"></script>
 <script>
+/* ---------------------------------------------------------------------------
+   The browser stamps dates in UTC. Between midnight and 01:00 BST that is still
+   yesterday, so a form opened at 00:30 on the 26th pre-filled "25". A service
+   record or fault dated a day early is a compliance record that is wrong — and
+   FaultDate is what starts the 48-hour clock in clause 4.1. Ask for the date in
+   Europe/London explicitly; fall back to the old behaviour only if the browser
+   has no time-zone data at all.
+   --------------------------------------------------------------------------- */
+function londonToday(){
+  try{
+    const d=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  }catch(e){}
+  return new Date().toISOString().slice(0,10);
+}
+
 const COOL_AB=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff","Expansion valve superheat & % open"];
 const COOL_STD=["Cooler controller set point","Cooler controller air-on temp","Cooler controller air-off temp","Cooler air temp diff"];
 const COMPR_AB=["Suction gauge @ compressor","Suction temp @ compressor","Suction superheat","Discharge gauge","Discharge temp","Disch superheat","Oil level","Oil temp on oil cooler","Oil temp off oil cooler","Oil cooler temp diff","Oil cooler fans running","Compr capacity %","Compr amps","HP liquid line temp (cond→rec)","Liq sub-cooling","Receiver level","Sub-cooling liquid temp","Sub cooling","Econ suction temp"];
@@ -125,7 +141,7 @@ const CHAMBERS={
 const $=id=>document.getElementById(id);
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
-$('hDate').value=new Date().toISOString().slice(0,10);
+$('hDate').value=londonToday();
 let chamber="A",mode="readings";const state={};let doneMap={},periodLabel='';
 // clause 8.7 — a recorded reading can be raised as a fault in its own right, whether or not the
 // form gives that row a fault status. flags[id]='manual' (the engineer tapped the flag), keyed

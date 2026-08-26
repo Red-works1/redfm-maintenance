@@ -78,6 +78,22 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="redfm-data.js?v=16"></script>
 <script>
+/* ---------------------------------------------------------------------------
+   The browser stamps dates in UTC. Between midnight and 01:00 BST that is still
+   yesterday, so a form opened at 00:30 on the 26th pre-filled "25". A service
+   record or fault dated a day early is a compliance record that is wrong — and
+   FaultDate is what starts the 48-hour clock in clause 4.1. Ask for the date in
+   Europe/London explicitly; fall back to the old behaviour only if the browser
+   has no time-zone data at all.
+   --------------------------------------------------------------------------- */
+function londonToday(){
+  try{
+    const d=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  }catch(e){}
+  return new Date().toISOString().slice(0,10);
+}
+
 const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -134,7 +150,7 @@ function draw(){
 
 async function apply(i,status,why){
   const f=rows[i];
-  const today=new Date().toISOString().slice(0,10);
+  const today=londonToday();
   const stamp='\n\n[Triaged '+today+'] '+status+(why?(' — '+why):'');
   const patch={TriageStatus:status,LastReviewed:today,Description:(f.Description||'')+stamp};
   if(status==='Out of scope'){patch.Stage='Closed';patch.ClosedDate=today;patch.ClosureNote='Out of scope at triage: '+why;}

@@ -4,10 +4,10 @@
     { "route": "/api/report-problem", "methods": ["POST"], "allowedRoles": ["anonymous"] },
     { "route": "/RED_FM_Report_a_Problem.html", "allowedRoles": ["anonymous"] },
 
-    { "route": "/RED_FM_Monthly_Review.html", "allowedRoles": ["redfm"] },
-    { "route": "/RED_FM_Corrective_Actions.html", "allowedRoles": ["redfm"] },
-    { "route": "/RED_FM_Compliance_Dashboard_INTERNAL.html", "allowedRoles": ["redfm"] },
-    { "route": "/RED_FM_Triage.html", "allowedRoles": ["redfm"] },
+    { "route": "/RED_FM_Monthly_Review*", "allowedRoles": ["redfm"] },
+    { "route": "/RED_FM_Corrective_Actions*", "allowedRoles": ["redfm"] },
+    { "route": "/RED_FM_Compliance_Dashboard_INTERNAL*", "allowedRoles": ["redfm"] },
+    { "route": "/RED_FM_Triage*", "allowedRoles": ["redfm"] },
     { "route": "/internal/*", "allowedRoles": ["redfm"] }
   ],
   "responseOverrides": {

@@ -83,8 +83,18 @@ const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.className='toast show';setTimeout(()=>t.className='toast',2600);}
 
 /* default to the last completed month — you review August in September */
-(function(){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);
-  $('month').value=d.toISOString().slice(0,7);})();
+(function(){
+  /* Same UTC trap as the forms, one step up: on the 1st of a month between midnight
+     and 01:00 BST, new Date() in UTC is still the previous month, and the picker
+     defaulted a month too far back. Work from the London calendar date instead. */
+  let y,m;
+  try{
+    const p=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'}).split('-');
+    y=Number(p[0]); m=Number(p[1]);
+  }catch(e){ const d=new Date(); y=d.getUTCFullYear(); m=d.getUTCMonth()+1; }
+  m-=1; if(m===0){m=12;y-=1;}                       // the month just gone
+  $('month').value=y+'-'+String(m).padStart(2,'0');
+})();
 
 const D=s=>{const d=new Date(s);return isNaN(d)?null:d;};
 const ymd=d=>d.toISOString().slice(0,10);

@@ -99,6 +99,22 @@
 <script src="redfm-draft.js?v=2"></script>
 <script src="redfm-faultflow.js?v=4"></script>
 <script>
+/* ---------------------------------------------------------------------------
+   The browser stamps dates in UTC. Between midnight and 01:00 BST that is still
+   yesterday, so a form opened at 00:30 on the 26th pre-filled "25". A service
+   record or fault dated a day early is a compliance record that is wrong — and
+   FaultDate is what starts the 48-hour clock in clause 4.1. Ask for the date in
+   Europe/London explicitly; fall back to the old behaviour only if the browser
+   has no time-zone data at all.
+   --------------------------------------------------------------------------- */
+function londonToday(){
+  try{
+    const d=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  }catch(e){}
+  return new Date().toISOString().slice(0,10);
+}
+
 /* ---- Notice 5.5 / clause 8.4 — the regime record. A regime is not complete until the
    underlying certificate or data sheet is actually filed. The visit is written as
    'Awaiting document' and is only promoted once the upload has succeeded. ---- */
@@ -140,7 +156,7 @@ const $=id=>document.getElementById(id);
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,80);
 const ddmm=d=>{const p=String(d).slice(0,10).split('-');return (+p[2])+'/'+(+p[1]);};
 const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
-$('hDate').value=new Date().toISOString().slice(0,10);
+$('hDate').value=londonToday();
 const NAMES=Object.keys(GROUPS);let cur=NAMES[0];const state={};let doneMap={},periodLabel='';
 const secbar=$('secbar');
 NAMES.forEach(n=>{const b=document.createElement('button');b.className='secbtn'+(n===cur?' on':'');

@@ -115,6 +115,22 @@
 <script src="redfm-draft.js?v=2"></script>
 <script src="redfm-faultflow.js?v=4"></script>
 <script>
+/* ---------------------------------------------------------------------------
+   The browser stamps dates in UTC. Between midnight and 01:00 BST that is still
+   yesterday, so a form opened at 00:30 on the 26th pre-filled "25". A service
+   record or fault dated a day early is a compliance record that is wrong — and
+   FaultDate is what starts the 48-hour clock in clause 4.1. Ask for the date in
+   Europe/London explicitly; fall back to the old behaviour only if the browser
+   has no time-zone data at all.
+   --------------------------------------------------------------------------- */
+function londonToday(){
+  try{
+    const d=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  }catch(e){}
+  return new Date().toISOString().slice(0,10);
+}
+
 const T=(a)=>a.map(x=>Array.isArray(x)?x:[x,'txt']);
 const CHAMBER=T([["Cold store set point (controller)"],["Cold store temp air-on"],["Coolers air off"],["Cooling on/off"]]);
 const COND9=T([["Compr abnormal noise / vibration",'chk'],["Compressor abnormal frosting",'chk'],["Compr oil level"],["Compr delivery temperature"],["Oil recovery / separator level"],["Condenser fin face free of debris",'chk'],["Condenser fans abnormal noise",'chk'],["Liquid line sight glass",'chk'],["Receiver level"]]);
@@ -166,7 +182,7 @@ const SETPOINTS={
 const SP_TOL=1.5;
 
 const $=id=>document.getElementById(id);
-$('hDate').value=new Date().toISOString().slice(0,10);
+$('hDate').value=londonToday();
 let variant=Object.keys(VARIANTS)[0];const state={};let prevMap={};
 // clause 8.7 — a value cell can be flagged as a fault in its own right.
 // flags[id] = 'manual' (engineer tapped the flag) | 'auto' (set by the 1.5C rule, clears itself).
