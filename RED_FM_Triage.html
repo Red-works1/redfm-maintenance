@@ -68,7 +68,7 @@
 <div class="htitle"><strong>Triage queue</strong>Problems reported from site · nothing here is chargeable or counted until you decide</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
 
 <div class="wrap">
-  <div class="note" style="margin-top:14px">Reports raised by Border staff, from a QR label or their dashboard. Nothing here ages against RED FM, notifies Coolstream or appears as an instructed job until you put it <b>In scope</b>. That is the point of the queue.</div>
+  <div class="note" style="margin-top:14px">Reports raised by Border staff, from a QR label or their dashboard. Nothing here ages against RED FM, notifies Coolstream or appears as an instructed job until you put it <b>In scope</b>. That is the point of the queue. Every decision now needs a note — Border are sent it and it shows against the report on their dashboard, so write it for them to read.</div>
   <div id="list"><div class="empty">Loading…</div></div>
 </div>
 <div id="toast" class="toast"></div>
@@ -104,6 +104,15 @@ const FAULTS_LIB="https://redbristol.sharepoint.com/sites/REDFMMaintenance/Fault
    Coolstream are measured against. */
 const tradeCls=t=>String(t||'')==='Refrigeration'?'ref':(String(t||'')?'oth':'');
 
+/* A decision with no note is the thing Border complained about: something happens and
+   they cannot tell what. The prompt changes with the decision so the note answers the
+   question Border would actually ask. */
+const NOTE_ASK={
+  'In scope':['What is being done about it, and roughly when?','e.g. Coolstream attending Thursday to replace the door seal'],
+  'Quote issued':['What are you quoting for, and when will Border have it?','e.g. quoting for a replacement dock seal, with you by Friday'],
+  'Out of scope':['Why is this not a RED FM item?','e.g. building fabric, not refrigeration \u2014 passed to Border']
+};
+
 let rows=[];
 async function load(){
   try{
@@ -131,20 +140,24 @@ function draw(){
         <button class="out" data-a="Out of scope" data-i="${i}">Not for us</button>
       </div>
       <div class="why" id="why${i}">
-        <label>Why? (recorded against the report)</label>
-        <textarea id="wt${i}" rows="2" placeholder="e.g. building fabric, not refrigeration — passed to Border"></textarea>
+        <label id="wl${i}">Note</label>
+        <textarea id="wt${i}" rows="2"></textarea>
         <button class="btn btn-red" style="margin-top:8px" data-c="${i}">Confirm</button>
       </div>
     </div>`).join('');
   $('list').querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
     const i=+b.dataset.i, a=b.dataset.a;
-    if(a==='Out of scope'){$('why'+i).style.display='block';$('why'+i).dataset.a=a;return;}
-    apply(i,a,'');
+    const box=$('why'+i);
+    box.style.display='block';box.dataset.a=a;
+    $('wl'+i).textContent=NOTE_ASK[a][0]+' \u2014 Border are sent this and see it on their dashboard';
+    $('wt'+i).placeholder=NOTE_ASK[a][1];
+    $('wt'+i).focus();
   });
   $('list').querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.c, why=$('wt'+i).value.trim();
-    if(why.length<5){toast('Say why — it goes on the record');return;}
-    apply(i,'Out of scope',why);
+    const i=+b.dataset.c, why=$('wt'+i).value.trim(), a=$('why'+i).dataset.a;
+    if(!a){toast('Pick a decision first');return;}
+    if(why.length<5){toast('Add a note \u2014 Border read this one');return;}
+    apply(i,a,why);
   });
 }
 
@@ -155,8 +168,15 @@ async function apply(i,status,why){
   const patch={TriageStatus:status,LastReviewed:today,Description:(f.Description||'')+stamp};
   if(status==='Out of scope'){patch.Stage='Closed';patch.ClosedDate=today;patch.ClosureNote='Out of scope at triage: '+why;}
   if(status==='Quote issued')patch.Stage='Awaiting our quote';
+  /* TriageNote and TriageDecidedOn are what the Border notification reads and what the
+     dashboard shows on the card. SharePoint rejects an ENTIRE patch if one field name is
+     unknown, so until those columns exist the full patch would lose the decision outright.
+     Try it, fall back to the patch without them. The decision is never lost; at worst the
+     note lives only in the description stamp, which both dashboards already read. */
+  const full=Object.assign({},patch,{TriageNote:why,TriageDecidedOn:today});
   try{
-    await REDFM.updateFault(f._id,patch);
+    try{await REDFM.updateFault(f._id,full);}
+    catch(colErr){await REDFM.updateFault(f._id,patch);}
     rows.splice(i,1);draw();
     toast(f.Title+' → '+status);
   }catch(e){toast('Could not save: '+(e.message||e));}

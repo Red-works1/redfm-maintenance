@@ -133,6 +133,16 @@
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);}
   .sev{font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;}
   .sev.High{background:#fdecee;color:var(--red);}.sev.Medium{background:#fdf3e3;color:var(--amber);}.sev.Low{background:#eef7f0;color:var(--ok);}
+  .tstat{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .tstat.rcv{background:#fdf3e3;color:#8a5d05;}
+  .tstat.scope{background:#eef7f0;color:var(--ok);}
+  .tstat.quote{background:#e8f1fb;color:#175c9e;}
+  .tstat.outsc{background:#eef0f2;color:var(--grey);}
+  .trd{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:#f3eefa;color:#5b3a8e;white-space:nowrap;}
+  .trd.ref{background:#e8f1fb;color:#175c9e;}
+  /* The regime chip is uppercase; a location like "outside castell howell office" is a
+     sentence, not a label, so it keeps its own case and is allowed to wrap. */
+  #sitereports .fhead .chip{text-transform:none;letter-spacing:0;margin-top:0;white-space:normal;}
   .who{font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;}
   .who.Border{background:#fdecee;color:var(--red);}.who.RED{background:#eef0f2;color:var(--grey);}
   footer{max-width:1040px;margin:26px auto 0;padding:0 16px;color:var(--grey);font-size:12px;line-height:1.5;}
@@ -245,6 +255,12 @@
       <div class="legend"><span>Managed by RED FM · separate from Coolstream</span><span class="g">● in date</span><span class="a">● due soon</span><span class="r">● overdue</span></div>
     </div>
     <div class="card" id="compliance"></div>
+
+    <div class="sechead">
+      <h2>Site reports</h2>
+      <div class="legend"><span>Raised by Border staff — tracked separately from the refrigeration contract</span></div>
+    </div>
+    <div class="card" id="sitereports"></div>
 
     <div class="sechead"><h2>Fault remediation tracker</h2></div>
     <div class="card">
@@ -705,6 +721,95 @@ const FW_OLDEST=3;
 function fwStatus(w){const s=String((w&&w.WorkStatus)||'').trim();return FW_STATUSES.indexOf(s)!==-1?s:FW_STATUSES[0];}
 // Budget figures are deliberately not read or formatted on this page — see the note in
 // renderForward(). If a figure is ever needed here again it belongs behind the redfm role first.
+/* ---------------------------------------------------------------------------
+   Site reports — problems raised by Border staff through "Report a problem".
+   Deliberately NOT in the open-fault figures: those measure Coolstream against the
+   refrigeration contract, and a dock leveller or a light is a RED FM job, not a
+   Coolstream performance measure. Before this section existed, anything tagged as a
+   trade other than refrigeration was filtered out of every table on both dashboards,
+   so Border had no way to see their report had even been received.
+   Shown from the moment it is raised, and deliberately with no ageing counter or RAG:
+   nothing here is an instructed job until it has been triaged.
+   Same card layout as the fault tracker — two of these fields are real prose, which
+   is exactly why the faults stopped being a table.
+   --------------------------------------------------------------------------- */
+const TRIAGE_LABEL={
+  "Awaiting triage":"Received — with RED FM",
+  "In scope":"Reviewed — in scope, being actioned",
+  "Quote issued":"Reviewed — quote being prepared",
+  "Out of scope":"Reviewed — not a RED FM item"
+};
+const TRIAGE_CLS={"Awaiting triage":"rcv","In scope":"scope","Quote issued":"quote","Out of scope":"outsc"};
+/* "Report a problem" appends a fixed block to whatever the reporter typed:
+     Location as given: <place> / Reported as: <trade>
+     Reported by <name> (<contact>) via the <route>.
+     Raised by a member of site staff, not by an attending engineer. Not yet triaged.
+   Every one of those already has its own place on the card, so showing the block too was
+   six lines of duplication. Show what the reporter wrote, and lift the location out —
+   the plant field on a site report is usually just "General", and "next to the jetwash"
+   is the part someone needs in order to find it. */
+const STAMP_RE=/\n*\[Triaged [^\]]*\][\s\S]*$/;
+const LOC_RE=/\n+Location as given:\s*([^\n]*)/;
+function reportDesc(f){
+  return String(f.Description||"").replace(STAMP_RE,"").split(/\n+Location as given:/)[0].trim();
+}
+function reportWhere(f){
+  const a=String(f.AssetId||"").trim();
+  if(a&&a.toLowerCase()!=="general")return a;
+  const m=String(f.Description||"").match(LOC_RE);
+  return (m?m[1].trim():"")||a||String(f.Plant||"").trim();
+}
+/* The triage decision has always been appended to the description as a dated stamp; newer
+   records also carry it in TriageNote. Read the column when it is there, fall back to the
+   stamp for anything triaged before the column existed. */
+function reportNote(f){
+  const col=String(f.TriageNote||"").trim();
+  if(col)return col;
+  const m=String(f.Description||"").match(/\[Triaged [^\]]*\]\s*[^\u2014]*\u2014\s*([\s\S]*)$/);
+  return m?m[1].trim():"";
+}
+function renderSiteReports(faults){
+  /* Only the four states a site report can be in. Faults an engineer raised carry
+     TriageStatus "Not required" and older faults carry none at all — neither is a
+     report from site and neither belongs here. */
+  const reps=(faults||[]).filter(f=>Object.prototype.hasOwnProperty.call(TRIAGE_LABEL,String(f.TriageStatus||"").trim()))
+    .slice().sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
+  if(!reps.length){$('sitereports').innerHTML='<div class="empty">No reports from site yet.</div>';return;}
+  const n=s=>reps.filter(f=>String(f.TriageStatus||"").trim()===s).length;
+  const waiting=n("Awaiting triage");
+  const head=`<div class="pipe">
+    <div class="stage"><div class="c">${reps.length}</div><div class="s">Reports from site</div></div>
+    <div class="stage${waiting?' them':''}"><div class="c">${waiting}</div><div class="s">Awaiting RED FM review</div></div>
+    <div class="stage fixed"><div class="c">${n("In scope")}</div><div class="s">In scope</div></div>
+    <div class="stage us"><div class="c">${n("Quote issued")}</div><div class="s">Quote being prepared</div></div>
+    <div class="stage"><div class="c">${n("Out of scope")}</div><div class="s">Not a RED FM item</div></div>
+  </div>`;
+  const cards=reps.map(f=>{
+    const st=String(f.TriageStatus||"").trim();
+    const sev=f.Severity||'Low';
+    const trade=String(f.Trade||"").trim();
+    const where=reportWhere(f);
+    const note=reportNote(f);
+    const rev=st==='Awaiting triage'?'not yet reviewed':('reviewed '+(dmy(f.TriageDecidedOn||f.LastReviewed)||'\u2014'));
+    return `<div class="fcard s-${sev}">
+      <div class="fhead">
+        <span class="fref">${esc(f.Title||f.FaultRef||'')}</span>
+        <span class="sev ${sev}">${esc(sev)}</span>
+        <span class="trd${trade==='Refrigeration'?' ref':''}">${esc(trade||'Trade not stated')}</span>
+        ${where?`<span class="chip">${esc(where)}</span>`:''}
+        <span class="tstat ${TRIAGE_CLS[st]||''}">${esc(TRIAGE_LABEL[st]||st)}</span>
+        <span class="fage">received ${dmy(f.FaultDate)||'\u2014'}</span>
+      </div>
+      <div class="fbody">
+        <div class="fl">Reported</div><div class="ft">${esc(reportDesc(f))||'\u2014'}</div>
+        ${note?`<div class="fl">RED FM note</div><div class="ft">${esc(note)}</div>`:''}
+      </div>
+      <div class="ffoot"><span class="raised">Reported by ${esc(f.RaisedBy||'\u2014')} · ${rev}</span></div>
+    </div>`;}).join('');
+  $('sitereports').innerHTML=head+cards
+    +(waiting?'':'<div class="srcnote">Every report from site has been reviewed.</div>');
+}
+
 function renderForward(works){
   if(works==null){$('fwbox').innerHTML='<div class="empty">Forward works records are not available in this view.</div>';return;}
   if(!works.length){$('fwbox').innerHTML='<div class="empty">No forward works recorded.</div>'+srcNote();return;}
@@ -752,6 +857,7 @@ function render(){
   renderRdm(DATA.visits,DATA.rdmalarms);
   renderParams(DATA.parameterchanges);
   renderForward(DATA.forwardworks);
+  renderSiteReports(C.faults);
 
   $('regimes').innerHTML=C.regs.map(r=>`
     <div class="reg">

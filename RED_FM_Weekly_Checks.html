@@ -141,7 +141,7 @@ const VARIANTS={
    {name:"B — pack meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Pack total kWhr"],["B chamber total energy"]])},
    {name:"A & B cooler energy meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])},
    {name:"B cooler energy meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])},
-   {name:"A cooler energy (derived)",cols:["kWhr"],rows:T([["A cooler total kWhr",'calc']])}
+   {name:"A cooler energy (derived)",cols:["kWhr"],rows:T([["Electric kWhr meter reading",'calc'],["Previous meter reading"],["Total kWhr",'calc']])}
  ]},
  "C & D":{label:"R404a",sections:[
    {name:"Chamber temperature",cols:["C1","C2","C3","C4","D1","D2"],rows:CHAMBER},
@@ -252,7 +252,7 @@ async function loadPrev(){
     const wkDate={};(snap.visits||[]).forEach(v=>{if(v.ServiceType==='Weekly'&&v.VisitDate)wkDate[v.Title]=String(v.VisitDate).slice(0,10);});
     (snap.readings||[]).forEach(rd=>{const d=wkDate[rd.VisitRef];if(!d||rd.Value==null||rd.Value==='')return;
       const k=rd.ReadingKey+'||'+rd.Asset;const cur=prevMap[k];if(!cur||d>cur.date)prevMap[k]={value:rd.Value,date:d};});
-    applyPrev();
+    applyPrev();evalRules();
   }catch(e){/* no snapshot yet — engineers just type previous readings as before */}
 }
 function applyPrev(){
@@ -370,39 +370,45 @@ function evalSetpoints(){
    A section's consumption is the typed "Total kWhr" when the engineer has filled it
    in, otherwise this week's reading less the previous one.
 --------------------------------------------------------------------------- */
-function sectionTotal(v,secs,name){
+function sectionReading(v,secs,name){
   const si=secs.findIndex(s=>s.name===name);if(si<0)return null;
   const sec=secs[si];
-  const tRi=sec.rows.findIndex(r=>/^total kwhr/i.test(r[0]));
   const eRi=sec.rows.findIndex(r=>/^electric kwhr meter reading/i.test(r[0]));
-  const pRi=sec.rows.findIndex(r=>/^previous/i.test(r[0]));
-  const t=tRi>=0?num(state[`${v}|${si}|${tRi}|0`]):null;
-  if(t!=null)return t;
-  const cur=eRi>=0?num(state[`${v}|${si}|${eRi}|0`]):null;
-  const prv=pRi>=0?num(state[`${v}|${si}|${pRi}|0`]):null;
-  return (cur!=null&&prv!=null)?(cur-prv):null;
+  return eRi>=0?num(state[`${v}|${si}|${eRi}|0`]):null;
+}
+function setCalc(id,val,note){
+  if(val!=='')state[id]=val;else delete state[id];
+  noteMsg[id]=note||'';
+  const inp=document.querySelector('input[data-calc="'+id+'"]');
+  if(inp)inp.value=val;
 }
 function evalCalcs(){
   Object.keys(VARIANTS).forEach(v=>{
     const secs=VARIANTS[v].sections;
     const di=secs.findIndex(s=>s.name==='A cooler energy (derived)');
     if(di<0)return;
-    const id=`${v}|${di}|0|0`;
-    const ab=sectionTotal(v,secs,'A & B cooler energy meter');
-    const b=sectionTotal(v,secs,'B cooler energy meter');
-    let val='',note='';
-    if(ab==null||b==null){
-      note='Fills in once the A&B cooler and B cooler meters are entered';
-    }else{
-      const a=Math.round((ab-b)*100)/100;
-      val=String(a);
-      note=(a<0)?'Negative \u2014 B cooler is reading higher than A&B; re-check both meters'
-                :'A&B '+ab+' less B '+b+' kWh';
-    }
-    if(val!=='')state[id]=val;else delete state[id];
-    noteMsg[id]=note;
-    const inp=document.querySelector('input[data-calc="'+id+'"]');
-    if(inp)inp.value=val;
+    const rd=`${v}|${di}|0|0`,pv=`${v}|${di}|1|0`,tt=`${v}|${di}|2|0`;
+    const ab=sectionReading(v,secs,'A & B cooler energy meter');
+    const b=sectionReading(v,secs,'B cooler energy meter');
+    /* The A&B meter and the B meter were installed at different times, so the difference of
+       their readings is NOT A's lifetime energy. It is, however, a counter that rises by
+       exactly A's consumption every week — so subtracting the readings gives A a running
+       figure that behaves like a meter, and the "previous" box auto-fills from last week
+       like every other meter section. Only the week-to-week change is a real number, which
+       is why the note says so on the cell. */
+    let rdVal='',rdNote='';
+    if(ab==null||b==null){rdNote='Fills in once the A&B cooler and B cooler meter readings are entered';}
+    else{rdVal=String(Math.round((ab-b)*100)/100);
+         rdNote='A&B '+ab+' less B '+b+' \u2014 not a physical meter, so only the change week to week is a real figure';}
+    setCalc(rd,rdVal,rdNote);
+    const cur=rdVal===''?null:num(rdVal), prev=num(state[pv]);
+    let ttVal='',ttNote='';
+    if(cur==null){ttNote='';}
+    else if(prev==null){ttNote='No previous A figure yet \u2014 this is the first week A and B have been split, so there is nothing to subtract';}
+    else{const t=Math.round((cur-prev)*100)/100;ttVal=String(t);
+         ttNote=(t<0)?'Negative \u2014 the B meter has risen more than A&B, which cannot be right; re-check both readings'
+                     :'A coolers used '+t+' kWh since the last visit';}
+    setCalc(tt,ttVal,ttNote);
   });
 }
 
