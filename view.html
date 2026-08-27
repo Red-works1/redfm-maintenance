@@ -756,7 +756,7 @@ function photoStrip(f){
   const pics=reportPhotos(f);
   if(pics.length){
     return '<div class="rphotos">'+pics.slice(0,5).map(p=>
-      '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt="Photo of '+esc(f.Title||"")+'" loading="lazy"></a>').join('')
+      '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt="Photo of '+esc(f.Title||"")+'"></a>').join('')
       +(pics.length>5?'<span class="more">+'+(pics.length-5)+' more</span>':'')+'</div>';
   }
   const n=Number(f.PhotoCount||0);
