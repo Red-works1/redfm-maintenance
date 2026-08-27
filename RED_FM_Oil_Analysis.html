@@ -107,6 +107,24 @@ $('finish').addEventListener('click',async()=>{
   const date=$('oDate').value, eng=$('oEng').value.trim(), notes=$('oNotes').value.trim();
 
   let saveMsg='SharePoint not configured yet — nothing saved online.';
+  /* ---------------------------------------------------------------------------
+     Duplicate-submit guard.
+     The lock used to be set on the LAST line of this handler — after sign-in, the
+     visit write, every reading row and the RDM section. For however long that took
+     the button stayed live, and each tap minted a fresh reference. On 27/08/2026 it
+     wrote one weekly visit three times: WK-MTBIYHLC (260 readings), WK-MTBJ9DOO
+     (120) and WK-MTBJ9GZK (40) — the last two cut off mid-write, 4.3 seconds apart.
+     Every check above this line is an early return, so this is the first point at
+     which the submission is genuinely committed. JavaScript is single-threaded, so
+     nothing can arrive between here and the first await below.
+     --------------------------------------------------------------------------- */
+  submitted=true;
+  const _btn=$('finish');
+  const _btnLabel=_btn?_btn.textContent:'';
+  if(_btn){_btn.disabled=true;_btn.textContent='Saving\u2026 do not close this page';}
+  const _unlock=(msg)=>{submitted=false;
+    if(_btn){_btn.disabled=false;_btn.textContent=msg||_btnLabel||'Finish & submit';}};
+
   if(redfmReady){
     $('finish').textContent='Saving…';
     try{
@@ -127,6 +145,7 @@ $('finish').addEventListener('click',async()=>{
         try{if(visit&&visit.id)await REDFM.updateVisit(visit.id,{Status:"Fully completed"});}catch(se){}
       }catch(ue){saveMsg+=' — LAB REPORT DID NOT UPLOAD ('+(ue.message||ue)+'). This visit stays incomplete until it does.';}
     }catch(err){saveMsg='Could not save online. ('+(err.message||err)+')';}
+      _unlock('Save failed — tap to try again');
   }
 
   submitted=true;
