@@ -57,7 +57,11 @@
   .urg button.on small{color:#a4101c;}
   .photo{display:block;width:100%;padding:16px;border:2px dashed var(--line);border-radius:12px;background:#fff;text-align:center;color:var(--grey);font-weight:700;cursor:pointer;font-size:15px;}
   .photo.has{border-color:var(--ok);color:var(--ok);background:#f2f9f4;}
-  #prev{max-width:100%;border-radius:10px;margin-top:10px;display:none;}
+  .thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}
+  .thumbs:empty{margin-top:0;}
+  .thumb{position:relative;width:92px;height:92px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#f4f4f6;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb button{position:absolute;top:3px;right:3px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;font-size:15px;line-height:26px;padding:0;cursor:pointer;}
   .hint{font-size:13px;color:var(--grey);margin-top:7px;min-height:18px;}
   .hint.ok{color:var(--ok);font-weight:700;}
   .done{text-align:center;padding:28px 12px;}
@@ -92,12 +96,14 @@
   <div class="big">How urgent is it?</div>
   <div class="card urg" id="urg"></div>
 
-  <div class="big">Photo</div>
-  <div class="sub">Optional, but a photo usually means it gets fixed without anyone needing to come and look first.</div>
+  <div class="big">Photos</div>
+  <div class="sub">Optional, but a photo usually means it gets fixed without anyone needing to come and look first. You can add up to 5 &mdash; add them one at a time, or pick several at once.</div>
   <div class="card">
     <label class="photo" id="plabel" for="photo">Take or choose a photo</label>
-    <input type="file" id="photo" accept="image/*" capture="environment" style="display:none">
-    <img id="prev" alt="">
+    <!-- No capture="environment": that pins the input to the camera and stops multi-select.
+         Without it the phone still offers Take Photo, and also lets them pick several. -->
+    <input type="file" id="photo" accept="image/*" multiple style="display:none">
+    <div id="thumbs" class="thumbs"></div>
   </div>
 
   <div class="big">Who are you?</div>
@@ -148,7 +154,11 @@ const TRADES=[
   ["Building fabric","Building fabric","Roof, walls, floors, drains, leaks coming from the building."],
   ["Other / not sure","Something else, or not sure","Tell us what you can see and we will work it out."]
 ];
-let urg="", trade="", photoData=null, photoName="";
+let urg="", trade="";
+/* Up to five. One photo of a leak rarely shows where the water is coming from; the cap is
+   there because each one is base64 in the request body and the phone is on warehouse wifi. */
+const MAX_PHOTOS=5;
+let photos=[];   // [{name, data}]
 
 const qs=new URLSearchParams(location.search);
 const pre=(qs.get('asset')||qs.get('plant')||'').trim();
@@ -193,14 +203,30 @@ function shrink(file){
     fr.readAsDataURL(file);
   });
 }
+function drawThumbs(){
+  $('thumbs').innerHTML=photos.map((p,i)=>
+    '<div class="thumb"><img src="'+p.data+'" alt=""><button type="button" data-rm="'+i+'" aria-label="Remove photo '+(i+1)+'">&times;</button></div>').join('');
+  $('thumbs').querySelectorAll('button[data-rm]').forEach(b=>b.onclick=()=>{
+    photos.splice(+b.dataset.rm,1);drawThumbs();});
+  const n=photos.length;
+  $('plabel').textContent = n===0 ? 'Take or choose a photo'
+    : (n>=MAX_PHOTOS ? '5 photos attached — that is the limit'
+                     : n+' photo'+(n===1?'':'s')+' attached — tap to add another');
+  $('plabel').classList.toggle('has',n>0);
+}
 $('photo').addEventListener('change',async e=>{
-  const f=e.target.files[0];if(!f)return;
-  photoName=f.name||'photo.jpg';
+  const files=[...e.target.files];
+  e.target.value='';                       // so the same file can be picked again after a remove
+  if(!files.length)return;
+  const room=MAX_PHOTOS-photos.length;
+  if(room<=0){$('plabel').textContent='5 photos already — remove one to add another';return;}
+  const take=files.slice(0,room);
   $('plabel').textContent='Processing…';
-  photoData=await shrink(f);
-  $('prev').src=photoData;$('prev').style.display='block';
-  $('plabel').textContent='Photo attached — tap to change';
-  $('plabel').classList.add('has');
+  for(const f of take){
+    try{ photos.push({name:f.name||('photo'+(photos.length+1)+'.jpg'), data:await shrink(f)}); }catch(err){}
+  }
+  drawThumbs();
+  if(files.length>room)$('plabel').textContent=MAX_PHOTOS+' photos attached — the rest were not added';
 });
 
 function missing(){
@@ -245,8 +271,11 @@ $('send').addEventListener('click',async()=>{
     contact:$('contact').value.trim(),
     via:pre?'QR label':'Dashboard',
     reportedAt:new Date().toISOString(),
-    photoName:photoData?photoName:'',
-    photo:photoData||''
+    photos:photos.map(p=>({name:p.name,data:p.data})),
+    // Kept so a page cached on someone's phone before this change still posts something the
+    // API understands, and so the API can stay backwards compatible either way.
+    photoName:photos.length?photos[0].name:'',
+    photo:photos.length?photos[0].data:''
   };
   $('send').textContent='Sending…';$('send').disabled=true;
   let ref='', ok=false;
@@ -262,9 +291,9 @@ $('send').addEventListener('click',async()=>{
 });
 
 $('again').addEventListener('click',()=>{
-  urg='';trade='';photoData=null;
+  urg='';trade='';photos=[];
   $('what').value='';$('where').value=pre||'';
-  $('prev').style.display='none';$('plabel').textContent='Take or choose a photo';$('plabel').classList.remove('has');
+  drawThumbs();
   $('send').textContent='Send it';$('send').disabled=false;
   $('done').style.display='none';$('form').style.display='block';
   drawTrade();drawUrg();check();window.scrollTo(0,0);
