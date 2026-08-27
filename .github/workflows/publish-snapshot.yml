@@ -23,6 +23,6 @@ jobs:
         run: |
           git config user.name "snapshot-bot"
           git config user.email "snapshot-bot@users.noreply.github.com"
-          git add data-snapshot.json reports-manifest.json reports
-          git diff --staged --quiet || git commit -m "Update dashboard snapshot + reports library"
+          git add data-snapshot.json reports-manifest.json photos-manifest.json reports photos
+          git diff --staged --quiet || git commit -m "Update dashboard snapshot, reports library and site photos"
           git push
