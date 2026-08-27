@@ -19,6 +19,7 @@
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+const MAX_PHOTOS = 5;
 
 const PLANTS = ["A","B","C1","C2","C3","C4","D1","D2","D3","D4","E1","E2","A&B Plant Room","General"];
 const SEVERITIES = ["Low","Medium","High"];
@@ -92,12 +93,19 @@ module.exports = async function (context, req) {
     const plant  = PLANTS.includes(placeCode) ? placeCode : "General";
     const assetId = PLANTS.includes(placeCode) && placeCode !== "General" ? placeCode : "";
 
-    let photo = String(b.photo || "");
-    if (photo && !/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(photo)) photo = "";
-    let photoBuf = null;
-    if (photo) {
-      photoBuf = Buffer.from(photo.split(",")[1] || "", "base64");
-      if (!photoBuf.length || photoBuf.length > MAX_PHOTO_BYTES) photoBuf = null;
+    /* The page posts `photos: [{name, data}]` (up to five). A page cached on someone's
+       phone from before that change still posts the single `photo`/`photoName` pair, so
+       both shapes are accepted and normalised to the same array. */
+    const rawPhotos = Array.isArray(b.photos) && b.photos.length
+      ? b.photos
+      : (b.photo ? [{ name: b.photoName, data: b.photo }] : []);
+    const photoBufs = [];
+    for (const item of rawPhotos.slice(0, MAX_PHOTOS)) {
+      const data = String((item && item.data) || "");
+      if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(data)) continue;
+      const buf = Buffer.from(data.split(",")[1] || "", "base64");
+      if (!buf.length || buf.length > MAX_PHOTO_BYTES) continue;
+      photoBufs.push(buf);
     }
 
     const tk = await token();
@@ -116,11 +124,36 @@ module.exports = async function (context, req) {
       + `\n\nReported by ${reportedBy}${contact ? ` (${contact})` : ""} via the ${via.toLowerCase()}.`
       + `\nRaised by a member of site staff, not by an attending engineer. Not yet triaged.`;
 
-    await g(tk, `/sites/${site.id}/lists/${list.id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fields: {
+    /* Upload first so the record can carry the photo urls, but never let an upload
+       failure lose the report: everything here is wrapped, and a failure just means the
+       item is created with fewer urls (or none) and a note in the log. */
+    const photoUrls = [];
+    let photoNote = "";
+    if (photoBufs.length) {
+      try {
+        const drives = await g(tk, `/sites/${site.id}/drives?$select=id,name`);
+        const lib = (drives.value || []).find(d => d.name === "Faults") || (drives.value || [])[0];
+        const slug = (assetId || plant).replace(/[^A-Za-z0-9]+/g, "");
+        for (let i = 0; i < photoBufs.length; i++) {
+          const name = `${ref}_${today}_${slug}${photoBufs.length > 1 ? "_" + (i + 1) : ""}.jpg`;
+          try {
+            const up = await fetch(`${GRAPH}/drives/${lib.id}/root:/${encodeURIComponent(name)}:/content`, {
+              method: "PUT",
+              headers: { Authorization: "Bearer " + tk, "Content-Type": "image/jpeg" },
+              body: photoBufs[i]
+            });
+            if (up.ok) {
+              const item = await up.json().catch(() => ({}));
+              if (item && item.webUrl) photoUrls.push(item.webUrl);
+            } else {
+              photoNote += ` (photo ${i + 1} did not attach)`;
+            }
+          } catch (e) { photoNote += ` (photo ${i + 1} did not attach)`; }
+        }
+      } catch (e) { photoNote = " (photos did not attach)"; }
+    }
+
+    const itemFields = {
           Title: ref,
           FaultDate: today,
           Plant: plant,
@@ -133,28 +166,29 @@ module.exports = async function (context, req) {
           SourceType: "Site QR",
           TriageStatus: "Awaiting triage",
           RepeatCount: 1
-        }
-      })
+    };
+    /* PhotoCount and PhotoUrls are what the dashboard and the notification read. SharePoint
+       rejects the WHOLE item if a field name is unknown, and losing a report because a
+       column has not been created yet would be far worse than losing the urls — so try
+       with them, and fall back to the item without them. */
+    const withPhotos = Object.assign({}, itemFields, {
+      PhotoCount: photoUrls.length,
+      PhotoUrls: photoUrls.join("\n")
     });
-
-    /* The photo is the whole reason this exists rather than a phone call, but a failed
-       upload must never lose the report — the record is already in by this point. */
-    let photoNote = "";
-    if (photoBuf) {
-      try {
-        const drives = await g(tk, `/sites/${site.id}/drives?$select=id,name`);
-        const lib = (drives.value || []).find(d => d.name === "Faults") || (drives.value || [])[0];
-        const name = `${ref}_${today}_${(assetId || plant).replace(/[^A-Za-z0-9]+/g, "")}.jpg`;
-        const up = await fetch(`${GRAPH}/drives/${lib.id}/root:/${encodeURIComponent(name)}:/content`, {
-          method: "PUT",
-          headers: { Authorization: "Bearer " + tk, "Content-Type": "image/jpeg" },
-          body: photoBuf
-        });
-        photoNote = up.ok ? "" : " (photo did not attach)";
-      } catch (e) { photoNote = " (photo did not attach)"; }
+    try {
+      await g(tk, `/sites/${site.id}/lists/${list.id}/items`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: withPhotos })
+      });
+    } catch (e) {
+      await g(tk, `/sites/${site.id}/lists/${list.id}/items`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: itemFields })
+      });
+      photoNote += " (photo columns missing - urls not recorded)";
     }
 
-    context.log(`site report ${ref} · ${trade} · ${place} · ${severity} · via ${via}${photoNote}`);
+    context.log(`site report ${ref} · ${trade} · ${place} · ${severity} · via ${via} · ${photoUrls.length} photo(s)${photoNote}`);
     return reply(200, { ref, ok: true });
 
   } catch (err) {
