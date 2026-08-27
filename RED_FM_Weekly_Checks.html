@@ -41,6 +41,8 @@
   td.bad .cw input{box-shadow:inset 0 0 0 2px #b9770b;background:#fff8ea;}
   .cmsg{display:none;white-space:normal;font-size:11px;line-height:1.35;padding:5px 7px;max-width:150px;font-weight:600;}
   .cmsg.on{display:block;background:#fdecee;color:#8c1018;}.cmsg.bad{display:block;background:#fff3cd;color:#7a4e05;}
+  .cmsg.info{display:block;background:#f2f3f5;color:#5a5a63;}
+  td input.calc{background:#eaf6ec;color:#1a7f37;font-weight:800;border-style:dashed;}
   .rbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
   .rrow{border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-top:10px;background:#fafafb;}
   .rrow .rhead{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--grey);}
@@ -115,22 +117,6 @@
 <script src="redfm-draft.js?v=2"></script>
 <script src="redfm-faultflow.js?v=4"></script>
 <script>
-/* ---------------------------------------------------------------------------
-   The browser stamps dates in UTC. Between midnight and 01:00 BST that is still
-   yesterday, so a form opened at 00:30 on the 26th pre-filled "25". A service
-   record or fault dated a day early is a compliance record that is wrong — and
-   FaultDate is what starts the 48-hour clock in clause 4.1. Ask for the date in
-   Europe/London explicitly; fall back to the old behaviour only if the browser
-   has no time-zone data at all.
-   --------------------------------------------------------------------------- */
-function londonToday(){
-  try{
-    const d=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
-    if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
-  }catch(e){}
-  return new Date().toISOString().slice(0,10);
-}
-
 const T=(a)=>a.map(x=>Array.isArray(x)?x:[x,'txt']);
 const CHAMBER=T([["Cold store set point (controller)"],["Cold store temp air-on"],["Coolers air off"],["Cooling on/off"]]);
 const COND9=T([["Compr abnormal noise / vibration",'chk'],["Compressor abnormal frosting",'chk'],["Compr oil level"],["Compr delivery temperature"],["Oil recovery / separator level"],["Condenser fin face free of debris",'chk'],["Condenser fans abnormal noise",'chk'],["Liquid line sight glass",'chk'],["Receiver level"]]);
@@ -145,7 +131,7 @@ const VARIANTS={
      ["Operating suction superheat #"],["% opening of expansion valve #"],["Cooler air temp diff #"]])},
    {name:"Compressor racks & condenser",cols:["A","B"],rows:T([
      ["Compr abnormal noise / vibration",'chk'],["Oil cooler fin face free of debris",'chk'],["Oil cooler fans correct operation",'chk'],
-     ["Plant-room ventilation fan (on/off)"],["Plant-room temperature"],["Ambient temperature"],["Wet-matt cooling on/off (hours)"],["System delivery pressure"],
+     ["Plant-room ventilation fan (on/off)"],["Plant-room temperature"],["Wet-matt cooling on/off (hours)"],["System delivery pressure"],
      ["Condenser fin face free of debris",'chk'],["Condenser fans correct operation"],["Liquid line sight glass"],["Receiver level"],["Oil separator oil level"],
      ["No1 compressor running & % load"],["No2 compressor running & % load"],["No3 compressor running & % load"],
      ["No1 compr delivery & econ temp"],["No2 compr delivery & econ temp"],["No3 compr delivery & econ temp"],["Refrigerant leak detection system",'chk']])},
@@ -153,7 +139,9 @@ const VARIANTS={
    {name:"Main incoming meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])},
    {name:"A — pack meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Pack total kWhr"],["A chamber total energy"]])},
    {name:"B — pack meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Pack total kWhr"],["B chamber total energy"]])},
-   {name:"A & B cooler energy meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])}
+   {name:"A & B cooler energy meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])},
+   {name:"B cooler energy meter",cols:["kWhr"],rows:T([["Electric kWhr meter reading"],["Previous meter reading"],["Total kWhr"]])},
+   {name:"A cooler energy (derived)",cols:["kWhr"],rows:T([["A cooler total kWhr",'calc']])}
  ]},
  "C & D":{label:"R404a",sections:[
    {name:"Chamber temperature",cols:["C1","C2","C3","C4","D1","D2"],rows:CHAMBER},
@@ -179,14 +167,43 @@ const SETPOINTS={
   "C1":null,"C2":null,"C3":null,"C4":null,"D1":null,"D2":null,
   "E1":null,"E2":null
 };
+// Notice 5.4, as revised 27 Aug 2026. A cold-store air-on reading is a fault when EITHER
+//   (a) it is at or above ABS_MAX - the same temperature the RDMs trip a fault at; or
+//   (b) it is more than SP_TOL above set point AND the coolers air-off is ALSO more than
+//       SP_TOL above set point.
+// (b) replaced a bare air-on-vs-set-point test. The air-on sensor sits close to the cooler
+// and picks up defrost heat, so air-on warm + air-off at set point is defrost pickup, not a
+// temperature excursion. Both sensors warm means the store really has drifted.
+// (a) is kept as an absolute backstop so a chamber running at -14 flags whatever its set
+// point is - without it, chambers set at -20 would get 4C of slack and chambers set at
+// -18 only 2C, from the same rule.
+// If the air-off has not been recorded the reading FLAGS: a missing reading never excuses one.
 const SP_TOL=1.5;
+const ABS_MAX=-16;
 
 const $=id=>document.getElementById(id);
+
+/* ---------------------------------------------------------------------------
+   The browser stamps dates in UTC. Between midnight and 01:00 BST that is still
+   yesterday, so a form opened at 00:30 on the 26th pre-filled "25". A service
+   record or fault dated a day early is a compliance record that is wrong — and
+   FaultDate is what starts the 48-hour clock in clause 4.1. Ask for the date in
+   Europe/London explicitly; fall back to the old behaviour only if the browser
+   has no time-zone data at all.
+   --------------------------------------------------------------------------- */
+function londonToday(){
+  try{
+    const d=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  }catch(e){}
+  return new Date().toISOString().slice(0,10);
+}
+
 $('hDate').value=londonToday();
 let variant=Object.keys(VARIANTS)[0];const state={};let prevMap={};
 // clause 8.7 — a value cell can be flagged as a fault in its own right.
 // flags[id] = 'manual' (engineer tapped the flag) | 'auto' (set by the 1.5C rule, clears itself).
-const flags={},flagMsg={};let meterBad={},meterBadList=[];
+const flags={},flagMsg={},noteMsg={};let meterBad={},meterBadList=[];
 // Notice 5.3 — RDM alarm section. '' until answered; submission is blocked while it is ''.
 let rdmChoice='';const rdmAlarms=[],rdmInhibits=[];
 const vbar=$('vbar');
@@ -205,6 +222,7 @@ function draw(){
     sec.rows.forEach((row,ri)=>{const[label,type]=row;html+=`<tr><td class="rowlab">${label}</td>`;
       sec.cols.forEach((c,ci)=>{const id=key(si,ri,ci);const v=state[id];
         if(type==='chk')html+=`<td><button class="chk${v?(' '+v):''}" data-id="${id}">${v==='ok'?'✓':v==='no'?'✗':''}</button></td>`;
+        else if(type==='calc')html+=`<td class="cell" data-cell="${id}"><div class="cw"><input class="calc" data-calc="${id}" value="${v||''}" readonly tabindex="-1" title="Calculated: A&amp;B cooler total less B cooler total"></div><div class="cmsg" data-msg="${id}"></div></td>`;
         else html+=`<td class="cell" data-cell="${id}"><div class="cw"><input data-id="${id}" value="${v||''}"><button type="button" class="flag" data-flag="${id}" title="Flag this reading as a fault" aria-label="Flag this reading as a fault">&#9873;</button></div><div class="cmsg" data-msg="${id}"></div></td>`;});
       html+='</tr>';});
     html+='</tbody></table>';sc.innerHTML=html;root.appendChild(sc);
@@ -213,6 +231,9 @@ function draw(){
     const nx=cur===''?'ok':cur==='ok'?'no':'';if(nx)state[id]=nx;else delete state[id];
     b.className='chk'+(nx?(' '+nx):'');b.textContent=nx==='ok'?'✓':nx==='no'?'✗':'';});
   root.querySelectorAll('input[data-id]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.id;if(inp.value!=='')state[id]=inp.value;else delete state[id];inp.classList.remove('prefill');evalRules();});
+  root.querySelectorAll('input[data-id]').forEach(inp=>inp.onchange=()=>{const id=inp.dataset.id;
+    const t=tidyNum(inp.value);if(t===inp.value)return;
+    inp.value=t;if(t!=='')state[id]=t;else delete state[id];evalRules();});
   root.querySelectorAll('.flag').forEach(b=>b.onclick=()=>{const id=b.dataset.flag;
     if(flags[id]==='auto'){toast(flagMsg[id]||'Set automatically \u2014 cannot be cleared');return;}
     if(flags[id])delete flags[id];else flags[id]='manual';paintCell(id);});
@@ -254,15 +275,58 @@ loadPrev();
    cold-store rule, and meter-reading validation at the point of entry.
    evalRules() runs after every keystroke and again at submit.
 --------------------------------------------------------------------------- */
+/* Numbers as engineers actually type them on a phone in a cold store.
+   Before 27 Aug 2026 this stripped every non-digit, so a comma used as the decimal
+   separator silently multiplied the value by 100: a "-18,9" set point became -189, which
+   made a normal air-on reading look 171C over set point (false fault), and a "-18,5"
+   air-on became -185, which flagged nothing at all and stored a nonsense compliance
+   record. Both shapes are present in the live SharePoint data. */
 function num(x){if(x==null)return null;
-  const t=String(x).replace(/[\u2212\u2013\u2014]/g,'-').replace(/[^0-9.+-]/g,'');
-  if(!/\d/.test(t))return null;const n=parseFloat(t);return isFinite(n)?n:null;}
+  let t=String(x).replace(/[\u2212\u2013\u2014]/g,'-').replace(/\s+/g,'');
+  // "-18,9" - comma as the decimal separator. A comma before exactly three digits is a
+  // thousands separator ("1,500") and is dropped instead.
+  if(/^[-+]?\d+,\d{1,2}$/.test(t))t=t.replace(',','.');
+  t=t.replace(/,/g,'');
+  // "21-" / "18.6-" - the minus typed after the number. parseFloat would return +21 for a
+  // cold-store temperature that can only be negative.
+  let trail=false;
+  if(/^\d+(\.\d+)?-$/.test(t)){trail=true;t=t.slice(0,-1);}
+  t=t.replace(/[^0-9.+-]/g,'');
+  if(!/\d/.test(t))return null;
+  const n=parseFloat(t);
+  if(!isFinite(n))return null;
+  return trail?-n:n;}
 
-// Notice 5.4 — air-on more than 1.5C above the recorded (or fallback) set point IS a fault.
+/* The same four shapes, rewritten in the CELL so the stored record is clean, not just the
+   rule evaluation. Applied when the engineer leaves the cell and again at submit. Anything
+   that is not a plain number - "1/3", "Full", "50%", "-19.8/22", "n/a" - is left untouched. */
+function tidyNum(raw){
+  let t=String(raw);
+  if(/[\/a-zA-Z%]/.test(t))return raw;
+  t=t.trim().replace(/[\u2212\u2013\u2014]/g,'-');
+  if(/^-\s+\d/.test(t))t=t.replace(/^-\s+/,'-');        // "- 18.9"  -> "-18.9"
+  if(/^[-+]?\d+,\d{1,2}$/.test(t))t=t.replace(',','.');  // "-18,9"   -> "-18.9"
+  if(/^\d+(\.\d+)?-$/.test(t))t='-'+t.slice(0,-1);      // "21-"     -> "-21"
+  if(/^\d{1,3}( \d{3})+$/.test(t))t=t.replace(/ /g,''); // "26 636"  -> "26636"
+  return t;
+}
+function tidyAll(){
+  Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>sec.rows.forEach((row,ri)=>{
+    if(row[1]==='chk'||row[1]==='calc')return;
+    sec.cols.forEach((c,ci)=>{const id=`${v}|${si}|${ri}|${ci}`;const raw=state[id];
+      if(raw==null||raw==='')return;
+      const t=tidyNum(raw);if(t===raw)return;
+      state[id]=t;
+      const inp=document.querySelector('input[data-id="'+id+'"]');if(inp)inp.value=t;});
+  })));
+}
+
+// Notice 5.4, as revised 27 Aug 2026 — the two-part rule described above SP_TOL.
 function evalSetpoints(){
   Object.keys(VARIANTS).forEach(v=>VARIANTS[v].sections.forEach((sec,si)=>{
     const spRi=sec.rows.findIndex(r=>/cold store set point/i.test(r[0]));
     const aoRi=sec.rows.findIndex(r=>/cold store temp air-on/i.test(r[0]));
+    const afRi=sec.rows.findIndex(r=>/coolers air off/i.test(r[0]));
     if(spRi<0||aoRi<0)return;
     sec.cols.forEach((c,ci)=>{
       const aoId=`${v}|${si}|${aoRi}|${ci}`;
@@ -270,16 +334,76 @@ function evalSetpoints(){
       let sp=num(state[`${v}|${si}|${spRi}|${ci}`]);
       let src='set point';
       if(sp==null&&SETPOINTS[c]!=null){sp=SETPOINTS[c];src='design set point '+sp+'\u00b0C';}
+      const af=afRi>=0?num(state[`${v}|${si}|${afRi}|${ci}`]):null;
       const dev=(ao!=null&&sp!=null)?(ao-sp):null;
-      if(dev!=null&&dev>SP_TOL){
+      const devOff=(af!=null&&sp!=null)?(af-sp):null;
+      let msg=null,note=null;
+      if(ao!=null&&ao>=ABS_MAX){
+        // (a) absolute backstop — the RDM fault temperature, whatever the set point is.
+        msg='Air-on '+ao.toFixed(1)+'\u00b0C \u2014 at or above the '+ABS_MAX+'\u00b0C RDM fault threshold \u2014 must be recorded as a fault';
+      }else if(dev!=null&&dev>SP_TOL){
+        // (b) over set point — the coolers air-off decides whether it is real or a defrost.
+        if(af==null){
+          msg=dev.toFixed(1)+'\u00b0C over '+src+' and the coolers air-off is blank \u2014 record the air-off; if it sits at set point this clears as a defrost';
+        }else if(devOff>SP_TOL){
+          msg=dev.toFixed(1)+'\u00b0C over '+src+', coolers air-off also '+devOff.toFixed(1)+'\u00b0C over \u2014 must be recorded as a fault';
+        }else{
+          note=dev.toFixed(1)+'\u00b0C over '+src+', but air-off is '+af.toFixed(1)+'\u00b0C \u2014 defrost pickup, not a fault';
+        }
+      }
+      if(msg){
         if(flags[aoId]!=='manual')flags[aoId]='auto';
-        flagMsg[aoId]=dev.toFixed(1)+'\u00b0C over '+src+' \u2014 must be recorded as a fault';
+        flagMsg[aoId]=msg;
       }else{
         if(flags[aoId]==='auto')delete flags[aoId];
         delete flagMsg[aoId];
       }
+      if(note)noteMsg[aoId]=note;else delete noteMsg[aoId];
     });
   }));
+}
+
+/* ---------------------------------------------------------------------------
+   A cooler energy is not metered on its own. It is the A&B cooler meter less the
+   B cooler meter — CONSUMPTION, not raw readings: the two meters have different
+   origins, so subtracting the numbers off their dials would be meaningless.
+   A section's consumption is the typed "Total kWhr" when the engineer has filled it
+   in, otherwise this week's reading less the previous one.
+--------------------------------------------------------------------------- */
+function sectionTotal(v,secs,name){
+  const si=secs.findIndex(s=>s.name===name);if(si<0)return null;
+  const sec=secs[si];
+  const tRi=sec.rows.findIndex(r=>/^total kwhr/i.test(r[0]));
+  const eRi=sec.rows.findIndex(r=>/^electric kwhr meter reading/i.test(r[0]));
+  const pRi=sec.rows.findIndex(r=>/^previous/i.test(r[0]));
+  const t=tRi>=0?num(state[`${v}|${si}|${tRi}|0`]):null;
+  if(t!=null)return t;
+  const cur=eRi>=0?num(state[`${v}|${si}|${eRi}|0`]):null;
+  const prv=pRi>=0?num(state[`${v}|${si}|${pRi}|0`]):null;
+  return (cur!=null&&prv!=null)?(cur-prv):null;
+}
+function evalCalcs(){
+  Object.keys(VARIANTS).forEach(v=>{
+    const secs=VARIANTS[v].sections;
+    const di=secs.findIndex(s=>s.name==='A cooler energy (derived)');
+    if(di<0)return;
+    const id=`${v}|${di}|0|0`;
+    const ab=sectionTotal(v,secs,'A & B cooler energy meter');
+    const b=sectionTotal(v,secs,'B cooler energy meter');
+    let val='',note='';
+    if(ab==null||b==null){
+      note='Fills in once the A&B cooler and B cooler meters are entered';
+    }else{
+      const a=Math.round((ab-b)*100)/100;
+      val=String(a);
+      note=(a<0)?'Negative \u2014 B cooler is reading higher than A&B; re-check both meters'
+                :'A&B '+ab+' less B '+b+' kWh';
+    }
+    if(val!=='')state[id]=val;else delete state[id];
+    noteMsg[id]=note;
+    const inp=document.querySelector('input[data-calc="'+id+'"]');
+    if(inp)inp.value=val;
+  });
 }
 
 // Notice 5.5 — a reading below its predecessor, or an order of magnitude out, is re-taken.
@@ -310,10 +434,12 @@ function paintCell(id){
   td.classList.toggle('flagged',!!f);td.classList.toggle('bad',!!inv);
   if(b)b.className='flag'+(f?' on':'');
   if(m){const parts=[];if(f)parts.push(flagMsg[id]||'Flagged as a fault');if(inv)parts.push(inv);
-    m.className='cmsg'+(parts.length?(inv?' bad':' on'):'');m.textContent=parts.join(' \u2014 ');}
+    if(parts.length){m.className='cmsg'+(inv?' bad':' on');m.textContent=parts.join(' \u2014 ');}
+    else if(noteMsg[id]){m.className='cmsg info';m.textContent=noteMsg[id];}
+    else{m.className='cmsg';m.textContent='';}}
 }
 function evalRules(){
-  evalSetpoints();evalMeters();
+  evalSetpoints();evalMeters();evalCalcs();
   document.querySelectorAll('td[data-cell]').forEach(td=>paintCell(td.dataset.cell));
   const box=$('meterEscape');
   if(box){box.style.display=meterBadList.length?'block':'none';
@@ -373,6 +499,7 @@ let submitted=false;
 $('finish').addEventListener('click',async()=>{
   if(submitted)return;
   if(!$('hEng').value.trim()){toast('Enter engineer name');return;}
+  tidyAll();
   evalRules();
 
   // Notice 5.5 — an impossible meter reading is never submitted silently. The only way
@@ -467,6 +594,12 @@ $('finish').addEventListener('click',async()=>{
         RdmAlarmsRecorded:rdmChoice==='list'?"Yes - alarms listed":"Yes - none active"};
       const readingRows=out.map((e,i)=>({Title:r.ref+'-'+(i+1),ReadingKey:slug(e.section+' '+e.item),
         Asset:(e.group+' '+e.col).trim(),Value:String(e.value),Unit:'',OutOfRange:(e.value==='ISSUE'||e.flag)?'Yes':'No'}));
+      // Ambient is entered once, in the header. It used to be re-keyed into the A&B compressor
+      // grid as well; that duplicate row is gone, so the header value is stored as a reading
+      // here — otherwise ambient would survive only as text on the PDF and stop being queryable.
+      if(String(r.ambient||'').trim()!==''){readingRows.push({Title:r.ref+'-'+(readingRows.length+1),
+        ReadingKey:'site_ambient_temperature',Asset:'Site',Value:String(r.ambient).trim(),
+        Unit:'\u00b0C',OutOfRange:'No'});}
       const visit=await REDFM.saveVisit(visitFields,readingRows);
       try{REDFMDraft.clear();}catch(e){} // drop local draft — never let this block the save/PDF
       saveMsg='Saved to SharePoint ✓ — '+readingRows.length+' readings';
@@ -530,7 +663,11 @@ $('finish').addEventListener('click',async()=>{
     setTimeout(startFaultFlow,400);
   }
 });
-REDFMDraft.init({key:'weekly',state:state,draw:draw,extra:{
+// Draft key bumped to 'weekly2' on 27 Aug 2026. Drafts store state under position-based
+// keys (variant|section|row|col) and the duplicate ambient row was removed from the A&B
+// compressor grid, shifting every row beneath it. An old draft restored into the new
+// layout would land readings on the wrong rows, so old drafts are orphaned deliberately.
+REDFMDraft.init({key:'weekly2',state:state,draw:draw,extra:{
   save:function(){var e={};
     if(Object.keys(flags).length)e.flags=JSON.parse(JSON.stringify(flags));
     if(rdmChoice)e.rdmChoice=rdmChoice;
