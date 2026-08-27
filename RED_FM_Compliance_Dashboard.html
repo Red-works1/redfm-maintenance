@@ -140,6 +140,10 @@
   .tstat.outsc{background:#eef0f2;color:var(--grey);}
   .trd{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:#f3eefa;color:#5b3a8e;white-space:nowrap;}
   .trd.ref{background:#e8f1fb;color:#175c9e;}
+  .rphotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .rphotos a{display:block;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#f4f4f6;}
+  .rphotos img{width:100%;height:100%;object-fit:cover;display:block;}
+  .rphotos .more{font-size:12px;color:var(--grey);align-self:center;}
   /* The regime chip is uppercase; a location like "outside castell howell office" is a
      sentence, not a label, so it keeps its own case and is allowed to wrap. */
   #sitereports .fhead .chip{text-transform:none;letter-spacing:0;margin-top:0;white-space:normal;}
@@ -768,6 +772,26 @@ function reportNote(f){
   const m=String(f.Description||"").match(/\[Triaged [^\]]*\]\s*[^\u2014]*\u2014\s*([\s\S]*)$/);
   return m?m[1].trim():"";
 }
+/* Photos are copied out of SharePoint into the repo by the hourly publisher, because Border
+   staff have no SharePoint account and a link into the Faults library would just prompt them
+   to sign in. Matched to the report by the ref that starts every filename. Until the publisher
+   has run, PhotoCount still tells us photos exist, so say so rather than showing nothing. */
+function reportPhotos(f){
+  const ref=String(f.Title||f.FaultRef||"").toUpperCase();
+  if(!ref)return[];
+  return (DATA.photos||[]).filter(p=>String(p.ref||"").toUpperCase()===ref);
+}
+function photoStrip(f){
+  const pics=reportPhotos(f);
+  if(pics.length){
+    return '<div class="rphotos">'+pics.slice(0,5).map(p=>
+      '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt="Photo of '+esc(f.Title||"")+'" loading="lazy"></a>').join('')
+      +(pics.length>5?'<span class="more">+'+(pics.length-5)+' more</span>':'')+'</div>';
+  }
+  const n=Number(f.PhotoCount||0);
+  return n>0?'<div class="ft" style="color:var(--grey)">'+n+' photo'+(n===1?'':'s')+' attached \u2014 they appear here within the hour</div>':'';
+}
+
 function renderSiteReports(faults){
   /* Only the four states a site report can be in. Faults an engineer raised carry
      TriageStatus "Not required" and older faults carry none at all — neither is a
@@ -802,6 +826,7 @@ function renderSiteReports(faults){
       </div>
       <div class="fbody">
         <div class="fl">Reported</div><div class="ft">${esc(reportDesc(f))||'\u2014'}</div>
+        ${photoStrip(f)}
         ${note?`<div class="fl">RED FM note</div><div class="ft">${esc(note)}</div>`:''}
       </div>
       <div class="ffoot"><span class="raised">Reported by ${esc(f.RaisedBy||'\u2014')} · ${rev}</span></div>
@@ -932,6 +957,10 @@ function render(){
 // which is written from the same three SharePoint lists. Anything unreadable stays null so the
 // cards say "not available" rather than showing a false all-clear.
 const SNAP_URL='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
+/* Photos live in the repo, not in Graph, so this dashboard fetches the small manifest
+   rather than pulling the whole multi-megabyte snapshot just for image urls. */
+const PHOTOS_URL='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/photos-manifest.json';
+async function loadPhotos(){try{const j=await (await fetch(PHOTOS_URL+'?t='+Date.now())).json();return j.photos||[];}catch(e){return [];}}
 const NEW_LISTS=["RDMAlarms","ParameterChanges","ForwardWorks"];
 function pickList(o,k){return o&&Array.isArray(o[k])?o[k]:null;}
 async function loadNewLists(){
@@ -957,7 +986,8 @@ async function load(){
       REDFM.getServiceVisits(),REDFM.getReadings(),REDFM.getFaultsWithId(),REDFM.getCatalogueAll(),loadNewLists()]);
     const catCount={};cat.forEach(c=>{catCount[c.ServiceType]=(catCount[c.ServiceType]||0)+1;});
     DATA={visits,readings,faults,catCount,
-      rdmalarms:extra.rdmalarms,parameterchanges:extra.parameterchanges,forwardworks:extra.forwardworks};
+      rdmalarms:extra.rdmalarms,parameterchanges:extra.parameterchanges,forwardworks:extra.forwardworks,
+      photos:await loadPhotos()};
     $('loadstate').style.display='none';$('board').style.display='block';
     $('signin').style.display='none';$('genpdf').disabled=false;
     $('status').textContent='Live · '+visits.length+' visits · '+faults.length+' faults loaded';

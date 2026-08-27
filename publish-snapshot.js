@@ -9,6 +9,7 @@ const fs = require('fs');
 const TENANT = process.env.TENANT_ID, CLIENT = process.env.CLIENT_ID, SECRET = process.env.CLIENT_SECRET;
 const HOST = "redbristol.sharepoint.com", SITEPATH = "/sites/REDFMMaintenance";
 const RAW_BASE = "https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports/";
+const PHOTO_BASE = "https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/photos/";
 let TOK;
 
 async function getToken() {
@@ -101,6 +102,46 @@ async function syncLib(sid, title) {
   return out;
 }
 
+/* Photos reported from site live in the Faults document library, which Border staff have no
+   account for — a SharePoint link is useless to them. Same answer as the report PDFs: copy the
+   images out into the repo so the public dashboard can show them with no login.
+   Filenames are <ref>_<date>_<slug>[_n].jpg, so the fault ref comes straight off the name and
+   no lookup is needed. .heic is skipped deliberately: browsers cannot display it, and anything
+   arriving through the reporting form is already re-encoded to JPEG on the phone. */
+async function syncPhotos(sid, title) {
+  const did = await driveIdFor(sid, title);
+  if (!did) { console.log("library not found: " + title); return []; }
+  let url = `/drives/${did}/root/children?$top=200`;
+  const out = [];
+  while (url) {
+    const p = await g(url);
+    for (const it of p.value) {
+      if (!it.file || !/\.(jpe?g|png|webp)$/i.test(it.name)) continue;
+      const m = it.name.match(/^([A-Za-z]+-[A-Za-z0-9]+)_/);
+      const dl = it["@microsoft.graph.downloadUrl"];
+      if (!dl) continue;
+      try {
+        // Already copied and unchanged? Skip the download so the hourly run stays cheap and
+        // git sees no diff.
+        const path = "photos/" + it.name;
+        if (!fs.existsSync(path) || fs.statSync(path).size !== it.size) {
+          fs.writeFileSync(path, Buffer.from(await (await fetch(dl)).arrayBuffer()));
+        }
+        out.push({
+          name: it.name,
+          ref: m ? m[1].toUpperCase() : "",
+          date: it.lastModifiedDateTime || it.createdDateTime || null,
+          size: it.size || 0,
+          url: PHOTO_BASE + encodeURIComponent(it.name)
+        });
+      } catch (e) { console.error("photo " + it.name + " failed: " + e.message); }
+    }
+    url = p["@odata.nextLink"] ? p["@odata.nextLink"].replace("https://graph.microsoft.com/v1.0", "") : null;
+  }
+  console.log(`synced ${out.length} photos from "${title}"`);
+  return out;
+}
+
 (async () => {
   TOK = await getToken();
   const sid = (await g(`/sites/${HOST}:${SITEPATH}`)).id;
@@ -113,9 +154,17 @@ async function syncLib(sid, title) {
   const [rdmalarms, parameterchanges, forwardworks] = await Promise.all([
     listAllSafe(sid, "RDMAlarms"), listAllSafe(sid, "ParameterChanges"),
     listAllSafe(sid, "ForwardWorks")]);
-  const snap = { generatedAt: new Date().toISOString(), visits, readings, faults, cat, rdmalarms, parameterchanges, forwardworks };
+  // Photos go into the same snapshot the dashboards already fetch, so neither page needs a
+  // second request. Done before the write so an empty result still publishes as [].
+  fs.mkdirSync("photos", { recursive: true });
+  let photos = [];
+  try { photos = await syncPhotos(sid, "Faults"); }
+  catch (e) { console.error("photo sync failed: " + e.message); }
+
+  const snap = { generatedAt: new Date().toISOString(), visits, readings, faults, cat, rdmalarms, parameterchanges, forwardworks, photos };
   fs.writeFileSync("data-snapshot.json", JSON.stringify(snap));
-  console.log(`snapshot: ${visits.length} visits, ${readings.length} readings, ${faults.length} faults, ${cat.length} catalogue rows, ${rdmalarms.length} RDM alarms, ${parameterchanges.length} parameter changes, ${forwardworks.length} forward works`);
+  fs.writeFileSync("photos-manifest.json", JSON.stringify({ generatedAt: new Date().toISOString(), photos }));
+  console.log(`snapshot: ${visits.length} visits, ${readings.length} readings, ${faults.length} faults, ${cat.length} catalogue rows, ${rdmalarms.length} RDM alarms, ${parameterchanges.length} parameter changes, ${forwardworks.length} forward works, ${photos.length} photos`);
 
   // 2) the public reports library
   fs.mkdirSync("reports", { recursive: true });

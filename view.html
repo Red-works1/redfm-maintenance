@@ -140,6 +140,10 @@
   .tstat.outsc{background:#eef0f2;color:var(--grey);}
   .trd{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:#f3eefa;color:#5b3a8e;white-space:nowrap;}
   .trd.ref{background:#e8f1fb;color:#175c9e;}
+  .rphotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .rphotos a{display:block;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#f4f4f6;}
+  .rphotos img{width:100%;height:100%;object-fit:cover;display:block;}
+  .rphotos .more{font-size:12px;color:var(--grey);align-self:center;}
   /* The regime chip is uppercase; a location like "outside castell howell office" is a
      sentence, not a label, so it keeps its own case and is allowed to wrap. */
   #sitereports .fhead .chip{text-transform:none;letter-spacing:0;margin-top:0;white-space:normal;}
@@ -739,6 +743,26 @@ function reportNote(f){
   const m=String(f.Description||"").match(/\[Triaged [^\]]*\]\s*[^\u2014]*\u2014\s*([\s\S]*)$/);
   return m?m[1].trim():"";
 }
+/* Photos are copied out of SharePoint into the repo by the hourly publisher, because Border
+   staff have no SharePoint account and a link into the Faults library would just prompt them
+   to sign in. Matched to the report by the ref that starts every filename. Until the publisher
+   has run, PhotoCount still tells us photos exist, so say so rather than showing nothing. */
+function reportPhotos(f){
+  const ref=String(f.Title||f.FaultRef||"").toUpperCase();
+  if(!ref)return[];
+  return (DATA.photos||[]).filter(p=>String(p.ref||"").toUpperCase()===ref);
+}
+function photoStrip(f){
+  const pics=reportPhotos(f);
+  if(pics.length){
+    return '<div class="rphotos">'+pics.slice(0,5).map(p=>
+      '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt="Photo of '+esc(f.Title||"")+'" loading="lazy"></a>').join('')
+      +(pics.length>5?'<span class="more">+'+(pics.length-5)+' more</span>':'')+'</div>';
+  }
+  const n=Number(f.PhotoCount||0);
+  return n>0?'<div class="ft" style="color:var(--grey)">'+n+' photo'+(n===1?'':'s')+' attached \u2014 they appear here within the hour</div>':'';
+}
+
 function renderSiteReports(faults){
   /* Only the four states a site report can be in. Faults an engineer raised carry
      TriageStatus "Not required" and older faults carry none at all — neither is a
@@ -773,6 +797,7 @@ function renderSiteReports(faults){
       </div>
       <div class="fbody">
         <div class="fl">Reported</div><div class="ft">${esc(reportDesc(f))||'\u2014'}</div>
+        ${photoStrip(f)}
         ${note?`<div class="fl">RED FM note</div><div class="ft">${esc(note)}</div>`:''}
       </div>
       <div class="ffoot"><span class="raised">Reported by ${esc(f.RaisedBy||'\u2014')} · ${rev}</span></div>
@@ -908,7 +933,8 @@ async function load(){
     // null so the new cards say "not available" instead of showing a false all-clear
     const pick=k=>Array.isArray(snap[k])?snap[k]:null;
     DATA={visits:snap.visits||[],readings:snap.readings||[],faults:snap.faults||[],catCount,
-      rdmalarms:pick('rdmalarms'),parameterchanges:pick('parameterchanges'),forwardworks:pick('forwardworks')};
+      rdmalarms:pick('rdmalarms'),parameterchanges:pick('parameterchanges'),forwardworks:pick('forwardworks'),
+      photos:snap.photos||[]};
     window.SNAPLABEL='as of '+new Date(snap.generatedAt).toLocaleString('en-GB');
     $('loadstate').style.display='none';$('board').style.display='block';$('genpdf').disabled=false;
     $('status').textContent=DATA.visits.length+' visits · '+DATA.faults.length+' faults · '+window.SNAPLABEL;
