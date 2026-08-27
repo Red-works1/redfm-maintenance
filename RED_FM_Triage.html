@@ -61,6 +61,10 @@
   .trade.oth{background:#f3eefa;color:#5b3a8e;}
   .empty{text-align:center;color:var(--grey);padding:34px 12px;}
   .why{margin-top:10px;display:none;}
+  .rphotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
+  .rphotos a{display:block;width:96px;height:96px;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:#f4f4f6;}
+  .rphotos img{width:100%;height:100%;object-fit:cover;display:block;}
+  .nophoto{font-size:13px;color:var(--grey);}
 </style>
 </head>
 <body>
@@ -133,7 +137,7 @@ function draw(){
       <div class="meta">Reported ${dmy(f.FaultDate)} by ${esc(f.RaisedBy||'—')}</div>
       <div class="desc">${esc(f.Description||'')}</div>
       <div class="meta" style="margin-top:8px"><b>Where:</b> ${esc(f.AssetId||f.Plant||'not stated')}</div>
-      <div class="meta" style="margin-top:4px">Any photo is filed against this reference in <a href="${FAULTS_LIB}" target="_blank" rel="noopener">the Faults library</a>.</div>
+      <div class="rphotos" id="ph${i}"><span class="nophoto">Looking for photos\u2026</span></div>
       <div class="acts">
         <button class="scope" data-a="In scope" data-i="${i}">In scope — action it</button>
         <button class="quote" data-a="Quote issued" data-i="${i}">Quote it first</button>
@@ -158,6 +162,62 @@ function draw(){
     if(!a){toast('Pick a decision first');return;}
     if(why.length<5){toast('Add a note \u2014 Border read this one');return;}
     apply(i,a,why);
+  });
+  paintPhotos();
+}
+
+/* Border staff photograph the fault before they report it. Deciding "in scope or not"
+   from one line of text is guesswork; the picture usually settles it, so it belongs on
+   the card and not behind a link to a library nobody opens mid-decision.
+   Read straight from the Faults library rather than the hourly published manifest:
+   triage happens minutes after a report lands, long before the publisher next runs. */
+let photoCache=null, photoCachedAt=0;
+async function loadPhotoList(){
+  /* Graph download URLs are pre-authenticated and short-lived, so the cache is
+     deliberately short. A page left open all afternoon re-fetches rather than
+     rendering broken thumbnails. */
+  if(photoCache && (Date.now()-photoCachedAt)<30*60*1000) return photoCache;
+  const out=[];
+  try{
+    const did=await REDFM.getDriveId('Faults');
+    if(did){
+      let url='/drives/'+did+'/root/children?$top=200';
+      while(url){
+        const page=await REDFM.graph(url);
+        (page.value||[]).forEach(it=>{
+          const dl=it['@microsoft.graph.downloadUrl'];
+          if(it.file&&dl&&/\.(jpe?g|png|webp)$/i.test(it.name))
+            out.push({key:String(it.name).toLowerCase(),url:dl});
+        });
+        url=page['@odata.nextLink']?page['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null;
+      }
+    }
+  }catch(e){ return null; }
+  photoCache=out; photoCachedAt=Date.now();
+  return out;
+}
+
+/* Two naming shapes live in the same library: a site report is REF_date_place.jpg and an
+   engineer fault is Fault_date_plant_REF_photo1.jpg. Anchor the reference at the start or
+   between underscores so SR-100 can never swallow SR-1005's photos. */
+function photosFor(list,ref){
+  const r=String(ref||'').toLowerCase();
+  if(!r||!list)return[];
+  return list.filter(p=>p.key.indexOf(r+'_')===0||p.key.indexOf('_'+r+'_')>=0);
+}
+
+async function paintPhotos(){
+  const list=await loadPhotoList();
+  const lib='<a href="'+FAULTS_LIB+'" target="_blank" rel="noopener">the Faults library</a>';
+  rows.forEach((f,i)=>{
+    const box=$('ph'+i);
+    if(!box)return;
+    if(list===null){box.innerHTML='<span class="nophoto">Could not reach '+lib+' \u2014 open it there if you need the photo.</span>';return;}
+    const pics=photosFor(list,f.Title);
+    if(!pics.length){box.innerHTML='<span class="nophoto">No photo was attached to this report.</span>';return;}
+    box.innerHTML=pics.slice(0,5).map(p=>
+      '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt="Photo attached to '+esc(f.Title||'')+'"></a>').join('')
+      +(pics.length>5?'<span class="nophoto">+'+(pics.length-5)+' more in '+lib+'</span>':'');
   });
 }
 

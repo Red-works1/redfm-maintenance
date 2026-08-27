@@ -529,6 +529,7 @@ window.REDFM = (function () {
     getServiceVisits, getFaults, getFaultsWithId, getReadings, getCatalogueAll, listItems,
     listItemsWithId, updateItem,
     updateFault, updateVisit, getVisitIdByRef, assetId,
-    buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile
+    buildReportPdf, buildFaultPdf, uploadReportPdf, uploadFile,
+    graph, getDriveId
   };
 })();
