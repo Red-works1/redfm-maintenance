@@ -378,7 +378,39 @@ const INCOMPLETE_STATUSES=[INCOMPLETE_FAULT_STATUS,INCOMPLETE_DOC_STATUS];
 // Item 10 — a visit is only complete when the thing that proves it exists. Neither a
 // visit still awaiting its fault detail nor one whose certificate/report never
 // uploaded counts towards any compliance figure.
-function countsAsComplete(v){return INCOMPLETE_STATUSES.indexOf(((v&&v.Status)||""))<0;}
+/* ---------------------------------------------------------------------------
+   Withdrawn — a record that was created but should never have existed: a
+   duplicate from a double-tapped submit, or a visit logged against the wrong
+   plant. It is NOT deleted. Deleting a client's compliance records destroys the
+   audit trail that makes the remaining ones worth anything, and "it was never
+   there" is not a defensible answer to "what happened to WK-MTBJ9DOO".
+   A withdrawn record is excluded from BOTH sides of the ledger: it is not an
+   outstanding item, and it does not count as a completed visit. Anything merely
+   unfinished belongs in INCOMPLETE_STATUSES above, not here.
+   --------------------------------------------------------------------------- */
+const WITHDRAWN_STATUS="Withdrawn";
+
+/* Incomplete submissions is RED FM's chase list, not Border's. It shows work in
+   progress against named engineers, which is a management matter between RED FM
+   and its sub-contractor. Hidden by default and revealed only for the redfm role,
+   so a failure to reach /.auth/me hides it rather than exposing it. */
+(function(){
+  const go=async()=>{
+    const box=document.getElementById('incompletebox');
+    if(!box)return;
+    const head=box.previousElementSibling;
+    const show=v=>{box.style.display=v;if(head&&head.classList&&head.classList.contains('sechead'))head.style.display=v;};
+    show('none');
+    try{
+      const me=await (await fetch('/.auth/me',{cache:'no-store'})).json();
+      const roles=(me&&me.clientPrincipal&&me.clientPrincipal.userRoles)||[];
+      if(roles.indexOf('redfm')!==-1)show('');
+    }catch(e){}
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
+})();
+
+function countsAsComplete(v){const s=((v&&v.Status)||"");return s!==WITHDRAWN_STATUS&&INCOMPLETE_STATUSES.indexOf(s)<0;}
 function incompleteVisits(visits){return (visits||[]).filter(v=>INCOMPLETE_STATUSES.indexOf(v.Status||"")!==-1).slice().sort((a,b)=>new Date(a.VisitDate||0)-new Date(b.VisitDate||0));}
 
 // ---- Item 11 — clause 4.1 / notice 5.1: the report must be submitted within 48 hours ----
