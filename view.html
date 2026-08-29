@@ -138,6 +138,13 @@
   .tstat.scope{background:#eef7f0;color:var(--ok);}
   .tstat.quote{background:#e8f1fb;color:#175c9e;}
   .tstat.outsc{background:#eef0f2;color:var(--grey);}
+  .tstat.done{background:#eef7f0;color:var(--ok);}
+  details.srdone{margin-top:14px;border-top:1px solid var(--line);padding-top:6px;}
+  details.srdone>summary{cursor:pointer;list-style:none;font-size:13px;font-weight:700;color:var(--grey);padding:10px 2px;}
+  details.srdone>summary::-webkit-details-marker{display:none;}
+  details.srdone>summary::before{content:'\25B8 ';display:inline-block;transition:transform .15s;}
+  details.srdone[open]>summary::before{transform:rotate(90deg);}
+  details.srdone .fcard{opacity:.86;}
   .trd{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:#f3eefa;color:#5b3a8e;white-space:nowrap;}
   .trd.ref{background:#e8f1fb;color:#175c9e;}
   .rphotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
@@ -747,6 +754,19 @@ const TRIAGE_LABEL={
   "Out of scope":"Reviewed — not a RED FM item"
 };
 const TRIAGE_CLS={"Awaiting triage":"rcv","In scope":"scope","Quote issued":"quote","Out of scope":"outsc"};
+/* A report is finished when its stage says so, not when a decision was taken:
+   "in scope" means work is coming, and Border should still see it on the live list
+   until it is actually done. Only the stage moves it off. */
+const REP_RESOLVED=["Closed","Reported and fixed"];
+const repDone=f=>REP_RESOLVED.indexOf(String((f&&f.Stage)||"Reported").trim())>=0;
+/* Finished reports do not all end the same way, and "closed" alone would hide the
+   difference between work RED FM did and work RED FM declined. */
+function repOutcome(f){
+  const cn=String((f&&f.ClosureNote)||"");
+  if(/^No longer needed/i.test(cn))return{label:"No longer needed",cls:"outsc"};
+  if(String((f&&f.TriageStatus)||"").trim()==="Out of scope")return{label:"Not a RED FM item",cls:"outsc"};
+  return{label:"Completed",cls:"done"};
+}
 /* "Report a problem" appends a fixed block to whatever the reporter typed:
      Location as given: <place> / Reported as: <trade>
      Reported by <name> (<contact>) via the <route>.
@@ -799,17 +819,21 @@ function renderSiteReports(faults){
   /* Only the four states a site report can be in. Faults an engineer raised carry
      TriageStatus "Not required" and older faults carry none at all — neither is a
      report from site and neither belongs here. */
-  const reps=(faults||[]).filter(f=>Object.prototype.hasOwnProperty.call(TRIAGE_LABEL,String(f.TriageStatus||"").trim()))
+  const repsAll=(faults||[]).filter(f=>Object.prototype.hasOwnProperty.call(TRIAGE_LABEL,String(f.TriageStatus||"").trim()))
     .slice().sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
-  if(!reps.length){$('sitereports').innerHTML='<div class="empty">No reports from site yet.</div>';return;}
+  if(!repsAll.length){$('sitereports').innerHTML='<div class="empty">No reports from site yet.</div>';return;}
+  /* Finished work leaves the live list. Border asked what is outstanding; a page that
+     keeps every closed report in the same stack answers a different question. */
+  const reps=repsAll.filter(f=>!repDone(f));
+  const repsDone=repsAll.filter(repDone);
   const n=s=>reps.filter(f=>String(f.TriageStatus||"").trim()===s).length;
   const waiting=n("Awaiting triage");
   const head=`<div class="pipe">
-    <div class="stage"><div class="c">${reps.length}</div><div class="s">Reports from site</div></div>
+    <div class="stage"><div class="c">${repsAll.length}</div><div class="s">Reports from site</div></div>
     <div class="stage${waiting?' them':''}"><div class="c">${waiting}</div><div class="s">Awaiting RED FM review</div></div>
     <div class="stage fixed"><div class="c">${n("In scope")}</div><div class="s">In scope</div></div>
     <div class="stage us"><div class="c">${n("Quote issued")}</div><div class="s">Quote being prepared</div></div>
-    <div class="stage"><div class="c">${n("Out of scope")}</div><div class="s">Not a RED FM item</div></div>
+    <div class="stage"><div class="c">${repsDone.length}</div><div class="s">Completed</div></div>
   </div>`;
   const cards=reps.map(f=>{
     const st=String(f.TriageStatus||"").trim();
@@ -834,8 +858,31 @@ function renderSiteReports(faults){
       </div>
       <div class="ffoot"><span class="raised">Reported by ${esc(f.RaisedBy||'\u2014')} · ${rev}</span></div>
     </div>`;}).join('');
-  $('sitereports').innerHTML=head+cards
-    +(waiting?'':'<div class="srcnote">Every report from site has been reviewed.</div>');
+  const doneCards=repsDone.map(f=>{
+    const out=repOutcome(f);
+    const sev=f.Severity||'Low';
+    const where=reportWhere(f);
+    const note=String(f.ClosureNote||'').trim()||reportNote(f);
+    return `<div class="fcard s-${sev}">
+      <div class="fhead">
+        <span class="fref">${esc(f.Title||f.FaultRef||'')}</span>
+        ${where?`<span class="chip">${esc(where)}</span>`:''}
+        <span class="tstat ${out.cls}">${esc(out.label)}</span>
+        <span class="fage">closed ${dmy(f.ClosedDate)||'\u2014'}</span>
+      </div>
+      <div class="fbody">
+        <div class="fl">Reported</div><div class="ft">${esc(reportDesc(f))||'\u2014'}</div>
+        ${note?`<div class="fl">Outcome</div><div class="ft">${esc(note)}</div>`:''}
+      </div>
+      <div class="ffoot"><span class="raised">Reported by ${esc(f.RaisedBy||'\u2014')} · received ${dmy(f.FaultDate)||'\u2014'}</span></div>
+    </div>`;}).join('');
+  const doneBlock=repsDone.length
+    ? `<details class="srdone"><summary>Completed &mdash; ${repsDone.length} report${repsDone.length===1?'':'s'}</summary>${doneCards}</details>`
+    : '';
+  $('sitereports').innerHTML=head
+    +(reps.length?cards:'<div class="srcnote">Nothing outstanding \u2014 every report from site has been dealt with.</div>')
+    +(reps.length&&!waiting?'<div class="srcnote">Every report from site has been reviewed.</div>':'')
+    +doneBlock;
 }
 
 function renderForward(works){

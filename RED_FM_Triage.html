@@ -65,6 +65,22 @@
   .rphotos a{display:block;width:96px;height:96px;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:#f4f4f6;}
   .rphotos img{width:100%;height:100%;object-fit:cover;display:block;}
   .nophoto{font-size:13px;color:var(--grey);}
+  .sech{font-size:13px;font-weight:800;color:var(--grey);text-transform:uppercase;letter-spacing:.04em;margin:26px 4px 0;}
+  .rep.decided{border-left-color:#175c9e;}
+  .rep.done{border-left-color:var(--ok);}
+  .stat{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:6px;background:#eef1f6;color:#3b4a5e;}
+  .stat.scope{background:#eef7f0;color:var(--ok);}.stat.quote{background:#e8f1fb;color:#175c9e;}
+  .stat.done{background:#eef7f0;color:var(--ok);}.stat.outsc{background:#f3f3f5;color:var(--grey);}
+  .rnote{margin-top:10px;font-size:14px;background:#fafafb;border:1px solid var(--line);border-radius:9px;padding:9px 11px;}
+  .rnote b{display:block;font-size:11px;font-weight:800;color:var(--grey);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+  .chg{margin-top:10px;font-size:14px;font-weight:700;padding:9px 14px;border-radius:9px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;}
+  .edit{display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px;}
+  .edit select{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;}
+  .tellrow{display:flex;align-items:flex-start;gap:9px;margin-top:10px;font-size:13px;color:var(--ink);}
+  .tellrow input{width:18px;height:18px;margin-top:1px;flex:0 0 auto;}
+  .tellrow span{color:var(--grey);}
+  details.donebox{margin-top:10px;}
+  details.donebox>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--grey);padding:10px 2px;}
 </style>
 </head>
 <body>
@@ -73,7 +89,11 @@
 
 <div class="wrap">
   <div class="note" style="margin-top:14px">Reports raised by Border staff, from a QR label or their dashboard. Nothing here ages against RED FM, notifies Coolstream or appears as an instructed job until you put it <b>In scope</b>. That is the point of the queue. Every decision now needs a note — Border are sent it and it shows against the report on their dashboard, so write it for them to read.</div>
+  <h3 class="sech">Waiting for a decision</h3>
   <div id="list"><div class="empty">Loading…</div></div>
+  <h3 class="sech">Decided — still open</h3>
+  <div id="openlist"></div>
+  <details class="donebox" id="donebox"><summary id="donesum">Completed</summary><div id="donelist"></div></details>
 </div>
 <div id="toast" class="toast"></div>
 
@@ -117,53 +137,213 @@ const NOTE_ASK={
   'Out of scope':['Why is this not a RED FM item?','e.g. building fabric, not refrigeration \u2014 passed to Border']
 };
 
-let rows=[];
+/* Engineer-raised faults carry TriageStatus "Not required" and must never surface here:
+   this page is only Border's own reports, and sweeping Dexter's faults in would put
+   RED FM's instructed jobs in front of the wrong decision. */
+const SITE_STATES=['Awaiting triage','In scope','Quote issued','Out of scope'];
+const RESOLVED=['Closed','Reported and fixed'];
+const isDone=f=>RESOLVED.indexOf(String(f.Stage||'Reported').trim())>=0;
+const statusOf=f=>String(f.TriageStatus||'').trim();
+
+/* Where a report can be moved once it has been decided. A decision is not a one-way
+   door: work gets done, gets cancelled, or was read wrong first time. Every option
+   writes both the triage decision Border see and the stage that decides whether the
+   report is still counted as outstanding. */
+const MOVES={
+  'InScope'  :{label:'In scope — being actioned', triage:'In scope',      stage:'Reported',           close:false, cls:'scope'},
+  'Quote'    :{label:'Quote being prepared',      triage:'Quote issued',  stage:'Awaiting our quote', close:false, cls:'quote'},
+  'Done'     :{label:'Done — completed',          triage:null,            stage:'Closed',             close:true,  cls:'done'},
+  'Cancelled':{label:'No longer needed',          triage:null,            stage:'Closed',             close:true,  cls:'outsc'},
+  'OutScope' :{label:'Not a RED FM item',         triage:'Out of scope',  stage:'Closed',             close:true,  cls:'outsc'},
+  'Requeue'  :{label:'Back in the queue',         triage:'Awaiting triage',stage:'Reported',          close:false, cls:''}
+};
+const MOVE_ORDER=['InScope','Quote','Done','Cancelled','OutScope','Requeue'];
+/* The prompt changes with the move so the note answers the question Border would
+   actually ask about that outcome, not a generic "add a comment". */
+const MOVE_ASK={
+  'InScope'  :['What is being done about it, and roughly when?','e.g. Coolstream attending Thursday to replace the door seal'],
+  'Quote'    :['What are you quoting for, and when will Border have it?','e.g. quoting for a replacement dock seal, with you by Friday'],
+  'Done'     :['What was done, and when?','e.g. socket replaced and tested 29/08 — back in use'],
+  'Cancelled':['Why is it no longer needed?','e.g. door replaced under the roller-shutter works, so this is superseded'],
+  'OutScope' :['Why is this not a RED FM item?','e.g. building fabric, not refrigeration — passed to Border'],
+  'Requeue'  :['Why is this going back for review?','e.g. reported wrong, needs looking at again']
+};
+/* Which badge to show for a report that has already been decided. */
+function stateOf(f){
+  if(isDone(f)){
+    const cn=String(f.ClosureNote||'');
+    if(/^No longer needed/i.test(cn))return{label:'No longer needed',cls:'outsc'};
+    if(statusOf(f)==='Out of scope')return{label:'Not a RED FM item',cls:'outsc'};
+    return{label:'Done — completed',cls:'done'};
+  }
+  if(statusOf(f)==='In scope')return{label:'In scope — being actioned',cls:'scope'};
+  if(statusOf(f)==='Quote issued')return{label:'Quote being prepared',cls:'quote'};
+  if(statusOf(f)==='Out of scope')return{label:'Not a RED FM item',cls:'outsc'};
+  return{label:'Awaiting review',cls:''};
+}
+/* The decision stamp is appended to the description on every change, so the card body
+   would otherwise grow a stack of history. Show Border's words, keep the rest for the
+   note panel. */
+const STAMP_RE=/\n*\[(?:Triaged|Updated) [^\]]*\][\s\S]*$/;
+const cleanDesc=f=>String(f.Description||'').replace(STAMP_RE,'').trim();
+
+/* A completed card opens on the outcome it already has, so re-saving by accident
+   cannot silently reopen finished work. */
+function doneDefault(f){
+  const o=stateOf(f);
+  if(o.label==='No longer needed')return'Cancelled';
+  if(o.label==='Not a RED FM item')return'OutScope';
+  return'Done';
+}
+let all=[],rows=[],openRows=[],doneRows=[];
+
 async function load(){
   try{
     const signed=await REDFM.init();
     if(!signed)await REDFM.signIn();
-    const all=await REDFM.getFaultsWithId();
-    rows=all.filter(f=>String(f.TriageStatus||'').trim()==='Awaiting triage')
-            .sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
+    const items=await REDFM.getFaultsWithId();
+    all=items.filter(f=>SITE_STATES.indexOf(statusOf(f))>=0)
+             .sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
+    rows    =all.filter(f=>statusOf(f)==='Awaiting triage'&&!isDone(f));
+    openRows=all.filter(f=>statusOf(f)!=='Awaiting triage'&&!isDone(f));
+    doneRows=all.filter(isDone);
     draw();
   }catch(e){$('list').innerHTML='<div class="empty">Could not load the queue. '+esc(e.message||e)+'</div>';}
 }
 
+function head(f){
+  return '<h4>'+esc(f.Title||'')+
+    '<span class="sev '+esc(f.Severity||'Low')+'">'+esc(f.Severity||'')+'</span>'+
+    '<span class="trade '+tradeCls(f.Trade)+'">'+esc(f.Trade||'Not stated')+'</span></h4>'+
+    '<div class="meta">Reported '+dmy(f.FaultDate)+' by '+esc(f.RaisedBy||'—')+'</div>';
+}
+function photoBox(f){
+  return '<div class="rphotos" id="ph-'+esc(f.Title||'')+'"><span class="nophoto">Looking for photos…</span></div>';
+}
+/* One edit panel serves every post-decision change, so there is a single place that
+   writes a status and a single place that decides whether Border hear about it. */
+function editPanel(f,cur){
+  const r=esc(f.Title||'');
+  return '<button class="chg" data-edit="'+r+'">Change status or note</button>'+
+    '<div class="edit" id="ed-'+r+'">'+
+      '<label>Where is it now?</label>'+
+      '<select id="sel-'+r+'">'+MOVE_ORDER.map(k=>
+        '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+esc(MOVES[k].label)+'</option>').join('')+'</select>'+
+      '<label style="margin-top:10px" id="lb-'+r+'">Note</label>'+
+      '<textarea id="tx-'+r+'" rows="2"></textarea>'+
+      '<label class="tellrow"><input type="checkbox" id="cb-'+r+'" checked>'+
+        '<span>Email Border about this change &mdash; they are sent the note and it shows against the report on their dashboard.</span></label>'+
+      '<button class="btn btn-red" style="margin-top:10px" data-save="'+r+'">Save change</button>'+
+    '</div>';
+}
+
 function draw(){
-  if(!rows.length){$('list').innerHTML='<div class="empty">✓ Nothing waiting to be triaged.</div>';return;}
-  $('list').innerHTML=rows.map((f,i)=>`
-    <div class="rep" data-i="${i}">
-      <h4>${esc(f.Title||'')}<span class="sev ${esc(f.Severity||'Low')}">${esc(f.Severity||'')}</span><span class="trade ${tradeCls(f.Trade)}">${esc(f.Trade||'Not stated')}</span></h4>
-      <div class="meta">Reported ${dmy(f.FaultDate)} by ${esc(f.RaisedBy||'—')}</div>
-      <div class="desc">${esc(f.Description||'')}</div>
-      <div class="meta" style="margin-top:8px"><b>Where:</b> ${esc(f.AssetId||f.Plant||'not stated')}</div>
-      <div class="rphotos" id="ph${i}"><span class="nophoto">Looking for photos\u2026</span></div>
-      <div class="acts">
-        <button class="scope" data-a="In scope" data-i="${i}">In scope — action it</button>
-        <button class="quote" data-a="Quote issued" data-i="${i}">Quote it first</button>
-        <button class="out" data-a="Out of scope" data-i="${i}">Not for us</button>
-      </div>
-      <div class="why" id="why${i}">
-        <label id="wl${i}">Note</label>
-        <textarea id="wt${i}" rows="2"></textarea>
-        <button class="btn btn-red" style="margin-top:8px" data-c="${i}">Confirm</button>
-      </div>
-    </div>`).join('');
-  $('list').querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.i, a=b.dataset.a;
-    const box=$('why'+i);
+  /* Queue — the only place a first decision is made. */
+  $('list').innerHTML=rows.length?rows.map(f=>{
+    const r=esc(f.Title||'');
+    return '<div class="rep">'+head(f)+
+      '<div class="desc">'+esc(cleanDesc(f))+'</div>'+
+      '<div class="meta" style="margin-top:8px"><b>Where:</b> '+esc(f.AssetId||f.Plant||'not stated')+'</div>'+
+      photoBox(f)+
+      '<div class="acts">'+
+        '<button class="scope" data-a="InScope" data-r="'+r+'">In scope — action it</button>'+
+        '<button class="quote" data-a="Quote" data-r="'+r+'">Quote it first</button>'+
+        '<button class="out" data-a="OutScope" data-r="'+r+'">Not for us</button>'+
+      '</div>'+
+      '<div class="why" id="why-'+r+'">'+
+        '<label id="wl-'+r+'">Note</label>'+
+        '<textarea id="wt-'+r+'" rows="2"></textarea>'+
+        '<label class="tellrow"><input type="checkbox" id="wc-'+r+'" checked>'+
+          '<span>Email Border about this decision.</span></label>'+
+        '<button class="btn btn-red" style="margin-top:10px" data-c="'+r+'">Confirm</button>'+
+      '</div></div>';
+  }).join(''):'<div class="empty">✓ Nothing waiting to be triaged.</div>';
+
+  /* Decided and still open — what Border are waiting on. */
+  $('openlist').innerHTML=openRows.length?openRows.map(f=>{
+    const st=stateOf(f), cur=statusOf(f)==='Quote issued'?'Quote':'InScope';
+    const note=String(f.TriageNote||'').trim();
+    return '<div class="rep decided">'+head(f).replace('</h4>','<span class="stat '+st.cls+'">'+esc(st.label)+'</span></h4>')+
+      '<div class="desc">'+esc(cleanDesc(f))+'</div>'+photoBox(f)+
+      (note?'<div class="rnote"><b>Told Border</b>'+esc(note)+'</div>':'')+
+      editPanel(f,cur)+'</div>';
+  }).join(''):'<div class="empty">Nothing outstanding.</div>';
+
+  /* Completed — off the live list, still one click away and still editable. */
+  $('donesum').textContent=doneRows.length?('Completed — '+doneRows.length+' report'+(doneRows.length===1?'':'s')):'Completed — none yet';
+  $('donelist').innerHTML=doneRows.map(f=>{
+    const st=stateOf(f);
+    const note=String(f.ClosureNote||f.TriageNote||'').trim();
+    return '<div class="rep done">'+head(f).replace('</h4>','<span class="stat '+st.cls+'">'+esc(st.label)+'</span></h4>')+
+      '<div class="desc">'+esc(cleanDesc(f))+'</div>'+
+      (note?'<div class="rnote"><b>Outcome</b>'+esc(note)+'</div>':'')+
+      '<div class="meta" style="margin-top:6px">Closed '+dmy(f.ClosedDate)+'</div>'+
+      editPanel(f,doneDefault(f))+'</div>';
+  }).join('')||'<div class="empty">Nothing completed yet.</div>';
+
+  wire();paintPhotos();
+}
+
+function wire(){
+  document.querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
+    const r=b.dataset.r,a=b.dataset.a,box=$('why-'+r);
     box.style.display='block';box.dataset.a=a;
-    $('wl'+i).textContent=NOTE_ASK[a][0]+' \u2014 Border are sent this and see it on their dashboard';
-    $('wt'+i).placeholder=NOTE_ASK[a][1];
-    $('wt'+i).focus();
+    $('wl-'+r).textContent=MOVE_ASK[a][0]+' — Border are sent this and see it on their dashboard';
+    $('wt-'+r).placeholder=MOVE_ASK[a][1];$('wt-'+r).focus();
   });
-  $('list').querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.c, why=$('wt'+i).value.trim(), a=$('why'+i).dataset.a;
+  document.querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{
+    const r=b.dataset.c,a=$('why-'+r).dataset.a,why=$('wt-'+r).value.trim();
     if(!a){toast('Pick a decision first');return;}
-    if(why.length<5){toast('Add a note \u2014 Border read this one');return;}
-    apply(i,a,why);
+    if(why.length<5){toast('Add a note — Border read this one');return;}
+    saveMove(r,a,why,$('wc-'+r).checked);
   });
-  paintPhotos();
+  document.querySelectorAll('button[data-edit]').forEach(b=>b.onclick=()=>{
+    const r=b.dataset.edit,box=$('ed-'+r);
+    box.style.display=box.style.display==='block'?'none':'block';
+    if(box.style.display==='block')syncAsk(r);
+  });
+  document.querySelectorAll('select[id^="sel-"]').forEach(sel=>sel.onchange=()=>syncAsk(sel.id.slice(4)));
+  document.querySelectorAll('button[data-save]').forEach(b=>b.onclick=()=>{
+    const r=b.dataset.save,k=$('sel-'+r).value,why=$('tx-'+r).value.trim();
+    if(why.length<5){toast('Add a note — Border read this one');return;}
+    saveMove(r,k,why,$('cb-'+r).checked);
+  });
+}
+function syncAsk(r){
+  const k=$('sel-'+r).value;
+  $('lb-'+r).textContent=MOVE_ASK[k][0];
+  $('tx-'+r).placeholder=MOVE_ASK[k][1];
+}
+
+/* One writer for every status change on this page. TriageNotifiedOn is the flow's
+   anti-duplicate guard: blank means "tell Border", stamped means "already handled".
+   Writing it here is what makes the tick-box mean something. */
+async function saveMove(ref,key,why,notify){
+  const f=all.find(x=>String(x.Title||'')===ref);
+  if(!f){toast('Lost track of '+ref+' — reload the page');return;}
+  const m=MOVES[key],today=londonToday();
+  const patch={
+    Stage:m.stage,
+    LastReviewed:today,
+    Description:String(f.Description||'')+'\n\n['+(m.close?'Updated':'Triaged')+' '+today+'] '+m.label+(why?(' — '+why):'')
+  };
+  if(m.triage)patch.TriageStatus=m.triage;
+  if(m.close){patch.ClosedDate=today;patch.ClosureNote=m.label+': '+why;}
+  else{patch.ClosedDate=null;patch.ClosureNote='';}
+  /* SharePoint rejects an entire patch if one column name is unknown, so the newer
+     columns go on in a second attempt. The status change is never lost; at worst the
+     note lives only in the description stamp, which both dashboards already read. */
+  const full=Object.assign({},patch,{TriageNote:why,TriageDecidedOn:today,TriageNotifiedOn:notify?null:today});
+  try{
+    try{await REDFM.updateFault(f._id,full);}
+    catch(colErr){await REDFM.updateFault(f._id,patch);}
+    Object.assign(f,patch,{TriageNote:why,TriageDecidedOn:today});
+    rows    =all.filter(x=>statusOf(x)==='Awaiting triage'&&!isDone(x));
+    openRows=all.filter(x=>statusOf(x)!=='Awaiting triage'&&!isDone(x));
+    doneRows=all.filter(isDone);
+    draw();
+    toast(ref+' → '+m.label+(notify?' · Border emailed':''));
+  }catch(e){toast('Could not save: '+(e.message||e));}
 }
 
 /* Border staff photograph the fault before they report it. Deciding "in scope or not"
@@ -171,12 +351,12 @@ function draw(){
    the card and not behind a link to a library nobody opens mid-decision.
    Read straight from the Faults library rather than the hourly published manifest:
    triage happens minutes after a report lands, long before the publisher next runs. */
-let photoCache=null, photoCachedAt=0;
+let photoCache=null,photoCachedAt=0;
 async function loadPhotoList(){
   /* Graph download URLs are pre-authenticated and short-lived, so the cache is
      deliberately short. A page left open all afternoon re-fetches rather than
      rendering broken thumbnails. */
-  if(photoCache && (Date.now()-photoCachedAt)<30*60*1000) return photoCache;
+  if(photoCache&&(Date.now()-photoCachedAt)<30*60*1000)return photoCache;
   const out=[];
   try{
     const did=await REDFM.getDriveId('Faults');
@@ -192,11 +372,10 @@ async function loadPhotoList(){
         url=page['@odata.nextLink']?page['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null;
       }
     }
-  }catch(e){ return null; }
-  photoCache=out; photoCachedAt=Date.now();
+  }catch(e){return null;}
+  photoCache=out;photoCachedAt=Date.now();
   return out;
 }
-
 /* Two naming shapes live in the same library: a site report is REF_date_place.jpg and an
    engineer fault is Fault_date_plant_REF_photo1.jpg. Anchor the reference at the start or
    between underscores so SR-100 can never swallow SR-1005's photos. */
@@ -205,41 +384,19 @@ function photosFor(list,ref){
   if(!r||!list)return[];
   return list.filter(p=>p.key.indexOf(r+'_')===0||p.key.indexOf('_'+r+'_')>=0);
 }
-
 async function paintPhotos(){
   const list=await loadPhotoList();
   const lib='<a href="'+FAULTS_LIB+'" target="_blank" rel="noopener">the Faults library</a>';
-  rows.forEach((f,i)=>{
-    const box=$('ph'+i);
+  all.forEach(f=>{
+    const box=$('ph-'+String(f.Title||''));
     if(!box)return;
-    if(list===null){box.innerHTML='<span class="nophoto">Could not reach '+lib+' \u2014 open it there if you need the photo.</span>';return;}
+    if(list===null){box.innerHTML='<span class="nophoto">Could not reach '+lib+' — open it there if you need the photo.</span>';return;}
     const pics=photosFor(list,f.Title);
     if(!pics.length){box.innerHTML='<span class="nophoto">No photo was attached to this report.</span>';return;}
     box.innerHTML=pics.slice(0,5).map(p=>
       '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt="Photo attached to '+esc(f.Title||'')+'"></a>').join('')
       +(pics.length>5?'<span class="nophoto">+'+(pics.length-5)+' more in '+lib+'</span>':'');
   });
-}
-
-async function apply(i,status,why){
-  const f=rows[i];
-  const today=londonToday();
-  const stamp='\n\n[Triaged '+today+'] '+status+(why?(' — '+why):'');
-  const patch={TriageStatus:status,LastReviewed:today,Description:(f.Description||'')+stamp};
-  if(status==='Out of scope'){patch.Stage='Closed';patch.ClosedDate=today;patch.ClosureNote='Out of scope at triage: '+why;}
-  if(status==='Quote issued')patch.Stage='Awaiting our quote';
-  /* TriageNote and TriageDecidedOn are what the Border notification reads and what the
-     dashboard shows on the card. SharePoint rejects an ENTIRE patch if one field name is
-     unknown, so until those columns exist the full patch would lose the decision outright.
-     Try it, fall back to the patch without them. The decision is never lost; at worst the
-     note lives only in the description stamp, which both dashboards already read. */
-  const full=Object.assign({},patch,{TriageNote:why,TriageDecidedOn:today});
-  try{
-    try{await REDFM.updateFault(f._id,full);}
-    catch(colErr){await REDFM.updateFault(f._id,patch);}
-    rows.splice(i,1);draw();
-    toast(f.Title+' → '+status);
-  }catch(e){toast('Could not save: '+(e.message||e));}
 }
 
 load();
