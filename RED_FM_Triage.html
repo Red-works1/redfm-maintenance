@@ -231,8 +231,9 @@ function editPanel(f,cur){
         '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+esc(MOVES[k].label)+'</option>').join('')+'</select>'+
       '<label style="margin-top:10px" id="lb-'+r+'">Note</label>'+
       '<textarea id="tx-'+r+'" rows="2"></textarea>'+
-      '<label class="tellrow"><input type="checkbox" id="cb-'+r+'" checked>'+
+      '<label class="tellrow" id="tr-'+r+'"><input type="checkbox" id="cb-'+r+'" checked>'+
         '<span>Email Border about this change &mdash; they are sent the note and it shows against the report on their dashboard.</span></label>'+
+      '<div class="tellrow" id="nq-'+r+'" style="display:none"><span>Border are not emailed when a report goes back in the queue &mdash; it simply shows as awaiting review on their dashboard.</span></div>'+
       '<button class="btn btn-red" style="margin-top:10px" data-save="'+r+'">Save change</button>'+
     '</div>';
 }
@@ -313,6 +314,12 @@ function syncAsk(r){
   const k=$('sel-'+r).value;
   $('lb-'+r).textContent=MOVE_ASK[k][0];
   $('tx-'+r).placeholder=MOVE_ASK[k][1];
+  /* The notify flow only fires once a report has a decision on it. Putting one back
+     in the queue clears that, so no email can go out — say so rather than offering
+     a tick-box that would quietly do nothing. */
+  const tr=$('tr-'+r), nq=$('nq-'+r), cb=$('cb-'+r);
+  if(k==='Requeue'){cb.checked=false;tr.style.display='none';nq.style.display='flex';}
+  else{if(tr.style.display==='none')cb.checked=true;tr.style.display='flex';nq.style.display='none';}
 }
 
 /* One writer for every status change on this page. TriageNotifiedOn is the flow's
