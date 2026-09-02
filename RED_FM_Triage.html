@@ -80,6 +80,12 @@
   .tellrow input{width:18px;height:18px;margin-top:1px;flex:0 0 auto;}
   .tellrow span{color:var(--grey);}
   details.donebox{margin-top:10px;}
+  .whorow{margin-top:10px;}
+  .whorow select{width:100%;font-size:16px;padding:11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;}
+  .whohint{display:block;margin-top:5px;font-size:12px;color:var(--grey);}
+  .rep.signoff{border-left-color:#b8860b;}
+  .signnote{margin-top:10px;font-size:14px;background:#fffdf3;border:1px solid #e8dfc0;border-radius:9px;padding:9px 11px;}
+  .signnote b{display:block;font-size:11px;font-weight:800;color:#8a6d1f;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
   details.donebox>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--grey);padding:10px 2px;}
 </style>
 </head>
@@ -89,6 +95,7 @@
 
 <div class="wrap">
   <div class="note" style="margin-top:14px">Reports raised by Border staff, from a QR label or their dashboard. Nothing here ages against RED FM, notifies Coolstream or appears as an instructed job until you put it <b>In scope</b>. That is the point of the queue. Every decision now needs a note — Border are sent it and it shows against the report on their dashboard, so write it for them to read.</div>
+  <div id="signwrap" style="display:none"><h3 class="sech">Finished by Coolstream &mdash; check and tell Border</h3><div id="signlist"></div></div>
   <h3 class="sech">Waiting for a decision</h3>
   <div id="list"><div class="empty">Loading…</div></div>
   <h3 class="sech">Decided — still open</h3>
@@ -168,6 +175,31 @@ const MOVE_ASK={
   'OutScope' :['Why is this not a RED FM item?','e.g. building fabric, not refrigeration — passed to Border'],
   'Requeue'  :['Why is this going back for review?','e.g. reported wrong, needs looking at again']
 };
+/* Border report it, RED FM decide it, and sometimes Coolstream do it. That is one
+   fault with two audiences, so the record is assigned rather than copied — the SR
+   reference Border were given never changes. */
+const ACTORS=['RED FM','Coolstream'];
+const actorOf=f=>String(f.ActionWith||'').trim()||((String(f.Trade||'').trim()==='Refrigeration')?'Coolstream':'RED FM');
+function whoRow(f,r){
+  const cur=actorOf(f);
+  return '<div class="whorow" id="wr-'+r+'" style="display:none">'+
+    '<label>Who is doing it?</label>'+
+    '<select id="wh-'+r+'">'+ACTORS.map(a=>'<option'+(a===cur?' selected':'')+'>'+a+'</option>').join('')+'</select>'+
+    '<span class="whohint">Coolstream puts it on the engineer\'s next visit list under this same reference.</span></div>';
+}
+const ASSIGNABLE=k=>k==='InScope'||k==='Quote';
+/* Coolstream closing a job is their word that it is done. Border being told it is done
+   is RED FM's word that it was done properly — those are different claims, and the
+   second one is Ryan's to make. Anything closed on site after the last decision waits
+   here for that check rather than quietly disappearing into the completed pile. */
+function needsSignOff(f){
+  if(String(f.ActionWith||'')!=='Coolstream'||!isDone(f))return false;
+  const closed=String(f.ClosedDate||'').slice(0,10);
+  if(!closed)return false;
+  const decided=String(f.TriageDecidedOn||'').slice(0,10);
+  return !decided||decided<closed;
+}
+
 /* Which badge to show for a report that has already been decided. */
 function stateOf(f){
   if(isDone(f)){
@@ -195,7 +227,7 @@ function doneDefault(f){
   if(o.label==='Not a RED FM item')return'OutScope';
   return'Done';
 }
-let all=[],rows=[],openRows=[],doneRows=[];
+let all=[],rows=[],openRows=[],doneRows=[],signRows=[];
 
 async function load(){
   try{
@@ -204,11 +236,16 @@ async function load(){
     const items=await REDFM.getFaultsWithId();
     all=items.filter(f=>SITE_STATES.indexOf(statusOf(f))>=0)
              .sort((a,b)=>new Date(b.FaultDate||0)-new Date(a.FaultDate||0));
-    rows    =all.filter(f=>statusOf(f)==='Awaiting triage'&&!isDone(f));
-    openRows=all.filter(f=>statusOf(f)!=='Awaiting triage'&&!isDone(f));
-    doneRows=all.filter(isDone);
+    resplit();
     draw();
   }catch(e){$('list').innerHTML='<div class="empty">Could not load the queue. '+esc(e.message||e)+'</div>';}
+}
+
+function resplit(){
+  signRows=all.filter(needsSignOff);
+  rows    =all.filter(f=>statusOf(f)==='Awaiting triage'&&!isDone(f));
+  openRows=all.filter(f=>statusOf(f)!=='Awaiting triage'&&!isDone(f));
+  doneRows=all.filter(f=>isDone(f)&&!needsSignOff(f));
 }
 
 function head(f){
@@ -229,6 +266,7 @@ function editPanel(f,cur){
       '<label>Where is it now?</label>'+
       '<select id="sel-'+r+'">'+MOVE_ORDER.map(k=>
         '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+esc(MOVES[k].label)+'</option>').join('')+'</select>'+
+      whoRow(f,r)+
       '<label style="margin-top:10px" id="lb-'+r+'">Note</label>'+
       '<textarea id="tx-'+r+'" rows="2"></textarea>'+
       '<label class="tellrow" id="tr-'+r+'"><input type="checkbox" id="cb-'+r+'" checked>'+
@@ -252,6 +290,7 @@ function draw(){
         '<button class="out" data-a="OutScope" data-r="'+r+'">Not for us</button>'+
       '</div>'+
       '<div class="why" id="why-'+r+'">'+
+        whoRow(f,r)+
         '<label id="wl-'+r+'">Note</label>'+
         '<textarea id="wt-'+r+'" rows="2"></textarea>'+
         '<label class="tellrow"><input type="checkbox" id="wc-'+r+'" checked>'+
@@ -269,6 +308,18 @@ function draw(){
       (note?'<div class="rnote"><b>Told Border</b>'+esc(note)+'</div>':'')+
       editPanel(f,cur)+'</div>';
   }).join(''):'<div class="empty">Nothing outstanding.</div>';
+
+  /* Closed on site by Coolstream and not yet checked by RED FM. */
+  $('signwrap').style.display=signRows.length?'block':'none';
+  $('signlist').innerHTML=signRows.map(f=>{
+    const cn=String(f.ClosureNote||'').trim();
+    const last=cn?cn.split('\n').filter(Boolean).pop():'';
+    return '<div class="rep signoff">'+head(f).replace('</h4>','<span class="stat done">Closed by Coolstream</span></h4>')+
+      '<div class="desc">'+esc(cleanDesc(f))+'</div>'+photoBox(f)+
+      '<div class="signnote"><b>What Coolstream recorded</b>'+esc(last||'No detail recorded')+
+        '<div class="meta" style="margin-top:6px">'+esc(f.ClosedBy||'Coolstream')+' &middot; '+dmy(f.ClosedDate)+'</div></div>'+
+      editPanel(f,'Done')+'</div>';
+  }).join('');
 
   /* Completed — off the live list, still one click away and still editable. */
   $('donesum').textContent=doneRows.length?('Completed — '+doneRows.length+' report'+(doneRows.length===1?'':'s')):'Completed — none yet';
@@ -289,6 +340,7 @@ function wire(){
   document.querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
     const r=b.dataset.r,a=b.dataset.a,box=$('why-'+r);
     box.style.display='block';box.dataset.a=a;
+    $('wr-'+r).style.display=ASSIGNABLE(a)?'block':'none';
     $('wl-'+r).textContent=MOVE_ASK[a][0]+' — Border are sent this and see it on their dashboard';
     $('wt-'+r).placeholder=MOVE_ASK[a][1];$('wt-'+r).focus();
   });
@@ -296,7 +348,7 @@ function wire(){
     const r=b.dataset.c,a=$('why-'+r).dataset.a,why=$('wt-'+r).value.trim();
     if(!a){toast('Pick a decision first');return;}
     if(why.length<5){toast('Add a note — Border read this one');return;}
-    saveMove(r,a,why,$('wc-'+r).checked);
+    saveMove(r,a,why,$('wc-'+r).checked,ASSIGNABLE(a)?$('wh-'+r).value:null);
   });
   document.querySelectorAll('button[data-edit]').forEach(b=>b.onclick=()=>{
     const r=b.dataset.edit,box=$('ed-'+r);
@@ -307,11 +359,12 @@ function wire(){
   document.querySelectorAll('button[data-save]').forEach(b=>b.onclick=()=>{
     const r=b.dataset.save,k=$('sel-'+r).value,why=$('tx-'+r).value.trim();
     if(why.length<5){toast('Add a note — Border read this one');return;}
-    saveMove(r,k,why,$('cb-'+r).checked);
+    saveMove(r,k,why,$('cb-'+r).checked,ASSIGNABLE(k)?$('wh-'+r).value:null);
   });
 }
 function syncAsk(r){
   const k=$('sel-'+r).value;
+  $('wr-'+r).style.display=ASSIGNABLE(k)?'block':'none';
   $('lb-'+r).textContent=MOVE_ASK[k][0];
   $('tx-'+r).placeholder=MOVE_ASK[k][1];
   /* The notify flow only fires once a report has a decision on it. Putting one back
@@ -325,7 +378,7 @@ function syncAsk(r){
 /* One writer for every status change on this page. TriageNotifiedOn is the flow's
    anti-duplicate guard: blank means "tell Border", stamped means "already handled".
    Writing it here is what makes the tick-box mean something. */
-async function saveMove(ref,key,why,notify){
+async function saveMove(ref,key,why,notify,who){
   const f=all.find(x=>String(x.Title||'')===ref);
   if(!f){toast('Lost track of '+ref+' — reload the page');return;}
   const m=MOVES[key],today=londonToday();
@@ -335,6 +388,7 @@ async function saveMove(ref,key,why,notify){
     Description:String(f.Description||'')+'\n\n['+(m.close?'Updated':'Triaged')+' '+today+'] '+m.label+(why?(' — '+why):'')
   };
   if(m.triage)patch.TriageStatus=m.triage;
+  if(who&&ASSIGNABLE(key))patch.ActionWith=who;
   if(m.close){patch.ClosedDate=today;patch.ClosureNote=m.label+': '+why;}
   else{patch.ClosedDate=null;patch.ClosureNote='';}
   /* SharePoint rejects an entire patch if one column name is unknown, so the newer
@@ -345,9 +399,8 @@ async function saveMove(ref,key,why,notify){
     try{await REDFM.updateFault(f._id,full);}
     catch(colErr){await REDFM.updateFault(f._id,patch);}
     Object.assign(f,patch,{TriageNote:why,TriageDecidedOn:today});
-    rows    =all.filter(x=>statusOf(x)==='Awaiting triage'&&!isDone(x));
-    openRows=all.filter(x=>statusOf(x)!=='Awaiting triage'&&!isDone(x));
-    doneRows=all.filter(isDone);
+    if(!m.close)f.ClosedDate=null;
+    resplit();
     draw();
     toast(ref+' → '+m.label+(notify?' · Border emailed':''));
   }catch(e){toast('Could not save: '+(e.message||e));}

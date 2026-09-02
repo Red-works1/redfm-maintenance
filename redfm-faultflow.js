@@ -264,8 +264,12 @@ window.REDFMFaultFlow = (function () {
       /* Coolstream are engaged for refrigeration only. A problem reported by Border
          staff (SR-) is RED FM's to triage and answer for — putting it in front of the
          attending engineer asks him to sign off work he cannot see, cannot close, and
-         was never appointed to do. It also blocks his report until he answers it. */
-      if (/^SR-/i.test(String(f.Title || f.FaultRef || ""))) return false;
+         was never appointed to do. It also blocks his report until he answers it.
+         The exception is a site report RED FM has deliberately handed to Coolstream:
+         that IS their work, so it comes to the visit under its original SR reference
+         — Border keep one number for the thing they reported, start to finish. */
+      if (/^SR-/i.test(String(f.Title || f.FaultRef || "")) &&
+          String(f.ActionWith || "") !== "Coolstream") return false;
       if (String(f.SourceVisitRef || "") === String(q.visitRef || "")) return false;
       var reviewed = f.LastReviewed ? String(f.LastReviewed).slice(0, 10) : null;
       if (reviewed === String(today).slice(0, 10)) return false;
