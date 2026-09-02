@@ -261,6 +261,11 @@ window.REDFMFaultFlow = (function () {
     var today = q.visitDate;
     return (all || []).filter(function (f) {
       if (!isOpenFault(f)) return false;
+      /* Coolstream are engaged for refrigeration only. A problem reported by Border
+         staff (SR-) is RED FM's to triage and answer for — putting it in front of the
+         attending engineer asks him to sign off work he cannot see, cannot close, and
+         was never appointed to do. It also blocks his report until he answers it. */
+      if (/^SR-/i.test(String(f.Title || f.FaultRef || ""))) return false;
       if (String(f.SourceVisitRef || "") === String(q.visitRef || "")) return false;
       var reviewed = f.LastReviewed ? String(f.LastReviewed).slice(0, 10) : null;
       if (reviewed === String(today).slice(0, 10)) return false;
