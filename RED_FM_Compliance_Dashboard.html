@@ -885,7 +885,7 @@ function renderSiteReports(faults){
         ${photoStrip(f)}
         ${note?`<div class="fl">RED FM note</div><div class="ft">${esc(note)}</div>`:''}
       </div>
-      <div class="ffoot"><span class="raised">Reported by ${esc(f.RaisedBy||'\u2014')} · ${rev}</span></div>
+      <div class="ffoot"><span class="raised">Reported by ${esc(f.RaisedBy||'\u2014')} · ${rev}</span>${EDITABLE?`<button class="btn btn-ghost sendfault" data-id="${f._id}">Send to&hellip;</button>`:''}</div>
     </div>`;}).join('');
   const doneCards=repsDone.map(f=>{
     const out=repOutcome(f);
@@ -1013,7 +1013,7 @@ function render(){
           <div class="fl">Action taken</div><div class="ft">${(f.ActionTaken||'').replace(/</g,'&lt;')||'—'}</div>
           ${clos&&clos!=='—'?`<div class="fl">Closure evidence / why open</div><div class="ft">${clos}</div>`:''}
         </div>
-        <div class="ffoot"><span class="raised">Raised ${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):'—'}</span>${EDITABLE?`<button class="btn btn-ghost editfault" data-id="${f._id}">Edit</button><button class="btn btn-ghost histfault" data-ref="${esc(f.Title||f.FaultRef||'')}">History</button>`:""}</div>
+        <div class="ffoot"><span class="raised">Raised ${f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):'—'}</span>${EDITABLE?`<button class="btn btn-ghost editfault" data-id="${f._id}">Edit</button><button class="btn btn-ghost sendfault" data-id="${f._id}">Send to&hellip;</button><button class="btn btn-ghost histfault" data-ref="${esc(f.Title||f.FaultRef||'')}">History</button>`:""}</div>
       </div>`;}).join('');
     $('faulttable').innerHTML=rows;
   }
@@ -1180,6 +1180,65 @@ function openFaultEditor(id){
   fxEl('fxmove').onclick=fxMove;
 }
 
+/* ------------------------------------------------------------------------------
+   Send a fault out to somebody — a supplier for a price, a specialist for an
+   opinion, Border for information. The page does not send the email itself: it
+   writes the address onto the record and a flow picks it up, so the email leaves
+   from admin@ with the photos attached and the reply comes back to RED FM.
+   SendTo is cleared once it has gone, which is what makes it repeatable — the same
+   fault can go to three merchants on three days without anything being edited.
+   ------------------------------------------------------------------------------ */
+const EMAIL_RE=/^[^@\s]+@[^@\s.]+\.[^@\s]+$/;
+/* NOT findFault() — that name is already taken by the asset-history lookup above and
+   a second declaration would silently replace it. */
+function sendLookup(id){
+  return ((DATA&&DATA.faults)||[]).find(x=>String(x._id)===String(id))||null;
+}
+function openSendDialog(id){
+  const f=sendLookup(id);
+  if(!f){ return; }
+  FX.f=f;
+  const ref=f.Title||f.FaultRef||'fault';
+  const photos=parseInt(f.PhotoCount,10)||0;
+  const last=f.QuoteSent?new Date(f.QuoteSent).toLocaleDateString('en-GB'):'';
+  fxEl('fxtitle').textContent='Send '+ref;
+  fxEl('fxbody').innerHTML=
+    '<div class="fxwhat"><b>'+fxEsc(f.AssetId||f.Plant||'')+'</b> · raised '+
+      (f.FaultDate?new Date(f.FaultDate).toLocaleDateString('en-GB'):'\u2014')+'<br>'+fxEsc(f.Description||'')+'</div>'+
+    '<label for="fxsendto">Send it to</label>'+
+    '<input id="fxsendto" type="email" autocomplete="off" placeholder="name@company.co.uk">'+
+    '<label for="fxsendnote">Covering note <span style="color:var(--grey);font-weight:600;text-transform:none;letter-spacing:0">(optional \u2014 goes at the top of the email)</span></label>'+
+    '<textarea id="fxsendnote" placeholder="e.g. can you price replacing this cooler drain heater, and when could you attend?"></textarea>'+
+    '<div class="muted" style="font-size:12.5px;color:var(--grey);line-height:1.5;margin-top:8px">'+
+      'They get the full fault detail'+(photos?(' and '+photos+' photo'+(photos===1?'':'s')):'')+
+      ', sent from admin@red-works.co.uk. Replies come back to you, not to Border. '+
+      'Border are not told and nothing appears on their dashboard.'+
+      (last?('<br><b>Last sent '+fxEsc(last)+'.</b>'):'')+'</div>';
+  fxEl('fxfoot').innerHTML='<button class="btn btn-red" id="fxsendgo">Send it</button>'+
+    '<button class="btn btn-ghost" id="fxsendcancel">Cancel</button>';
+  fxEl('fxnote').textContent='It goes within a minute or two \u2014 the send is done by the portal, not from your mailbox.';
+  fxEl('fx').classList.add('on');
+  fxEl('fxsendcancel').onclick=fxClose;
+  fxEl('fxsendgo').onclick=fxSendGo;
+  setTimeout(()=>{ const i=fxEl('fxsendto'); if(i)i.focus(); },50);
+}
+
+async function fxSendGo(){
+  const f=FX.f; if(!f)return;
+  const to=(fxEl('fxsendto').value||'').trim();
+  const note=(fxEl('fxsendnote').value||'').trim();
+  if(!EMAIL_RE.test(to)){ fxEl('fxnote').textContent='That does not look like an email address.'; return; }
+  const btn=fxEl('fxsendgo'); btn.disabled=true; btn.textContent='Sending\u2026';
+  try{
+    await REDFM.updateFault(f._id,{SendTo:to,SendNote:note,SendRequestedBy:fxWho()});
+    try{ await fxLog(f.Title||f.FaultRef,'Sent to','',to,note); }catch(e){}
+    fxClose(); await load();
+  }catch(err){
+    btn.disabled=false; btn.textContent='Send it';
+    fxEl('fxnote').textContent='Did not send: '+(err.message||err);
+  }
+}
+
 async function fxSave(){
   const f=FX.f; if(!f)return;
   const btn=fxEl('fxsave'); btn.disabled=true; btn.textContent='Saving…';
@@ -1243,6 +1302,7 @@ async function openFaultHistory(ref){
 document.addEventListener('click',e=>{
   const t=e.target; if(!t||!t.closest) return;
   const ed=t.closest('.editfault'); if(ed){ e.preventDefault(); openFaultEditor(ed.dataset.id); return; }
+  const sd=t.closest('.sendfault'); if(sd){ e.preventDefault(); openSendDialog(sd.dataset.id); return; }
   const hi=t.closest('.histfault'); if(hi){ e.preventDefault(); openFaultHistory(hi.dataset.ref||''); return; }
   if(t.id==='fxclose'||t.id==='fx'){ fxClose(); }
 });
