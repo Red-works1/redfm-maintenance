@@ -60,6 +60,7 @@ function classify(name) {
   if (n.includes("oil")) return "Oil analysis";
   if (n.includes("eicr") || n.includes("fixedwiring") || n.includes("fixed_wiring")) return "Fixed wiring (EICR)";
   if (n.includes("emergency") || n.includes("emerglight")) return "Emergency lighting";
+  if (n.includes("pattesting") || n.includes("pat_") || n.includes("portableappliance")) return "PAT testing";
   if (n.includes("firealarm") || n.includes("fire_alarm") || n.includes("fire alarm")) return "Fire alarm services";
   if (n.startsWith("fault_")) return "Fault reports";
   if (n.startsWith("border_compliance") || n.includes("compliance")) return "Monthly compliance reports";

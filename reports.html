@@ -69,9 +69,9 @@ const $=id=>document.getElementById(id);
 const MANIFEST="https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports-manifest.json?t="+Date.now();
 const ORDER=["Monthly compliance reports","Weekly checks","Quarterly service","Six-monthly condenser wash",
   "F-Gas leak testing","Annual safety cut-outs","Temperature probes","A&B leak detection","Oil analysis",
-  "Fixed wiring (EICR)","Emergency lighting","Fire alarm services","Fault reports","Other reports"];
+  "Fixed wiring (EICR)","Emergency lighting","PAT testing","Fire alarm services","Fault reports","Other reports"];
 // Top-level split so certificates are easy to find, separate from Coolstream's refrigeration reports.
-const BUILDING=new Set(["Fixed wiring (EICR)","Emergency lighting","Fire alarm services"]);
+const BUILDING=new Set(["Fixed wiring (EICR)","Emergency lighting","PAT testing","Fire alarm services"]);
 const SUPER=[
   {name:"Refrigeration maintenance", match:t=>!BUILDING.has(t)},
   {name:"Building compliance — electrical & fire", match:t=>BUILDING.has(t)}

@@ -465,6 +465,7 @@ function computeRegime(reg,visits,readings,catCount){
 const FM_COMPLIANCE=[
  {key:"Fixed wiring",       name:"Fixed wiring test (EICR)", chip:"Annual · EICR",  provider:"Logical Heating Ltd", freq:"annual", cert:["eicr","fixedwiring","fixed_wiring","fixed wiring"]},
  {key:"Emergency lighting", name:"Emergency lighting",       chip:"Annual · cert",  provider:"Logical Heating Ltd", freq:"annual", cert:["emergencylighting","emergency_lighting","emergency lighting","emerg"]},
+ {key:"PAT testing",       name:"PAT testing",              chip:"Annual · register", provider:"Logical Group", freq:"annual", cert:["pattesting","pat_test","portableappliance","portable appliance"]},
  {key:"Fire alarm",         name:"Fire alarm service",       chip:"Six-monthly",    provider:"Lightning Fire",      freq:"half",   cert:["firealarm","fire_alarm","fire alarm"]}
 ];
 let FM_MANIFEST=null;

@@ -44,6 +44,7 @@
       <option value="">Select…</option>
       <option>Fixed wiring test (EICR)</option>
       <option>Emergency lighting</option>
+      <option>PAT testing</option>
       <option>Fire alarm service</option>
     </select>
     <div class="muted" id="freqNote" style="margin-top:6px"></div>
@@ -97,6 +98,7 @@ $('cDate').value=londonToday();
 const ITEMS={
   "Fixed wiring test (EICR)":{type:"Fixed wiring",     provider:"Logical Heating Ltd",prefix:"FixedWiring_EICR", note:"Yearly (done each January). Next due auto-set 12 months on."},
   "Emergency lighting":      {type:"Emergency lighting",provider:"Logical Heating Ltd",prefix:"EmergencyLighting",note:"Yearly (done each January). Next due auto-set 12 months on."},
+  "PAT testing":             {type:"PAT testing",      provider:"Logical Group",      prefix:"PATTesting",      note:"Yearly (done each January). Next due auto-set 12 months on."},
   "Fire alarm service":      {type:"Fire alarm",        provider:"Lightning Fire",     prefix:"FireAlarm",       note:"Six-monthly (January & July). Next due auto-set 6 months on."}
 };
 let chosen=null,file=null;
