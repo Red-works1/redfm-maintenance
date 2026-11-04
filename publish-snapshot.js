@@ -47,6 +47,27 @@ async function listAllSafe(sid, title) {
   catch (e) { console.error("list " + title + " unavailable: " + e.message); return []; }
 }
 
+/* CLOSED-BOOK GUARD. This snapshot is public (raw.githubusercontent, no login) and is what
+   Border's view.html reads. Whatever a form or a person adds to a SharePoint list, a column
+   whose NAME looks commercial never leaves the building: any key matching cost / budget /
+   price / margin / £ is dropped from every row of every list before the file is written.
+   Dropped column names are logged (never their values) so a new one is noticed. */
+const COMMERCIAL_KEY = /cost|budget|price|margin|£/i;
+function closedBook(snap) {
+  const dropped = new Set();
+  for (const k of Object.keys(snap)) {
+    if (!Array.isArray(snap[k])) continue;
+    snap[k] = snap[k].map(row => {
+      if (!row || typeof row !== "object") return row;
+      const out = {};
+      for (const f of Object.keys(row)) { if (COMMERCIAL_KEY.test(f)) dropped.add(k + "." + f); else out[f] = row[f]; }
+      return out;
+    });
+  }
+  if (dropped.size) console.log("closed-book guard dropped: " + [...dropped].join(", "));
+  return snap;
+}
+
 // Group a report file into a library heading by its filename prefix.
 function classify(name) {
   const n = name.toLowerCase();
@@ -151,10 +172,15 @@ async function syncPhotos(sid, title) {
   const [visits, readings, faults, cat] = await Promise.all([
     listAll(sid, "ServiceVisits"), listAll(sid, "Readings"),
     listAll(sid, "FaultRegister"), listAll(sid, "ReadingCatalogue")]);
-  // RDM alarms (notice 5.3), parameter changes (clause 8.8) and the forward works register
+  // RDM alarms (notice 5.3), parameter changes (RED FM standard) and the forward works register
   const [rdmalarms, parameterchanges, forwardworks] = await Promise.all([
     listAllSafe(sid, "RDMAlarms"), listAllSafe(sid, "ParameterChanges"),
     listAllSafe(sid, "ForwardWorks")]);
+  // F-Gas refrigerant register (Nov 2026). Quantities only. A missing list publishes as null,
+  // not [], so the dashboards say "not available" instead of showing an empty all-clear.
+  const listOrNull = async t => { try { return await listAll(sid, t); } catch (e) { console.error("list " + t + " unavailable: " + e.message); return null; } };
+  const [refrigerantsystems, refrigerantcylinders, refrigerantmovements] = await Promise.all([
+    listOrNull("RefrigerantSystems"), listOrNull("RefrigerantCylinders"), listOrNull("RefrigerantMovements")]);
   // Photos go into the same snapshot the dashboards already fetch, so neither page needs a
   // second request. Done before the write so an empty result still publishes as [].
   fs.mkdirSync("photos", { recursive: true });
@@ -162,10 +188,11 @@ async function syncPhotos(sid, title) {
   try { photos = await syncPhotos(sid, "Faults"); }
   catch (e) { console.error("photo sync failed: " + e.message); }
 
-  const snap = { generatedAt: new Date().toISOString(), visits, readings, faults, cat, rdmalarms, parameterchanges, forwardworks, photos };
+  const snap = closedBook({ generatedAt: new Date().toISOString(), visits, readings, faults, cat, rdmalarms, parameterchanges, forwardworks,
+    refrigerantsystems, refrigerantcylinders, refrigerantmovements, photos });
   fs.writeFileSync("data-snapshot.json", JSON.stringify(snap));
   fs.writeFileSync("photos-manifest.json", JSON.stringify({ generatedAt: new Date().toISOString(), photos }));
-  console.log(`snapshot: ${visits.length} visits, ${readings.length} readings, ${faults.length} faults, ${cat.length} catalogue rows, ${rdmalarms.length} RDM alarms, ${parameterchanges.length} parameter changes, ${forwardworks.length} forward works, ${photos.length} photos`);
+  console.log(`snapshot: ${visits.length} visits, ${readings.length} readings, ${faults.length} faults, ${cat.length} catalogue rows, ${rdmalarms.length} RDM alarms, ${parameterchanges.length} parameter changes, ${forwardworks.length} forward works, ${photos.length} photos, refrigerant ${refrigerantsystems ? refrigerantsystems.length : "n/a"} systems / ${refrigerantcylinders ? refrigerantcylinders.length : "n/a"} cylinders / ${refrigerantmovements ? refrigerantmovements.length : "n/a"} movements`);
 
   // 2) the public reports library
   fs.mkdirSync("reports", { recursive: true });

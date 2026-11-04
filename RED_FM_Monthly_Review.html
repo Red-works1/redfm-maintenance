@@ -77,7 +77,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
-<script src="redfm-data.js?v=16"></script>
+<script src="redfm-data.js?v=17"></script>
 <script>
 const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.className='toast show';setTimeout(()=>t.className='toast',2600);}
@@ -216,7 +216,7 @@ function runChecks(D0,D1,visits,readings,faults,alarms,params){
   const noRdm=weekly.filter(v=>!String(v.RdmAlarmsRecorded||'').trim())
     .map(v=>'<b>'+v.Title+'</b> ('+fmt(D(v.VisitDate))+') recorded nothing about RDM alarms');
   out.push({id:'E1',title:'Weekly visits with no RDM alarm check',sev:'red',
-    rule:'Clause 4.4 — RDM monitoring forms part of the weekly attendance. A blank entry means no record of the alarm review exists for that week.',
+    rule:'Notice CAN-001 section 5.3 — every weekly visit records the RDM alarms active at the time, or states that none are. A blank entry means no record of the alarm review exists for that week.',
     ask:'Request the RDM export for those dates and attach it to the visit record.',hits:noRdm});
 
   const aIn=alarms.filter(a=>inWin(D(a.AlarmDate)));
@@ -231,8 +231,8 @@ function runChecks(D0,D1,visits,readings,faults,alarms,params){
 
   const notNotified=aIn.filter(a=>{const h=ran(a);return h!=null&&h>24&&String(a.NotifiedRedFm||'')!=='Sent';})
     .map(a=>'<b>'+(a.AssetId||'?')+'</b> — '+fmt(D(a.ActiveSince))+' · notification status "'+(a.NotifiedRedFm||'not set')+'"');
-  out.push({id:'E4',title:'Alarms over 24 hours with no written notification recorded',sev:'red',
-    rule:'Clause 4.4(c) — an alarm running beyond one business day requires written notification to RED FM. This lists those with no notification recorded as sent.',
+  out.push({id:'E4',title:'Alarms over 24 hours with no written notification recorded',sev:'amb',
+    rule:'RED FM standard (advisory — not a contractual obligation) — an alarm running beyond one business day should be notified to RED FM in writing. This lists those with no notification recorded as sent.',
     ask:'Obtain the written notification for each, or record the exception with its date.',hits:notNotified});
 
   const pIn=params.filter(p=>inWin(D(p.ChangeDate)));
@@ -241,8 +241,8 @@ function runChecks(D0,D1,visits,readings,faults,alarms,params){
     return hrs(D(p.ChangeDate),now)/24>days+2;})
     .map(p=>'<b>'+(p.AssetId||'?')+'</b> '+(p.Parameter||'')+' set to '+(p.ValueAfter||'?')+
       ' on '+fmt(D(p.ChangeDate))+' for "'+p.IntendedDuration+'" — no reversion logged');
-  out.push({id:'E3',title:'Parameter changes and inhibits never put back',sev:'red',
-    rule:'An alarm inhibit or setpoint change past its stated duration with no reversion recorded. An inhibited alarm cannot annunciate.',
+  out.push({id:'E3',title:'Parameter changes and inhibits never put back',sev:'amb',
+    rule:'RED FM standard (advisory) — an alarm inhibit or setpoint change past its stated duration with no reversion recorded. An inhibited alarm cannot annunciate.',
     ask:'Confirm the reversion date for each, or the reason the change remains in place.',hits:notBack});
 
   /* ---------- F. hygiene ---------- */

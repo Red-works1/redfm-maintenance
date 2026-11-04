@@ -83,6 +83,9 @@
   #fwbox .cohead{border-top:1px solid var(--line);padding:14px 18px 0;font-size:15px;font-weight:800;}
   #fwbox .cohead:first-child{border-top:0;}
   #fwbox .cohead span{color:var(--grey);font-weight:600;font-size:13px;}
+  #fgbox .cohead{border-top:1px solid var(--line);padding:14px 18px 0;font-size:15px;font-weight:800;}
+  #fgbox .cohead:first-child{border-top:0;}
+  #fgbox .cohead span{color:var(--grey);font-weight:600;font-size:13px;}
   .arrow{color:var(--grey);}
   .srcnote{padding:11px 18px;font-size:12px;color:var(--grey);border-top:1px solid var(--line);}
   #faulttable tr.rep-a td{background:#fdf3e3;}
@@ -167,13 +170,13 @@
     #faulttable td.wide{display:block;text-align:left;}
     #faulttable td.wide:before{display:block;margin-bottom:4px;}
     #faulttable td.closcell{max-width:none;}
-    #rdmbox table,#rdmbox tbody,#rdmbox tr,#rdmbox td,#pcbox table,#pcbox tbody,#pcbox tr,#pcbox td,#fwbox table,#fwbox tbody,#fwbox tr,#fwbox td{display:block;width:auto;}
-    #rdmbox thead,#pcbox thead,#fwbox thead{display:none;}
-    #rdmbox tr,#pcbox tr,#fwbox tr{border:1px solid var(--line);border-radius:12px;margin:0 14px 14px;padding:2px 0;background:#fff;}
-    #rdmbox td,#pcbox td,#fwbox td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
-    #rdmbox td:before,#pcbox td:before,#fwbox td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
-    #rdmbox td.wide,#pcbox td.wide,#fwbox td.wide{display:block;text-align:left;}
-    #rdmbox td.wide:before,#pcbox td.wide:before,#fwbox td.wide:before{display:block;margin-bottom:4px;}
+    #rdmbox table,#rdmbox tbody,#rdmbox tr,#rdmbox td,#pcbox table,#pcbox tbody,#pcbox tr,#pcbox td,#fwbox table,#fwbox tbody,#fwbox tr,#fwbox td,#fgbox table,#fgbox tbody,#fgbox tr,#fgbox td{display:block;width:auto;}
+    #rdmbox thead,#pcbox thead,#fwbox thead,#fgbox thead{display:none;}
+    #rdmbox tr,#pcbox tr,#fwbox tr,#fgbox tr{border:1px solid var(--line);border-radius:12px;margin:0 14px 14px;padding:2px 0;background:#fff;}
+    #rdmbox td,#pcbox td,#fwbox td,#fgbox td{border:0;border-bottom:1px solid #f1f1f4;padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;}
+    #rdmbox td:before,#pcbox td:before,#fwbox td:before,#fgbox td:before{content:attr(data-label);font-weight:700;color:var(--grey);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;}
+    #rdmbox td.wide,#pcbox td.wide,#fwbox td.wide,#fgbox td.wide{display:block;text-align:left;}
+    #rdmbox td.wide:before,#pcbox td.wide:before,#fwbox td.wide:before,#fgbox td.wide:before{display:block;margin-bottom:4px;}
     .modalback{padding:12px 8px;}
     .modalbody table,.modalbody tbody,.modalbody tr,.modalbody td{display:block;width:auto;}
     .modalbody thead{display:none;}
@@ -245,12 +248,12 @@
 
     <div class="sechead">
       <h2>RDM alarms (notice 5.3)</h2>
-      <div class="legend"><span class="a">● acknowledged, no action</span><span class="r">● active more than 24 hours — written notification due within one business day (4.4(c))</span></div>
+      <div class="legend"><span class="a">● acknowledged, no action</span><span class="r">● active more than 24 hours — written notification due within one business day (RED FM standard)</span></div>
     </div>
     <div class="card" id="rdmbox"></div>
 
     <div class="sechead">
-      <h2>Parameter changes &amp; reversions (clause 8.8)</h2>
+      <h2>Parameter changes &amp; reversions (RED FM standard)</h2>
       <div class="legend"><span class="r">● revert-by date passed and not reverted</span></div>
     </div>
     <div class="card" id="pcbox"></div>
@@ -286,17 +289,24 @@
       <div class="legend"><span>Counts only — no figures</span><a href="RED_FM_Forward_Works.html" style="color:var(--red);font-weight:700;text-decoration:none;">Full register →</a></div>
     </div>
     <div class="card" id="fwbox"></div>
+
+    <div class="sechead">
+      <h2><a href="RED_FM_FGas_Register.html" style="color:var(--ink);text-decoration:none;border-bottom:2px solid var(--red);">F-Gas refrigerant register</a></h2>
+      <div class="legend"><span>Quantities only — no figures</span><a href="RED_FM_FGas_Register.html" style="color:var(--red);font-weight:700;text-decoration:none;">Full register →</a></div>
+    </div>
+    <div class="card" id="fgbox"></div>
   </div>
 
   <div class="state" id="loadstate">Sign in to load the live Border Holdings compliance picture from SharePoint.</div>
 </div>
 
-<footer>Client report — completion and fault status only, no commercial figures. RED FM holds the underlying signed records; F-Gas statutory records are Coolstream's. RED FM (Red Electrical Bristol Ltd) · Border Holdings, Avonmouth · refrigeration sub-contracted to Coolstream UK Ltd.</footer>
+<footer>Client report — completion and fault status only, no commercial figures. RED FM holds the underlying signed records. F-Gas records are held in this portal on behalf of Border Holdings Ltd (operator). Refrigerant work by Coolstream (UK) Ltd, Refcom REF1018681. RED FM (Red Electrical Bristol Ltd) · Border Holdings, Avonmouth.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="redfm-data.js?v=16"></script>
+<script src="redfm-data.js?v=17"></script>
+<script src="redfm-fgas.js?v=1"></script>
 <script>
 const $=id=>document.getElementById(id);
 const now=new Date();
@@ -740,7 +750,7 @@ function paramRows(changes){
 function renderParams(changes){
   if(changes==null){$('pcbox').innerHTML='<div class="empty">Parameter change records are not available in this view.</div>';return;}
   const rows=paramRows(changes),od=rows.filter(x=>x.od!=null);
-  const banner=od.length?`<div class="banner">⚠ ${od.length} parameter change${od.length===1?'':'s'} past the revert-by date and not reverted — clause 8.8 · ${esc(od.map(x=>[x.p.AssetId||'',x.p.Parameter||''].filter(Boolean).join(' ')||x.p.Title||'(no ref)').join(', '))}</div>`:'';
+  const banner=od.length?`<div class="banner">⚠ ${od.length} parameter change${od.length===1?'':'s'} past the revert-by date and not reverted — RED FM standard · ${esc(od.map(x=>[x.p.AssetId||'',x.p.Parameter||''].filter(Boolean).join(' ')||x.p.Title||'(no ref)').join(', '))}</div>`:'';
   if(!rows.length){$('pcbox').innerHTML='<div class="empty ok">✓ No parameter changes recorded this period.</div>'+srcNote();return;}
   const body=rows.map(x=>{const p=x.p;
     const rev=x.od!=null?`<span class="sev High">${x.od} day${x.od===1?'':'s'} overdue</span>`
@@ -962,6 +972,7 @@ function render(){
   renderRdm(DATA.visits,DATA.rdmalarms);
   renderParams(DATA.parameterchanges);
   renderForward(DATA.forwardworks);
+  if(window.REDFMFGas)REDFMFGas.renderBox($('fgbox'),DATA.fgas,{note:DATA.fgasNote||''});
   renderSiteReports(C.faults);
 
   $('regimes').innerHTML=C.regs.map(r=>`
@@ -1059,15 +1070,31 @@ async function loadNewLists(){
   }catch(e){NEWSRC='';return {rdmalarms:null,parameterchanges:null,forwardworks:null};}
 }
 
+/* F-Gas refrigerant register — read live when signed in, otherwise from the hourly snapshot.
+   Kept apart from loadNewLists() so a missing register list can never knock out the RDM,
+   parameter-change and forward-works cards. */
+const FGAS_LISTS=["RefrigerantSystems","RefrigerantCylinders","RefrigerantMovements"];
+async function loadFgas(){
+  if(window.REDFM&&typeof REDFM.listItems==='function'){
+    try{const r=await Promise.all(FGAS_LISTS.map(n=>REDFM.listItems(n)));
+      return {data:{systems:r[0],cylinders:r[1],movements:r[2]},note:''};}catch(e){}
+  }
+  try{const j=await (await fetch(SNAP_URL+'?t='+Date.now())).json();
+    const p=k=>Array.isArray(j[k])?j[k]:null;
+    return {data:{systems:p('refrigerantsystems'),cylinders:p('refrigerantcylinders'),movements:p('refrigerantmovements')},
+      note:'Refrigerant register shown from the published snapshot'+(j.generatedAt?' of '+new Date(j.generatedAt).toLocaleString('en-GB'):'')+' — not live.'};
+  }catch(e){return {data:null,note:''};}
+}
+
 async function load(){
   $('status').textContent='Loading live data…';
   try{
-    const [visits,readings,faults,cat,extra]=await Promise.all([
-      REDFM.getServiceVisits(),REDFM.getReadings(),REDFM.getFaultsWithId(),REDFM.getCatalogueAll(),loadNewLists()]);
+    const [visits,readings,faults,cat,extra,fg]=await Promise.all([
+      REDFM.getServiceVisits(),REDFM.getReadings(),REDFM.getFaultsWithId(),REDFM.getCatalogueAll(),loadNewLists(),loadFgas()]);
     const catCount={};cat.forEach(c=>{catCount[c.ServiceType]=(catCount[c.ServiceType]||0)+1;});
     DATA={visits,readings,faults,catCount,
       rdmalarms:extra.rdmalarms,parameterchanges:extra.parameterchanges,forwardworks:extra.forwardworks,
-      photos:await loadPhotos()};
+      photos:await loadPhotos(),fgas:fg.data,fgasNote:fg.note};
     $('loadstate').style.display='none';$('board').style.display='block';
     $('signin').style.display='none';$('genpdf').disabled=false;
     $('status').textContent='Live · '+visits.length+' visits · '+faults.length+' faults loaded';

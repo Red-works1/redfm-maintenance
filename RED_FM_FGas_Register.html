@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico">
+<title>RED FM — F-Gas refrigerant register</title>
+<style>
+  :root{--red:#C8102E;--ink:#1E1E1E;--grey:#6b6b72;--line:#e3e3e8;--bg:#f5f5f7;--ok:#1a7f37;--amber:#b9770b;--blue:#1c3a66;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:#fff;border-bottom:4px solid var(--red);padding:14px 16px;position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:12px;}.logo{display:block;height:34px;width:auto;flex:0 0 auto;}
+  .htitle{font-size:13px;color:var(--grey);line-height:1.2;}.htitle strong{display:block;color:var(--ink);font-size:16px;}
+  .wrap{max-width:820px;margin:0 auto;padding:0 14px 120px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px;}
+  .card.flush{padding:0;overflow:hidden;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;}
+  label .req{color:var(--red);}
+  input,select,textarea{width:100%;font-size:16px;padding:13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+  input[readonly]{background:#f4f4f6;color:var(--grey);}
+  textarea{min-height:80px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  @media(max-width:520px){.row3{grid-template-columns:1fr 1fr;}}
+  .modes{display:flex;gap:8px;margin-top:12px;}
+  .modebtn{flex:1;font-size:15px;font-weight:700;padding:13px 0;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--grey);cursor:pointer;}
+  .modebtn.on{background:#fdecee;color:var(--red);border-color:var(--red);}
+  .btn{font-size:16px;font-weight:700;padding:15px 18px;border-radius:12px;border:0;cursor:pointer;}
+  .btn-red{background:var(--red);color:#fff;}.btn-ghost{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+  .btn-sm{font-size:13px;padding:7px 13px;border-radius:9px;}
+  .btn:disabled{opacity:.55;cursor:default;}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;z-index:20;}
+  .bar .inner{max-width:820px;margin:0 auto;}.bar .btn{width:100%;}
+  .muted{color:var(--grey);font-size:12px;}
+  .note{background:#eef4ff;border:1px solid #d5e2fb;color:#1c3a66;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.45;}
+  .warn{background:#fdf3e3;border:1px solid #f0dcb4;color:#7a4e06;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.45;}
+  .hint{font-size:13px;margin-top:10px;color:var(--amber);font-weight:600;}
+  .hint.ok{color:var(--ok);}
+  .gh{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:24px 4px 6px;display:flex;align-items:center;gap:9px;}
+  .gh .cnt{background:#fdecee;color:var(--red);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px;}
+  /* tiles + tables share the dashboard's look so the fgbox renderer can be reused verbatim */
+  .pipe{display:flex;gap:10px;padding:14px;flex-wrap:wrap;}
+  .stage{flex:1;min-width:120px;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;background:#fff;}
+  .stage .c{font-size:24px;font-weight:800;}.stage .s{font-size:12px;color:var(--grey);margin-top:2px;}
+  .stage.them{border-color:var(--red);background:#fdecee;}.stage.them .c{color:var(--red);}
+  .stage.us{border-color:var(--amber);background:#fdf3e3;}.stage.us .c{color:var(--amber);}
+  .stage.fixed{border-color:#1e8e3e;background:#e7f5ec;}.stage.fixed .c{color:#1e8e3e;}
+  .stage.co{border-color:var(--blue);background:#eaf2fb;}.stage.co .c{color:var(--blue);}
+  .cohead{border-top:1px solid var(--line);padding:14px 16px 0;font-size:15px;font-weight:800;}
+  .cohead:first-child{border-top:0;}
+  .cohead span{color:var(--grey);font-weight:600;font-size:13px;}
+  .empty{padding:18px;color:var(--grey);font-size:14px;text-align:center;}.empty.ok{color:var(--ok);font-weight:700;}
+  .srcnote{padding:11px 16px;font-size:12px;color:var(--grey);border-top:1px solid var(--line);}
+  .tblscroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:10px 12px;border-bottom:1px solid #f1f1f4;vertical-align:top;}
+  tr.bad td{background:#fff5f6;}
+  .chip{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;background:#eef0f2;color:var(--grey);margin-left:4px;white-space:nowrap;}
+  .chip.amb{background:#fdf3e3;color:var(--amber);}.chip.red{background:#fdecee;color:var(--red);}.chip.ok{background:#eef7f0;color:var(--ok);}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:70;font-weight:600;max-width:90vw;}.toast.show{opacity:1;}
+  .x{position:fixed;inset:0;background:rgba(20,20,24,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:24px 14px;overflow-y:auto;}
+  .x.on{display:flex;}
+  .xcard{background:#fff;border-radius:14px;max-width:600px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.3);}
+  .xhead{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .xhead h3{margin:0;font-size:17px;}
+  .xhead .close{border:0;background:none;font-size:24px;line-height:1;color:var(--grey);cursor:pointer;padding:0 4px;}
+  .xbody{padding:6px 20px 4px;}
+  .xfoot{padding:14px 20px 8px;display:flex;gap:10px;}.xfoot .btn{flex:1;}
+  .xnote{font-size:12.5px;color:var(--grey);padding:0 20px 16px;line-height:1.5;}
+  .hist{border-left:3px solid var(--line);padding-left:12px;margin:12px 0;}
+  .hist .a{font-size:13.5px;font-weight:700;}.hist .b{font-size:12.5px;color:var(--grey);margin-top:2px;line-height:1.5;}
+  @media print{.bar,.toast,.modes,.noprint{display:none!important}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
+<div class="htitle"><strong>F-Gas refrigerant register</strong>Border Holdings — Avonmouth · stock, additions and system charges</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+
+<div class="wrap">
+  <div class="modes" id="modes">
+    <button class="modebtn on" data-m="view">The register</button>
+    <button class="modebtn" data-m="add">Log a movement</button>
+  </div>
+
+  <!-- ─── THE REGISTER ─────────────────────────────────────────────────────── -->
+  <div id="viewPane">
+    <div class="card">
+      <div class="note">Every weighing of refrigerant on this site — what is held in stock, what went into which system and why. Held in this portal on behalf of Border Holdings Ltd (the operator). Refrigerant work by Coolstream (UK) Ltd, Refcom REF1018681. Quantities only — no commercial figures.</div>
+      <div class="muted" id="regMeta" style="margin-top:10px">Loading the register…</div>
+      <div class="noprint" id="signRow" style="margin-top:10px;display:none"><button class="btn btn-ghost btn-sm" id="signin">Sign in to log and edit</button></div>
+    </div>
+
+    <div class="card flush" id="fgbox"><div class="empty">Loading…</div></div>
+
+    <div class="gh">Cylinders<span class="cnt" id="cylN">0</span>
+      <button class="btn btn-ghost btn-sm noprint" id="addCyl" style="margin-left:auto;display:none">Add a cylinder</button></div>
+    <div class="card flush"><div class="tblscroll" id="cylTable"></div></div>
+
+    <div class="gh">Systems — installed charge<span class="cnt" id="sysN">0</span></div>
+    <div class="card flush"><div class="tblscroll" id="sysTable"></div>
+      <div class="srcnote">Leak-check frequency follows the GB F-Gas Regulation thresholds (5 / 50 / 500 t CO2e; interval doubled where a working leak-detection system is fitted). GWPs are the AR4 values in Annex I: R407C 1774 · R407F 1825 · R449A 1397.</div></div>
+
+    <div class="gh">Movements<span class="cnt" id="movN">0</span></div>
+    <div class="card flush"><div class="tblscroll" id="movTable"></div></div>
+  </div>
+
+  <!-- ─── LOG A MOVEMENT ───────────────────────────────────────────────────── -->
+  <div id="addPane" style="display:none">
+    <div class="card">
+      <div class="note">Weigh the cylinder before and after, every time. Write down the scale readings — the register works out what moved. A cylinder that is not listed has to be added first (on <b>The register</b>, signed in).</div>
+
+      <label>What happened <span class="req">*</span></label>
+      <select id="mType"><option value="">Select…</option>
+        <option>Added to system</option>
+        <option>Recovered from system</option>
+        <option>Delivered to site</option>
+        <option>Removed from site</option>
+        <option>Stock check</option>
+      </select>
+
+      <div class="row">
+        <div><label>Date <span class="req">*</span></label><input id="mDate" type="date"></div>
+        <div><label>Cylinder <span class="req">*</span></label><select id="mCyl"><option value="">Loading…</option></select></div>
+      </div>
+      <div class="muted" id="cylInfo" style="margin-top:6px"></div>
+
+      <div id="plantWrap" style="display:none"><label>System <span class="req">*</span></label>
+        <select id="mPlant"><option value="">Select…</option></select></div>
+
+      <div id="scaleWrap" style="display:none">
+        <div class="row">
+          <div><label id="startLbl">Scale reading before (kg)</label><input id="mStart" type="text" inputmode="decimal" placeholder="e.g. 63.4"></div>
+          <div><label id="endLbl">Scale reading after (kg)</label><input id="mEnd" type="text" inputmode="decimal" placeholder="e.g. 52.1"></div>
+        </div>
+      </div>
+      <div id="qtyWrap" style="display:none">
+        <label id="qtyLbl">Refrigerant (kg)</label><input id="mQty" type="text" inputmode="decimal">
+      </div>
+      <div class="hint" id="qtyHint"></div>
+
+      <div id="reasonWrap" style="display:none"><label>Reason <span class="req">*</span></label>
+        <select id="mReason"><option value="">Select…</option></select></div>
+
+      <div id="leakWrap" style="display:none">
+        <label>Where was the leak and how was it repaired? <span class="req">*</span></label>
+        <textarea id="mLeak" placeholder="e.g. discharge Gomax fitting off compressor 1 — fitting replaced, pressure tested 24h"></textarea>
+        <label>Fault / call-out reference</label><input id="mLeakRef" placeholder="e.g. FLT-1023 or CO-1031">
+      </div>
+
+      <div class="row">
+        <div><label>Job / service sheet ref</label><input id="mJob" placeholder="Coolstream job no."></div>
+        <div><label>Engineer <span class="req">*</span></label><input id="mEng" placeholder="Your name"></div>
+      </div>
+      <label>Notes</label><textarea id="mNotes" placeholder="Anything else worth recording (optional)"></textarea>
+    </div>
+    <div id="summary" class="card" style="display:none"><strong id="sumHead"></strong><div id="sumBody" style="margin-top:8px"></div></div>
+  </div>
+</div>
+
+<div class="bar" id="bar" style="display:none"><div class="inner"><button class="btn btn-red" id="finish">Log this movement</button></div></div>
+
+<!-- shared dialog: add cylinder / edit system / history -->
+<div class="x" id="dlg"><div class="xcard">
+  <div class="xhead"><h3 id="dlgTitle"></h3><button class="close" id="dlgClose" aria-label="Close">×</button></div>
+  <div class="xbody" id="dlgBody"></div>
+  <div class="xfoot" id="dlgFoot"></div>
+  <div class="xnote" id="dlgNote"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+<script src="redfm-data.js?v=17"></script>
+<script src="redfm-fgas.js?v=1"></script>
+<script src="redfm-draft.js?v=2"></script>
+<script>
+/* Dates in Europe/London — see the note in the Forward Works page: a UTC date between
+   midnight and 01:00 BST is yesterday, and this is a statutory record. */
+function londonToday(){
+  try{const d=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;}catch(e){}
+  return new Date().toISOString().slice(0,10);
+}
+const $=id=>document.getElementById(id);
+const F=window.REDFMFGas;
+const SNAP='https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/data-snapshot.json';
+const L={sys:'RefrigerantSystems',cyl:'RefrigerantCylinders',mov:'RefrigerantMovements'};
+function toast(m,ms){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),ms||2600);}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const d10=F.d10;
+function dmy(v){const s=d10(v);return s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';}
+function kg(v){return v===null||v===undefined?'—':(Math.round(v*100)/100)+' kg';}
+/* Comma decimals ("55,5") and stray spaces are common on a phone keypad — same lesson as the
+   weekly form's num(): never strip characters blindly. */
+function num(s){
+  let t=String(s==null?'':s).trim().replace(/\s+/g,'');
+  if(!t)return null;
+  if(/^-?\d+,\d{1,2}$/.test(t))t=t.replace(',','.');
+  if(!/^-?\d+(\.\d+)?$/.test(t))return NaN;
+  return Number(t);
+}
+function who(){try{const a=REDFM.getAccount();return (a&&(a.username||a.name))||'unknown';}catch(e){return 'unknown';}}
+
+// ── mode toggle ──────────────────────────────────────────────────────────────
+let submitted=false;
+function setMode(m){
+  document.querySelectorAll('.modebtn').forEach(b=>b.className='modebtn'+(b.dataset.m===m?' on':''));
+  $('viewPane').style.display=m==='view'?'block':'none';
+  $('addPane').style.display=m==='add'?'block':'none';
+  $('bar').style.display=(m==='add'&&!submitted)?'block':'none';
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.modebtn').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+
+// ── data: live when signed in (with item ids), otherwise the hourly snapshot ─────────────
+let DATA={systems:null,cylinders:null,movements:null}, LIVE=false;
+async function loadData(){
+  if(window.REDFM&&REDFM.getAccount&&REDFM.getAccount()){
+    try{
+      const r=await Promise.all([REDFM.listItemsWithId(L.sys),REDFM.listItemsWithId(L.cyl),REDFM.listItemsWithId(L.mov)]);
+      DATA={systems:r[0],cylinders:r[1],movements:r[2]};LIVE=true;render();return;
+    }catch(e){ $('regMeta').textContent='Could not read the live lists ('+(e.message||e)+') — showing the published snapshot.'; }
+  }
+  try{
+    const j=await (await fetch(SNAP+'?t='+Date.now())).json();
+    const pick=k=>Array.isArray(j[k])?j[k]:null;
+    DATA={systems:pick('refrigerantsystems'),cylinders:pick('refrigerantcylinders'),movements:pick('refrigerantmovements')};
+    LIVE=false;render(j.generatedAt);
+  }catch(e){ $('regMeta').textContent='Could not reach the published register from this device.'; }
+}
+
+function render(snapAt){
+  const ok=DATA.systems&&DATA.cylinders&&DATA.movements;
+  $('regMeta').innerHTML=!ok?'The register has not been published yet — it appears here after the next hourly publish.'
+    :(LIVE?'Live — signed in as <b>'+esc(who())+'</b>, changes save straight away.'
+          :'Published snapshot'+(snapAt?' of '+new Date(snapAt).toLocaleString('en-GB'):'')+' · refreshed hourly. Sign in to log or edit.');
+  $('signRow').style.display=LIVE?'none':'block';
+  $('addCyl').style.display=LIVE?'inline-block':'none';
+  F.renderBox($('fgbox'),DATA,{today:londonToday()});
+  if(!ok){['cylTable','sysTable','movTable'].forEach(id=>$(id).innerHTML='');fillCylSelect();return;}
+
+  // cylinders
+  const cyl=F.cylinderBalances(DATA.cylinders,DATA.movements)
+    .sort((a,b)=>(F.onSite(b)-F.onSite(a))||a.ref.localeCompare(b.ref,undefined,{numeric:true}));
+  $('cylN').textContent=cyl.length;
+  $('cylTable').innerHTML=cyl.length?'<table><thead><tr><th>Cylinder</th><th>Gas</th><th>Contents</th><th>From movements</th><th>Owner / type</th><th>Location</th><th>Last</th><th></th></tr></thead><tbody>'+
+    cyl.map(c=>'<tr class="'+(c.mismatch?'bad':'')+'"><td><b>'+esc(c.ref)+'</b>'+(F.onSite(c)?'':' <span class="chip">'+esc(c.status)+'</span>')+'</td>'+
+      '<td>'+esc(c.gas||'—')+(c.verified?' <span class="chip ok">label checked</span>':' <span class="chip amb">not verified</span>')+'</td>'+
+      '<td>'+kg(c.stored)+'</td><td>'+kg(c.derived)+(c.mismatch?' <span class="chip red">differs &gt;'+F.TOLERANCE_KG+' kg</span>':'')+'</td>'+
+      '<td>'+esc([c.owner,c.type].filter(Boolean).join(' · ')||'—')+'</td><td>'+esc(c.location||'—')+'</td><td>'+dmy(c.last)+'</td>'+
+      '<td class="noprint"><button class="btn btn-ghost btn-sm" data-hist="'+esc(c.ref)+'">History</button>'+
+      (LIVE&&c._id?' <button class="btn btn-ghost btn-sm" data-cyledit="'+esc(c._id)+'">Edit</button>':'')+'</td></tr>').join('')+
+    '</tbody></table>':'<div class="empty">No cylinders on the register.</div>';
+
+  // systems
+  const sys=DATA.systems.map(F.systemRow).sort((a,b)=>F.PLANTS.indexOf(a.plant)-F.PLANTS.indexOf(b.plant));
+  $('sysN').textContent=sys.length;
+  $('sysTable').innerHTML=sys.length?'<table><thead><tr><th>System</th><th>Gas</th><th>Charge</th><th>t CO2e</th><th>Leak detection</th><th>Leak checks</th><th>Source</th><th></th></tr></thead><tbody>'+
+    sys.map(s=>'<tr><td><b>'+esc(s.plant)+'</b></td><td>'+esc(s.gas)+'</td><td>'+kg(s.kg)+'</td><td>'+(s.t===null?'—':s.t)+'</td>'+
+      '<td>'+esc(s.ld)+'</td><td'+(s.band.ldRequired?' style="color:var(--red);font-weight:700"':'')+'>'+esc(s.band.label)+'</td>'+
+      '<td class="muted">'+esc(s.source||'—')+'</td>'+
+      '<td class="noprint">'+(LIVE&&s._id?'<button class="btn btn-ghost btn-sm" data-sysedit="'+esc(s._id)+'">Update</button> ':'')+
+      '<button class="btn btn-ghost btn-sm" data-hist="SYS-'+esc(s.plant)+'">History</button></td></tr>').join('')+
+    '</tbody></table>':'<div class="empty">No systems on the register.</div>';
+
+  // movements (newest first)
+  const mv=F.sortMoves(DATA.movements).reverse();
+  $('movN').textContent=mv.length;
+  $('movTable').innerHTML=mv.length?'<table><thead><tr><th>Ref</th><th>Date</th><th>What</th><th>Cylinder</th><th>System</th><th>Net kg</th><th>Scale before → after</th><th>Reason</th><th>Engineer</th></tr></thead><tbody>'+
+    mv.map(m=>'<tr><td><b>'+esc(m.Title||'')+'</b></td><td>'+dmy(m.MoveDate)+'</td><td>'+esc(m.MoveType||'')+'</td><td>'+esc(m.CylinderRef||'')+'</td>'+
+      '<td>'+esc(m.Plant||'—')+'</td><td>'+kg(F.n(m.QtyKg))+'</td>'+
+      '<td class="muted">'+(m.StartKg!=null||m.EndKg!=null?kg(F.n(m.StartKg))+' → '+kg(F.n(m.EndKg)):'—')+'</td>'+
+      '<td>'+esc(m.Reason||'—')+(m.Reason==='Leak repair'?' <span class="chip red">leak</span>':'')+
+        (m.LeakDetail?'<div class="muted">'+esc(m.LeakDetail)+'</div>':'')+'</td><td>'+esc(m.Engineer||'')+'</td></tr>').join('')+
+    '</tbody></table>':'<div class="empty">No movements recorded yet.</div>';
+  fillCylSelect();
+}
+
+// ── movement form ────────────────────────────────────────────────────────────
+$('mDate').value=londonToday();
+$('mPlant').innerHTML='<option value="">Select…</option>'+F.PLANTS.map(p=>'<option>'+p+'</option>').join('');
+$('mReason').innerHTML='<option value="">Select…</option>'+F.REASONS.filter(r=>r!=='Stock record').map(r=>'<option>'+r+'</option>').join('');
+function cylRows(){return (DATA.cylinders&&DATA.movements)?F.cylinderBalances(DATA.cylinders,DATA.movements).filter(F.onSite):[];}
+function fillCylSelect(){
+  const keep=$('mCyl').value;
+  const rows=cylRows();
+  $('mCyl').innerHTML=rows.length?'<option value="">Select…</option>'+rows.map(c=>'<option value="'+esc(c.ref)+'">'+esc(c.ref)+' · '+esc(c.gas)+' · '+kg(c.derived!==null?c.derived:c.stored)+'</option>').join('')
+    :'<option value="">'+(LIVE?'No cylinders yet — add one on The register':'Sign in to see the cylinders')+'</option>';
+  if(keep)$('mCyl').value=keep;
+  syncForm();
+}
+function curCyl(){return cylRows().find(c=>c.ref===$('mCyl').value)||null;}
+/* What the movement is, worked out from the scale readings. Returns {qty,err,hint}. */
+function workOut(){
+  const t=$('mType').value, c=curCyl();
+  const s=num($('mStart').value), e=num($('mEnd').value), q=num($('mQty').value);
+  const bal=c?(c.derived!==null?c.derived:c.stored):null;
+  if(Number.isNaN(s)||Number.isNaN(e)||Number.isNaN(q))return {err:'Weights must be numbers, e.g. 52.4'};
+  if(t==='Added to system'){
+    if(s===null||e===null)return {err:'Enter both scale readings'};
+    if(e>=s)return {err:'The cylinder should weigh LESS after charging a system'};
+    const qty=Math.round((s-e)*100)/100;
+    if(bal!==null&&qty>bal+F.TOLERANCE_KG)return {qty,err:'That is more than the '+bal+' kg this cylinder should hold — check the readings, or do a stock check first'};
+    return {qty,hint:qty+' kg into the system'};
+  }
+  if(t==='Recovered from system'){
+    if(s===null||e===null)return {err:'Enter both scale readings'};
+    if(e<=s)return {err:'The cylinder should weigh MORE after recovering into it'};
+    const qty=Math.round((e-s)*100)/100;return {qty,hint:qty+' kg recovered into the cylinder'};
+  }
+  if(t==='Delivered to site'){
+    if(q===null||q<=0)return {err:'Enter the net refrigerant delivered (kg)'};
+    return {qty:q,hint:q+' kg added to site stock'};
+  }
+  if(t==='Removed from site'){
+    if(bal===null)return {err:'Pick the cylinder'};
+    return {qty:bal,hint:'The cylinder and its '+bal+' kg come off the site stock'};
+  }
+  if(t==='Stock check'){
+    if(q===null||q<0)return {err:'Enter the net contents you counted (kg)'};
+    const diff=bal===null?null:Math.round((q-bal)*100)/100;
+    return {qty:q,hint:diff===null?'Sets the balance to '+q+' kg':(Math.abs(diff)>F.TOLERANCE_KG?'Differs from the register by '+diff+' kg — say why in Notes':'Agrees with the register ('+bal+' kg)')};
+  }
+  return {err:'Say what happened'};
+}
+function syncForm(){
+  const t=$('mType').value, c=curCyl();
+  const sys=(t==='Added to system'||t==='Recovered from system');
+  $('plantWrap').style.display=sys?'block':'none';
+  $('scaleWrap').style.display=(sys||t==='Delivered to site')?'block':'none';
+  $('qtyWrap').style.display=(t==='Delivered to site'||t==='Stock check')?'block':'none';
+  $('qtyLbl').innerHTML=t==='Stock check'?'Net contents counted (kg) <span class="req">*</span>':'Net refrigerant delivered (kg) <span class="req">*</span>';
+  $('startLbl').innerHTML='Scale reading before (kg)'+(sys?' <span class="req">*</span>':'');
+  $('endLbl').innerHTML='Scale reading after (kg)'+(sys?' <span class="req">*</span>':'');
+  $('reasonWrap').style.display=t==='Added to system'?'block':'none';
+  $('leakWrap').style.display=(t==='Added to system'&&($('mReason').value==='Leak repair'||$('mReason').value==='Top-up - no leak found'))?'block':'none';
+  $('cylInfo').innerHTML=c?esc(c.gas)+(c.verified?'':' — <b>gas type not verified against the label; check it now and say so in Notes</b>')+' · '+esc(c.location||''):'';
+  const w=workOut();
+  $('qtyHint').className='hint'+(w.err?'':' ok');
+  $('qtyHint').textContent=t?(w.err||w.hint||''):'';
+}
+['mType','mCyl','mStart','mEnd','mQty','mReason','mPlant'].forEach(id=>{$(id).addEventListener('input',syncForm);$(id).addEventListener('change',syncForm);});
+
+async function nextRef(prefix,rows){
+  let existing=rows;
+  try{existing=await REDFM.listItems(L.mov);}catch(e){}
+  let max=1000;(existing||[]).forEach(it=>{const m=/-(\d{3,})$/.exec((it&&it.Title)||'');if(m)max=Math.max(max,parseInt(m[1],10));});
+  return prefix+(max+1);
+}
+async function logHistory(ref,field,from,to,note){
+  try{await REDFM.addItem('FaultHistory',{Title:ref+' · '+field,FaultRef:String(ref),FieldName:field,
+    FromValue:String(from==null?'':from),ToValue:String(to==null?'':to),ChangedBy:who(),ChangedAt:new Date().toISOString(),ChangeNote:String(note||'')});
+  }catch(e){toast('Saved, but the history entry did not write: '+(e.message||e),5000);}
+}
+
+$('finish').addEventListener('click',async()=>{
+  if(submitted)return;
+  const t=$('mType').value, c=curCyl(), w=workOut();
+  if(!t){toast('Say what happened');return;}
+  if(!$('mDate').value){toast('Give the date');return;}
+  if($('mDate').value>londonToday()){toast('The date cannot be in the future');return;}
+  if(!c){toast(LIVE?'Pick the cylinder':'Sign in first — the movement has to be checked against the live cylinder list');return;}
+  if(w.err){toast(w.err);return;}
+  const sys=(t==='Added to system'||t==='Recovered from system');
+  if(sys&&!$('mPlant').value){toast('Pick the system');return;}
+  const reason=t==='Added to system'?$('mReason').value:(t==='Stock check'||t==='Delivered to site'?'Stock record':'Other');
+  if(t==='Added to system'&&!reason){toast('Give the reason');return;}
+  const leak=$('mLeak').value.trim();
+  if(t==='Added to system'&&(reason==='Leak repair'||reason==='Top-up - no leak found')&&leak.length<10){toast('Say where the leak was and what was done (at least 10 characters)');return;}
+  if(!$('mEng').value.trim()){toast('Enter your name');return;}
+  if(!LIVE){toast('Sign in first');return;}
+  const btn=$('finish');btn.disabled=true;btn.textContent='Saving… do not close this page';
+  try{
+    const ref=await nextRef('FG-',DATA.movements);
+    const s=num($('mStart').value), e=num($('mEnd').value);
+    const fields={Title:ref,MoveDate:new Date($('mDate').value+'T12:00:00').toISOString(),MoveType:t,CylinderRef:c.ref,GasType:c.gas,
+      Plant:sys?$('mPlant').value:'Not a system',QtyKg:w.qty,Reason:reason,LeakDetail:leak,LeakRef:$('mLeakRef').value.trim(),
+      JobRef:$('mJob').value.trim(),Engineer:$('mEng').value.trim(),Notes:$('mNotes').value.trim()};
+    if(s!==null)fields.StartKg=s; if(e!==null)fields.EndKg=e;
+    await REDFM.addItem(L.mov,fields);
+    // keep the cylinder's running figure in step; if this second write fails the register
+    // flags the difference rather than trusting it
+    let cylNote='';
+    const before=c.derived!==null?c.derived:c.stored;
+    const eff=F.effect(fields);
+    const after=Math.round(((eff.set!=null)?eff.set:(before||0)+eff.delta)*100)/100;
+    try{
+      const patch={ContentsKg:after,LastMovement:fields.MoveDate};
+      if(t==='Removed from site')patch.Status='Removed from site';
+      else if(after<=0.2)patch.Status='Empty on site';
+      await REDFM.updateItem(L.cyl,c._id,patch);
+      await logHistory(c.ref,'ContentsKg',before,after,ref+' · '+t);
+    }catch(err){cylNote=' The cylinder figure did not update ('+(err.message||err)+') — it will show as needing reconciliation.';}
+    submitted=true;try{REDFMDraft.clear();}catch(x){}
+    $('bar').style.display='none';
+    $('addPane').querySelectorAll('input,select,textarea').forEach(x=>x.disabled=true);
+    $('summary').style.display='block';
+    $('sumHead').textContent='✓ Logged '+ref+' — '+t+' · '+w.qty+' kg';
+    $('sumBody').innerHTML='<div>'+esc(c.ref)+' now '+after+' kg'+(sys?' · system '+esc($('mPlant').value):'')+'</div>'+
+      '<div class="muted" style="margin-top:4px">'+esc(cylNote||'Saved to the register.')+' Border\'s view updates at the next hourly publish.</div>'+
+      '<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="location.reload()">Log another</button>'+
+      '<a class="btn btn-ghost" href="index.html" style="text-decoration:none">Back to hub</a></div>';
+    $('summary').scrollIntoView({behavior:'smooth'});
+    toast('Logged '+ref+' ✓');
+    loadData();
+  }catch(err){
+    btn.disabled=false;btn.textContent='Save failed — tap to try again';
+    toast('Did not save: '+(err.message||err),6000);
+  }
+});
+
+// ── dialogs: add cylinder, edit cylinder, update system, history ───────────────
+function dlg(title,body,foot,note){$('dlgTitle').textContent=title;$('dlgBody').innerHTML=body;$('dlgFoot').innerHTML=foot||'';$('dlgNote').textContent=note||'';$('dlg').classList.add('on');}
+function dlgClose(){$('dlg').classList.remove('on');}
+$('dlgClose').onclick=dlgClose;$('dlg').addEventListener('click',e=>{if(e.target.id==='dlg')dlgClose();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')dlgClose();});
+const GASES=['R407C','R407F','R449A','R448A','R404A','R134a','Other'];
+const opts=(arr,sel)=>arr.map(x=>'<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>').join('');
+
+$('addCyl').onclick=()=>{
+  dlg('Add a cylinder',
+    '<label>Cylinder ref / serial <span class="req">*</span></label><input id="cRef" placeholder="e.g. SC019858 or BHD5">'+
+    '<div class="row"><div><label>Gas <span class="req">*</span></label><select id="cGas"><option value="">Select…</option>'+opts(GASES)+'</select></div>'+
+    '<div><label>Read off the label?</label><select id="cVer"><option>Yes</option><option>No</option></select></div></div>'+
+    '<div class="row"><div><label>Net contents now (kg) <span class="req">*</span></label><input id="cKg" inputmode="decimal"></div>'+
+    '<div><label>Nominal capacity (kg)</label><input id="cNom" inputmode="decimal"></div></div>'+
+    '<div class="row"><div><label>Owner</label><select id="cOwn">'+opts(['Border Holdings','Coolstream','Supplier (hire)','Other'])+'</select></div>'+
+    '<div><label>Cylinder type</label><select id="cType">'+opts(['Virgin','Recovery','Reclaimed','Other'])+'</select></div></div>'+
+    '<label>Where it is kept</label><input id="cLoc" placeholder="e.g. old ammonia plant room by the A&amp;B doorway">'+
+    '<label>How it arrived <span class="req">*</span></label><select id="cHow"><option>Delivered to site</option><option>Opening stock</option></select>'+
+    '<label>Where the figures came from</label><input id="cSrc" placeholder="e.g. weighed on site by D. N., delivery note 1234">',
+    '<button class="btn btn-red" id="cSave">Add cylinder</button><button class="btn btn-ghost" onclick="dlgClose()">Cancel</button>',
+    'Creates the cylinder and its first movement in one go, so its balance is backed by the ledger from day one.');
+  $('cSave').onclick=async()=>{
+    const ref=$('cRef').value.trim(), gas=$('cGas').value, q=num($('cKg').value), nom=num($('cNom').value);
+    if(!ref){toast('Give the cylinder ref');return;}
+    if((DATA.cylinders||[]).some(c=>String(c.Title||'').trim().toLowerCase()===ref.toLowerCase())){toast(ref+' is already on the register');return;}
+    if(!gas){toast('Pick the gas');return;}
+    if(q===null||Number.isNaN(q)||q<0){toast('Net contents must be a number');return;}
+    if(Number.isNaN(nom)){toast('Nominal capacity must be a number');return;}
+    const b=$('cSave');b.disabled=true;b.textContent='Saving…';
+    try{
+      const today=new Date(londonToday()+'T12:00:00').toISOString();
+      const cf={Title:ref,GasType:gas,GasVerified:$('cVer').value,ContentsKg:q,Owner:$('cOwn').value,CylinderType:$('cType').value,
+        LocationNote:$('cLoc').value.trim(),Status:'On site',SourceNote:$('cSrc').value.trim(),LastMovement:today};
+      if(nom!==null)cf.NominalKg=nom;
+      await REDFM.addItem(L.cyl,cf);
+      const mref=await nextRef('FG-',DATA.movements);
+      await REDFM.addItem(L.mov,{Title:mref,MoveDate:today,MoveType:$('cHow').value,CylinderRef:ref,GasType:gas,Plant:'Not a system',
+        QtyKg:q,Reason:'Stock record',Engineer:who(),Notes:'Cylinder added to the register'+($('cSrc').value.trim()?' — '+$('cSrc').value.trim():'')});
+      await logHistory(ref,'Cylinder added','',q+' kg '+gas,mref);
+      dlgClose();toast(ref+' added ✓');loadData();
+    }catch(err){b.disabled=false;b.textContent='Add cylinder';$('dlgNote').textContent='Did not save: '+(err.message||err);}
+  };
+};
+
+function editCylinder(id){
+  const c=(DATA.cylinders||[]).find(x=>String(x._id)===String(id));if(!c)return;
+  dlg('Edit '+c.Title,
+    '<div class="warn">Contents are changed by logging a movement (a stock check if the weight is wrong), never here — that keeps the ledger honest.</div>'+
+    '<div class="row"><div><label>Gas</label><select id="eGas">'+opts(GASES,c.GasType)+'</select></div>'+
+    '<div><label>Read off the label?</label><select id="eVer">'+opts(['Yes','No'],c.GasVerified||'No')+'</select></div></div>'+
+    '<div class="row"><div><label>Owner</label><select id="eOwn">'+opts(['Border Holdings','Coolstream','Supplier (hire)','Other'],c.Owner)+'</select></div>'+
+    '<div><label>Status</label><select id="eSt">'+opts(['On site','Empty on site','Removed from site'],c.Status||'On site')+'</select></div></div>'+
+    '<label>Where it is kept</label><input id="eLoc" value="'+esc(c.LocationNote||'')+'">'+
+    '<label>Source / notes</label><textarea id="eSrc">'+esc(c.SourceNote||'')+'</textarea>'+
+    '<label>Why you are changing it <span class="req">*</span></label><input id="eWhy" placeholder="e.g. label read on site 12/11 — R407F, not R407C">',
+    '<button class="btn btn-red" id="eSave">Save</button><button class="btn btn-ghost" onclick="dlgClose()">Cancel</button>',
+    'Every change is written to the history against '+who()+'.');
+  $('eSave').onclick=async()=>{
+    const why=$('eWhy').value.trim();if(why.length<5){toast('Say why (goes in the history)');return;}
+    const next={GasType:$('eGas').value,GasVerified:$('eVer').value,Owner:$('eOwn').value,Status:$('eSt').value,LocationNote:$('eLoc').value.trim(),SourceNote:$('eSrc').value};
+    const changed=Object.keys(next).filter(k=>String(next[k])!==String(c[k]||''));
+    if(!changed.length){$('dlgNote').textContent='Nothing changed.';return;}
+    const b=$('eSave');b.disabled=true;b.textContent='Saving…';
+    try{
+      const patch={};changed.forEach(k=>patch[k]=next[k]);
+      await REDFM.updateItem(L.cyl,c._id,patch);
+      for(const k of changed)await logHistory(c.Title,k,c[k]||'',next[k],why);
+      dlgClose();toast('Saved ✓');loadData();
+    }catch(err){b.disabled=false;b.textContent='Save';$('dlgNote').textContent='Did not save: '+(err.message||err);}
+  };
+}
+
+function editSystem(id){
+  const s=(DATA.systems||[]).find(x=>String(x._id)===String(id));if(!s)return;
+  dlg('System '+s.Title+' — installed charge',
+    '<div class="row"><div><label>Gas</label><select id="sGas">'+opts(GASES.concat(['Not yet confirmed']),s.GasType||'Not yet confirmed')+'</select></div>'+
+    '<div><label>Installed charge (kg)</label><input id="sKg" inputmode="decimal" value="'+esc(s.ChargeKg==null?'':s.ChargeKg)+'"></div></div>'+
+    '<label>Fixed leak detection fitted?</label><select id="sLd">'+opts(['Yes','No','Not yet confirmed'],s.HasLeakDetection||'Not yet confirmed')+'</select>'+
+    '<label>Where the figure came from <span class="req">*</span></label><input id="sSrc" value="'+esc(s.ChargeSource||'')+'" placeholder="e.g. Karl Binns email 12/11/2026, plant label">'+
+    '<label>Notes</label><textarea id="sNotes">'+esc(s.Notes||'')+'</textarea>'+
+    '<div class="hint ok" id="sPrev"></div>',
+    '<button class="btn btn-red" id="sSave">Save</button><button class="btn btn-ghost" onclick="dlgClose()">Cancel</button>',
+    'The charge sets the t CO2e and the leak-check frequency Border see. Every change goes in the history.');
+  const prev=()=>{const k=num($('sKg').value);const r=F.systemRow({Title:s.Title,GasType:$('sGas').value,ChargeKg:Number.isNaN(k)?null:k,HasLeakDetection:$('sLd').value});
+    $('sPrev').textContent=r.t===null?'':r.t+' t CO2e → '+r.band.label;};
+  ['sGas','sKg','sLd'].forEach(x=>{$(x).addEventListener('input',prev);$(x).addEventListener('change',prev);});prev();
+  $('sSave').onclick=async()=>{
+    const k=num($('sKg').value);
+    if(Number.isNaN(k)||(k!==null&&k<0)){toast('Charge must be a number of kg');return;}
+    if(!$('sSrc').value.trim()){toast('Say where the figure came from');return;}
+    const next={GasType:$('sGas').value,ChargeKg:k,HasLeakDetection:$('sLd').value,ChargeSource:$('sSrc').value.trim(),Notes:$('sNotes').value};
+    const changed=Object.keys(next).filter(x=>String(next[x]==null?'':next[x])!==String(s[x]==null?'':s[x]));
+    if(!changed.length){$('dlgNote').textContent='Nothing changed.';return;}
+    const b=$('sSave');b.disabled=true;b.textContent='Saving…';
+    try{
+      const patch={};changed.forEach(x=>patch[x]=next[x]);
+      await REDFM.updateItem(L.sys,s._id,patch);
+      for(const x of changed)await logHistory('SYS-'+s.Title,x,s[x]==null?'':s[x],next[x]==null?'':next[x],next.ChargeSource);
+      dlgClose();toast('Saved ✓');loadData();
+    }catch(err){b.disabled=false;b.textContent='Save';$('dlgNote').textContent='Did not save: '+(err.message||err);}
+  };
+}
+
+/* History: the movements themselves (with the running balance) plus every edit from FaultHistory.
+   Signed out, only the movements are available — the edit log is not published. */
+async function showHistory(ref){
+  dlg('History — '+ref,'<div class="empty">Loading…</div>');
+  let html='';
+  if(!ref.startsWith('SYS-')){
+    let bal=null;
+    const mv=F.sortMoves((DATA.movements||[]).filter(m=>String(m.CylinderRef||'').trim()===ref));
+    html+='<div class="hist"><div class="a">Movements</div></div>'+(mv.length?mv.map(m=>{const e=F.effect(m);bal=e.set!=null?e.set:(bal||0)+e.delta;bal=Math.round(bal*100)/100;
+      return '<div class="hist"><div class="a">'+esc(m.Title)+' · '+esc(m.MoveType)+(m.Plant&&m.Plant!=='Not a system'?' · '+esc(m.Plant):'')+'</div><div class="b">'+dmy(m.MoveDate)+' · '+kg(F.n(m.QtyKg))+' → balance <b>'+bal+' kg</b> · '+esc(m.Engineer||'')+(m.Reason?' · '+esc(m.Reason):'')+(m.Notes?'<br><i>'+esc(m.Notes)+'</i>':'')+'</div></div>';}).join(''):'<div class="b">None.</div>');
+  }else{
+    const p=ref.slice(4);
+    const mv=F.sortMoves((DATA.movements||[]).filter(m=>m.Plant===p)).reverse();
+    html+='<div class="hist"><div class="a">Refrigerant movements on '+esc(p)+'</div></div>'+(mv.length?mv.map(m=>'<div class="hist"><div class="a">'+esc(m.Title)+' · '+esc(m.MoveType)+' · '+kg(F.n(m.QtyKg))+' '+esc(m.GasType||'')+'</div><div class="b">'+dmy(m.MoveDate)+' · '+esc(m.Reason||'')+' · '+esc(m.Engineer||'')+(m.LeakDetail?'<br><i>'+esc(m.LeakDetail)+'</i>':'')+'</div></div>').join(''):'<div class="b">None.</div>');
+  }
+  if(LIVE){
+    try{
+      const h=await REDFM.listItems('FaultHistory',x=>String(x.FaultRef||'')===ref);
+      h.sort((a,b)=>new Date(b.ChangedAt||0)-new Date(a.ChangedAt||0));
+      html+='<div class="hist"><div class="a">Edits</div></div>'+(h.length?h.map(x=>'<div class="hist"><div class="a">'+esc(x.FieldName||'')+'</div><div class="b">'+(esc(x.FromValue)||'(empty)')+' → <b>'+(esc(x.ToValue)||'(empty)')+'</b><br>'+esc(x.ChangedBy||'')+' · '+(x.ChangedAt?new Date(x.ChangedAt).toLocaleString('en-GB'):'')+(x.ChangeNote?'<br><i>'+esc(x.ChangeNote)+'</i>':'')+'</div></div>').join(''):'<div class="b">No edits recorded.</div>');
+    }catch(e){html+='<div class="b">Could not read the edit history: '+esc(e.message||e)+'</div>';}
+  }
+  $('dlgBody').innerHTML=html;
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target;if(!t||!t.closest)return;
+  const h=t.closest('[data-hist]');if(h){showHistory(h.dataset.hist);return;}
+  const ce=t.closest('[data-cyledit]');if(ce){editCylinder(ce.dataset.cyledit);return;}
+  const se=t.closest('[data-sysedit]');if(se){editSystem(se.dataset.sysedit);return;}
+});
+
+// ── sign-in ──────────────────────────────────────────────────────────────────
+$('signin').onclick=async()=>{try{await REDFM.signIn();await loadData();}catch(e){toast('Sign-in failed: '+(e.message||e),5000);}};
+if(window.REDFM){REDFM.init().then(()=>loadData()).catch(()=>loadData());}else loadData();
+try{REDFMDraft.init({key:'fgasreg',state:{},draw:syncForm});}catch(e){}
+</script>
+</body>
+</html>

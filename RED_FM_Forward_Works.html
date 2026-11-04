@@ -108,11 +108,7 @@
       <label>Recommended window</label>
       <input id="fWindow" placeholder="e.g. Oct–Nov 2026, before next summer">
 
-      <div class="row">
-        <div><label>Indicative budget (£) <span class="muted" style="font-weight:400">· internal only</span></label><input id="fCost" type="number" inputmode="decimal" min="0" step="1" placeholder="e.g. 1200"></div>
-        <div><label>Target date</label><input id="fTarget" type="date"></div>
-      </div>
-      <div class="muted" style="margin-top:6px">Budget is an <b>indicative planning figure only</b>, recorded for RED FM planning. It is not a quotation and it is <b>not displayed</b> on the register.</div>
+      <label>Target date</label><input id="fTarget" type="date">
 
       <label>Raised by <span class="req">*</span></label>
       <input id="fBy" placeholder="Your name">
@@ -375,7 +371,7 @@ $('finish').addEventListener('click',async()=>{
   const today=londonToday();
   const r={ref:'FW-'+Date.now().toString(36).toUpperCase(),
     asset:$('fAsset').value.trim(),description:desc,category:$('fCat').value,
-    window:$('fWindow').value.trim(),cost:$('fCost').value.trim(),
+    window:$('fWindow').value.trim(),
     target:$('fTarget').value,raisedBy:$('fBy').value.trim(),notes:$('fNotes').value.trim(),
     raisedDate:today,status:'Recommended'};
 
@@ -404,7 +400,7 @@ $('finish').addEventListener('click',async()=>{
       if(!signedIn){await REDFM.signIn();signedIn=true;}
       r.ref=await nextRef('FW-','ForwardWorks',snapRows);
       await REDFM.addItem("ForwardWorks",{Title:r.ref,AssetId:r.asset,WorkDescription:r.description,
-        Category:r.category,RecommendedWindow:r.window,BudgetCost:(r.cost===''?null:Number(r.cost)),
+        Category:r.category,RecommendedWindow:r.window,
         WorkStatus:'Recommended',QuoteRef:'',RaisedDate:r.raisedDate,RaisedBy:r.raisedBy,
         TargetDate:(r.target||null),Notes:r.notes});
       saveMsg='Added to the forward works register ✓';
