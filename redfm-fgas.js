@@ -34,14 +34,18 @@
      the interval (and is itself mandatory at 500 t+). Below 5 t no periodic check is required. */
   function band(t, hasLD) {
     if (t === null) return { key: "unknown", label: "Charge not yet recorded", months: null };
-    var ld = String(hasLD || "") === "Yes";
+    var v = String(hasLD || "");
+    var ld = v === "Yes", noLd = v === "No";
     if (t < 5) return { key: "none", label: "Below 5 t CO2e - no periodic check", months: null };
     var base = t >= 500 ? 3 : t >= 50 ? 6 : 12;
-    var m = ld ? base * 2 : base;
     var words = { 3: "Quarterly", 6: "Six-monthly", 12: "Annual", 24: "Every 24 months" };
+    /* Leak detection not yet confirmed: show both intervals and do NOT raise the red
+       "required" flag — an unconfirmed fact must not read as a breach on Border's view. */
+    if (!ld && !noLd) return { key: "m" + base, label: words[base] + " (" + words[base * 2].toLowerCase() + " if leak detection is fitted - to confirm)", months: base, ldRequired: false };
+    var m = ld ? base * 2 : base;
     var label = words[m] + (ld ? " (leak detection fitted)" : "");
-    if (t >= 500 && !ld) label += " - leak detection REQUIRED at 500 t+";
-    return { key: "m" + m, label: label, months: m, ldRequired: t >= 500 && !ld };
+    if (t >= 500 && noLd) label += " - leak detection REQUIRED at 500 t+";
+    return { key: "m" + m, label: label, months: m, ldRequired: t >= 500 && noLd };
   }
 
   function systemRow(s) {
