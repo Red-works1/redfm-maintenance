@@ -96,7 +96,7 @@
                      (b.bal === null && stored !== null && stored > 0);
       return { ref: ref, gas: c.GasType || "", verified: String(c.GasVerified || "") === "Yes",
         stored: stored, derived: b.bal, moves: b.count, last: b.last || d10(c.LastMovement),
-        nominal: n(c.NominalKg), owner: c.Owner || "", type: c.CylinderType || "",
+        nominal: n(c.NominalKg), serial: c.Serial || "", tare: n(c.TareKg), owner: c.Owner || "", type: c.CylinderType || "",
         location: c.LocationNote || "", status: c.Status || "On site", source: c.SourceNote || "",
         mismatch: mismatch, _id: c._id };
     });

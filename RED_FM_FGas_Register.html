@@ -132,7 +132,7 @@
 
       <div id="scaleWrap" style="display:none">
         <div class="row">
-          <div><label id="startLbl">Scale reading before (kg)</label><input id="mStart" type="text" inputmode="decimal" placeholder="e.g. 63.4"></div>
+          <div id="startWrap"><label id="startLbl">Scale reading before (kg)</label><input id="mStart" type="text" inputmode="decimal" placeholder="e.g. 63.4"></div>
           <div><label id="endLbl">Scale reading after (kg)</label><input id="mEnd" type="text" inputmode="decimal" placeholder="e.g. 52.1"></div>
         </div>
       </div>
@@ -173,7 +173,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
 <script src="redfm-data.js?v=17"></script>
-<script src="redfm-fgas.js?v=2"></script>
+<script src="redfm-fgas.js?v=3"></script>
 <script src="redfm-draft.js?v=2"></script>
 <script>
 /* Dates in Europe/London — see the note in the Forward Works page: a UTC date between
@@ -245,7 +245,8 @@ function render(snapAt){
     .sort((a,b)=>(F.onSite(b)-F.onSite(a))||a.ref.localeCompare(b.ref,undefined,{numeric:true}));
   $('cylN').textContent=cyl.length;
   $('cylTable').innerHTML=cyl.length?'<table><thead><tr><th>Cylinder</th><th>Gas</th><th>Contents</th><th>From movements</th><th>Owner / type</th><th>Location</th><th>Last</th><th></th></tr></thead><tbody>'+
-    cyl.map(c=>'<tr class="'+(c.mismatch?'bad':'')+'"><td><b>'+esc(c.ref)+'</b>'+(F.onSite(c)?'':' <span class="chip">'+esc(c.status)+'</span>')+'</td>'+
+    cyl.map(c=>'<tr class="'+(c.mismatch?'bad':'')+'"><td><b>'+esc(c.ref)+'</b>'+(F.onSite(c)?'':' <span class="chip">'+esc(c.status)+'</span>')+
+      ((c.serial||c.tare!==null)?'<div class="muted">'+esc([c.serial,c.tare!==null?'tare '+c.tare+' kg':''].filter(Boolean).join(' · '))+'</div>':'')+'</td>'+
       '<td>'+esc(c.gas||'—')+(c.verified?' <span class="chip ok">label checked</span>':' <span class="chip amb">not verified</span>')+'</td>'+
       '<td>'+kg(c.stored)+'</td><td>'+kg(c.derived)+(c.mismatch?' <span class="chip red">differs &gt;'+F.TOLERANCE_KG+' kg</span>':'')+'</td>'+
       '<td>'+esc([c.owner,c.type].filter(Boolean).join(' · ')||'—')+'</td><td>'+esc(c.location||'—')+'</td><td>'+dmy(c.last)+'</td>'+
@@ -294,7 +295,7 @@ function curCyl(){return cylRows().find(c=>c.ref===$('mCyl').value)||null;}
 /* What the movement is, worked out from the scale readings. Returns {qty,err,hint}. */
 function workOut(){
   const t=$('mType').value, c=curCyl();
-  const s=num($('mStart').value), e=num($('mEnd').value), q=num($('mQty').value);
+  const s=num($('mStart').value), e=num($('mEnd').value), q=num($('mQty').value), qIn=q;
   const bal=c?(c.derived!==null?c.derived:c.stored):null;
   if(Number.isNaN(s)||Number.isNaN(e)||Number.isNaN(q))return {err:'Weights must be numbers, e.g. 52.4'};
   if(t==='Added to system'){
@@ -318,7 +319,10 @@ function workOut(){
     return {qty:bal,hint:'The cylinder and its '+bal+' kg come off the site stock'};
   }
   if(t==='Stock check'){
-    if(q===null||q<0)return {err:'Enter the net contents you counted (kg)'};
+    let q2=qIn;
+    if(q2===null&&e!==null&&c&&c.tare!==null)q2=Math.round((e-c.tare)*100)/100;   // scale reading less tare
+    if(q2===null||q2<0)return {err:(c&&c.tare!==null)?'Enter the scale reading, or the net contents (kg)':'Enter the net contents you counted (kg) — this cylinder has no tare recorded'};
+    const q=q2;
     const diff=bal===null?null:Math.round((q-bal)*100)/100;
     return {qty:q,hint:diff===null?'Sets the balance to '+q+' kg':(Math.abs(diff)>F.TOLERANCE_KG?'Differs from the register by '+diff+' kg — say why in Notes':'Agrees with the register ('+bal+' kg)')};
   }
@@ -328,14 +332,15 @@ function syncForm(){
   const t=$('mType').value, c=curCyl();
   const sys=(t==='Added to system'||t==='Recovered from system');
   $('plantWrap').style.display=sys?'block':'none';
-  $('scaleWrap').style.display=(sys||t==='Delivered to site')?'block':'none';
+  $('scaleWrap').style.display=(sys||t==='Delivered to site'||t==='Stock check')?'block':'none';
+  $('startWrap').style.display=t==='Stock check'?'none':'block';
   $('qtyWrap').style.display=(t==='Delivered to site'||t==='Stock check')?'block':'none';
-  $('qtyLbl').innerHTML=t==='Stock check'?'Net contents counted (kg) <span class="req">*</span>':'Net refrigerant delivered (kg) <span class="req">*</span>';
+  $('qtyLbl').innerHTML=t==='Stock check'?'Net contents (kg) <span class="muted">— or leave blank: worked out from the scale reading less tare</span>':'Net refrigerant delivered (kg) <span class="req">*</span>';
   $('startLbl').innerHTML='Scale reading before (kg)'+(sys?' <span class="req">*</span>':'');
-  $('endLbl').innerHTML='Scale reading after (kg)'+(sys?' <span class="req">*</span>':'');
+  $('endLbl').innerHTML=t==='Stock check'?'Scale reading now (kg)':'Scale reading after (kg)'+(sys?' <span class="req">*</span>':'');
   $('reasonWrap').style.display=t==='Added to system'?'block':'none';
   $('leakWrap').style.display=(t==='Added to system'&&($('mReason').value==='Leak repair'||$('mReason').value==='Top-up - no leak found'))?'block':'none';
-  $('cylInfo').innerHTML=c?esc(c.gas)+(c.verified?'':' — <b>gas type not verified against the label; check it now and say so in Notes</b>')+' · '+esc(c.location||''):'';
+  $('cylInfo').innerHTML=c?(c.serial?'Serial '+esc(c.serial)+' · ':'')+(c.tare!==null?'tare '+c.tare+' kg · ':'')+esc(c.gas)+(c.verified?'':' — <b>gas type not verified against the label; check it now and say so in Notes</b>')+' · '+esc(c.location||''):'';
   const w=workOut();
   $('qtyHint').className='hint'+(w.err?'':' ok');
   $('qtyHint').textContent=t?(w.err||w.hint||''):'';
@@ -423,6 +428,8 @@ $('addCyl').onclick=()=>{
     '<label>Cylinder ref / serial <span class="req">*</span></label><input id="cRef" placeholder="e.g. SC019858 or BHD5">'+
     '<div class="row"><div><label>Gas <span class="req">*</span></label><select id="cGas"><option value="">Select…</option>'+opts(GASES)+'</select></div>'+
     '<div><label>Read off the label?</label><select id="cVer"><option>Yes</option><option>No</option></select></div></div>'+
+    '<div class="row"><div><label>Barcode serial</label><input id="cSer" placeholder="e.g. SC019858"></div>'+
+    '<div><label>Tare — empty weight (kg)</label><input id="cTare" inputmode="decimal"></div></div>'+
     '<div class="row"><div><label>Net contents now (kg) <span class="req">*</span></label><input id="cKg" inputmode="decimal"></div>'+
     '<div><label>Nominal capacity (kg)</label><input id="cNom" inputmode="decimal"></div></div>'+
     '<div class="row"><div><label>Owner</label><select id="cOwn">'+opts(['Border Holdings','Coolstream','Supplier (hire)','Other'])+'</select></div>'+
@@ -439,12 +446,13 @@ $('addCyl').onclick=()=>{
     if(!gas){toast('Pick the gas');return;}
     if(q===null||Number.isNaN(q)||q<0){toast('Net contents must be a number');return;}
     if(Number.isNaN(nom)){toast('Nominal capacity must be a number');return;}
+    const tare=num($('cTare').value);if(Number.isNaN(tare)){toast('Tare must be a number');return;}
     const b=$('cSave');b.disabled=true;b.textContent='Saving…';
     try{
       const today=new Date(londonToday()+'T12:00:00').toISOString();
       const cf={Title:ref,GasType:gas,GasVerified:$('cVer').value,ContentsKg:q,Owner:$('cOwn').value,CylinderType:$('cType').value,
         LocationNote:$('cLoc').value.trim(),Status:'On site',SourceNote:$('cSrc').value.trim(),LastMovement:today};
-      if(nom!==null)cf.NominalKg=nom;
+      if(nom!==null)cf.NominalKg=nom; if(tare!==null)cf.TareKg=tare; if($('cSer').value.trim())cf.Serial=$('cSer').value.trim();
       await REDFM.addItem(L.cyl,cf);
       const mref=await nextRef('FG-',DATA.movements);
       await REDFM.addItem(L.mov,{Title:mref,MoveDate:today,MoveType:$('cHow').value,CylinderRef:ref,GasType:gas,Plant:'Not a system',
@@ -463,6 +471,8 @@ function editCylinder(id){
     '<div><label>Read off the label?</label><select id="eVer">'+opts(['Yes','No'],c.GasVerified||'No')+'</select></div></div>'+
     '<div class="row"><div><label>Owner</label><select id="eOwn">'+opts(['Border Holdings','Coolstream','Supplier (hire)','Other'],c.Owner)+'</select></div>'+
     '<div><label>Status</label><select id="eSt">'+opts(['On site','Empty on site','Removed from site'],c.Status||'On site')+'</select></div></div>'+
+    '<div class="row"><div><label>Barcode serial</label><input id="eSer" value="'+esc(c.Serial||'')+'"></div>'+
+    '<div><label>Tare — empty weight (kg)</label><input id="eTare" inputmode="decimal" value="'+esc(c.TareKg==null?'':c.TareKg)+'"></div></div>'+
     '<label>Where it is kept</label><input id="eLoc" value="'+esc(c.LocationNote||'')+'">'+
     '<label>Source / notes</label><textarea id="eSrc">'+esc(c.SourceNote||'')+'</textarea>'+
     '<label>Why you are changing it <span class="req">*</span></label><input id="eWhy" placeholder="e.g. label read on site 12/11 — R407F, not R407C">',
@@ -470,8 +480,9 @@ function editCylinder(id){
     'Every change is written to the history against '+who()+'.');
   $('eSave').onclick=async()=>{
     const why=$('eWhy').value.trim();if(why.length<5){toast('Say why (goes in the history)');return;}
-    const next={GasType:$('eGas').value,GasVerified:$('eVer').value,Owner:$('eOwn').value,Status:$('eSt').value,LocationNote:$('eLoc').value.trim(),SourceNote:$('eSrc').value};
-    const changed=Object.keys(next).filter(k=>String(next[k])!==String(c[k]||''));
+    const tare=num($('eTare').value);if(Number.isNaN(tare)){toast('Tare must be a number');return;}
+    const next={GasType:$('eGas').value,GasVerified:$('eVer').value,Owner:$('eOwn').value,Status:$('eSt').value,LocationNote:$('eLoc').value.trim(),SourceNote:$('eSrc').value,Serial:$('eSer').value.trim(),TareKg:tare};
+    const changed=Object.keys(next).filter(k=>String(next[k]==null?'':next[k])!==String(c[k]==null?'':c[k]));
     if(!changed.length){$('dlgNote').textContent='Nothing changed.';return;}
     const b=$('eSave');b.disabled=true;b.textContent='Saving…';
     try{
