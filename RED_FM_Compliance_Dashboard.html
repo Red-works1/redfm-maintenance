@@ -265,7 +265,7 @@
     <div class="card" id="regimes"></div>
 
     <div class="sechead">
-      <h2>Building compliance — electrical &amp; fire</h2>
+      <h2>Building compliance — electrical, fire &amp; water</h2>
       <div class="legend"><span>Managed by RED FM · separate from Coolstream</span><span class="g">● in date</span><span class="a">● due soon</span><span class="r">● overdue</span></div>
     </div>
     <div class="card" id="compliance"></div>
@@ -499,12 +499,13 @@ function computeRegime(reg,visits,readings,catCount){
   return {reg,done,expected,pct,pace,rag,status,detail,periodLabel:label};
 }
 
-// ---- Building compliance (electrical & fire) — RED FM managed, separate from Coolstream ----
+// ---- Building compliance (electrical, fire & water) — RED FM managed, separate from Coolstream ----
 const FM_COMPLIANCE=[
  {key:"Fixed wiring",       name:"Fixed wiring test (EICR)", chip:"Annual · EICR",  provider:"Logical Heating Ltd", freq:"annual", cert:["eicr","fixedwiring","fixed_wiring","fixed wiring"]},
  {key:"Emergency lighting", name:"Emergency lighting",       chip:"Annual · cert",  provider:"Logical Heating Ltd", freq:"annual", cert:["emergencylighting","emergency_lighting","emergency lighting","emerg"]},
  {key:"PAT testing",       name:"PAT testing",              chip:"Annual · register", provider:"Logical Group", freq:"annual", cert:["pattesting","pat_test","portableappliance","portable appliance"]},
- {key:"Fire alarm",         name:"Fire alarm service",       chip:"Six-monthly",    provider:"Lightning Fire",      freq:"half",   cert:["firealarm","fire_alarm","fire alarm"]}
+ {key:"Fire alarm",         name:"Fire alarm service",       chip:"Six-monthly",    provider:"Lightning Fire",      freq:"half",   cert:["firealarm","fire_alarm","fire alarm"]},
+ {key:"Water testing",      name:"Water testing (potable)",  chip:"Annual · lab cert", provider:"Primary Water Solutions", freq:"annual", cert:["watertesting","water_test","potable"]}
 ];
 let FM_MANIFEST=null;
 async function loadManifest(){try{const j=await (await fetch('https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports-manifest.json?t='+Date.now())).json();FM_MANIFEST=j.reports||[];}catch(e){FM_MANIFEST=[];}}
