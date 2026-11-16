@@ -33,11 +33,11 @@
 </head>
 <body>
 <header><div class="brand"><img class="logo" src="redfm-logo.png" alt="RED FM" width="110" height="66">
-<div class="htitle"><strong>Building compliance</strong>Border Holdings — Avonmouth · electrical &amp; fire certificates</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
+<div class="htitle"><strong>Building compliance</strong>Border Holdings — Avonmouth · electrical, fire &amp; water certificates</div><a href="index.html" aria-label="Back to hub" style="margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#1E1E1E;font-weight:700;font-size:13px;border:1.5px solid #e3e3e8;border-radius:9px;padding:8px 11px;background:#fff;white-space:nowrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hub</a></div></header>
 
 <div class="wrap">
   <div class="card">
-    <div class="note">For electrical &amp; fire compliance managed by RED FM — <b>separate from Coolstream</b>. Pick the item, set the date it was done, and attach the certificate. The dashboard works out the next-due date and flags it if it falls overdue.</div>
+    <div class="note">For electrical, fire &amp; water compliance managed by RED FM — <b>separate from Coolstream</b>. Pick the item, set the date it was done, and attach the certificate. The dashboard works out the next-due date and flags it if it falls overdue.</div>
 
     <label>Compliance item <span class="req">*</span></label>
     <select id="cItem">
@@ -46,6 +46,7 @@
       <option>Emergency lighting</option>
       <option>PAT testing</option>
       <option>Fire alarm service</option>
+      <option>Water testing (potable)</option>
     </select>
     <div class="muted" id="freqNote" style="margin-top:6px"></div>
 
@@ -99,7 +100,8 @@ const ITEMS={
   "Fixed wiring test (EICR)":{type:"Fixed wiring",     provider:"Logical Heating Ltd",prefix:"FixedWiring_EICR", note:"Yearly (done each January). Next due auto-set 12 months on."},
   "Emergency lighting":      {type:"Emergency lighting",provider:"Logical Heating Ltd",prefix:"EmergencyLighting",note:"Yearly (done each January). Next due auto-set 12 months on."},
   "PAT testing":             {type:"PAT testing",      provider:"Logical Group",      prefix:"PATTesting",      note:"Yearly (done each January). Next due auto-set 12 months on."},
-  "Fire alarm service":      {type:"Fire alarm",        provider:"Lightning Fire",     prefix:"FireAlarm",       note:"Six-monthly (January & July). Next due auto-set 6 months on."}
+  "Fire alarm service":      {type:"Fire alarm",        provider:"Lightning Fire",     prefix:"FireAlarm",       note:"Six-monthly (January & July). Next due auto-set 6 months on."},
+  "Water testing (potable)": {type:"Water testing",     provider:"Primary Water Solutions",prefix:"WaterTesting",  note:"Yearly potable water sampling (done each November). Next due auto-set 12 months on."}
 };
 let chosen=null,file=null;
 $('cItem').addEventListener('change',()=>{
