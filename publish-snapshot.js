@@ -83,6 +83,7 @@ function classify(name) {
   if (n.includes("emergency") || n.includes("emerglight")) return "Emergency lighting";
   if (n.includes("pattesting") || n.includes("pat_") || n.includes("portableappliance")) return "PAT testing";
   if (n.includes("firealarm") || n.includes("fire_alarm") || n.includes("fire alarm")) return "Fire alarm services";
+  if (n.includes("watertesting") || n.includes("water_test") || n.includes("potable")) return "Water testing";
   if (n.startsWith("fault_")) return "Fault reports";
   if (n.startsWith("border_compliance") || n.includes("compliance")) return "Monthly compliance reports";
   return "Other reports";
