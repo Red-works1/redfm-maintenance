@@ -477,7 +477,8 @@ const FM_COMPLIANCE=[
  {key:"Emergency lighting", name:"Emergency lighting",       chip:"Annual · cert",  provider:"Logical Heating Ltd", freq:"annual", cert:["emergencylighting","emergency_lighting","emergency lighting","emerg"]},
  {key:"PAT testing",       name:"PAT testing",              chip:"Annual · register", provider:"Logical Group", freq:"annual", cert:["pattesting","pat_test","portableappliance","portable appliance"]},
  {key:"Fire alarm",         name:"Fire alarm service",       chip:"Six-monthly",    provider:"Lightning Fire",      freq:"half",   cert:["firealarm","fire_alarm","fire alarm"]},
- {key:"Water testing",      name:"Water testing (potable)",  chip:"Annual · lab cert", provider:"Primary Water Solutions", freq:"annual", cert:["watertesting","water_test","potable"]}
+ {key:"Water testing",      name:"Water testing (potable)",  chip:"Annual · lab cert", provider:"Primary Water Solutions", freq:"annual", cert:["watertesting","water_test","potable"]},
+ {key:"Legionella risk assessment", name:"Legionella risk assessment", chip:"Review 2 yrs · or on change", provider:"Primary Water Solutions", freq:"biennial", cert:["legionella"]}
 ];
 let FM_MANIFEST=null;
 async function loadManifest(){try{const j=await (await fetch('https://raw.githubusercontent.com/Red-works1/redfm-maintenance/main/reports-manifest.json?t='+Date.now())).json();FM_MANIFEST=j.reports||[];}catch(e){FM_MANIFEST=[];}}
@@ -495,7 +496,7 @@ function computeCompliance(visits){
     const last=mine[0]||null;
     const lastDate=last?new Date(last.VisitDate):null;
     const provider=(last&&last.Engineer)||item.provider;
-    const nextDue=lastDate?addMonths(lastDate,item.freq==='annual'?12:6):null;
+    const nextDue=lastDate?addMonths(lastDate,item.freq==='biennial'?24:item.freq==='annual'?12:6):null;
     let rag,status,pct=0,pace=0;
     if(!lastDate){rag='a';status='Awaiting first upload';pct=0;pace=0;}
     else{
